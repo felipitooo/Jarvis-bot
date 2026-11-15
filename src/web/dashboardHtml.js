@@ -6507,6 +6507,10 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         loadGuildDetails(currentGuildId);
         fetchGuildMembers();
         fetchAuditLogs();
+        const activeTabReview = localStorage.getItem('jarvis_active_tab') || (window.location.hash ? window.location.hash.replace('#', '') : null);
+        if (activeTabReview === 'tab-reviews' || document.getElementById('tab-reviews')?.classList.contains('active')) {
+          if (typeof loadReviewsData === 'function') loadReviewsData();
+        }
       }
     });
 
@@ -6912,6 +6916,12 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
 
         // Pre-fetch server members for fast tab switching
         fetchGuildMembers();
+
+        // Se a aba de avaliações estiver ativa ou solicitada via URL/cache, carrega os dados
+        const activeTabReview = localStorage.getItem('jarvis_active_tab') || (window.location.hash ? window.location.hash.replace('#', '') : null);
+        if (activeTabReview === 'tab-reviews' || document.getElementById('tab-reviews')?.classList.contains('active')) {
+          if (typeof loadReviewsData === 'function') loadReviewsData();
+        }
 
       } catch (err) {
         console.error('Failed to load guild details:', err);
@@ -8915,9 +8925,21 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
     }
 
     async function loadReviewsData() {
-      if (!currentGuildId) return;
+      if (!currentGuildId) {
+        if (guildSelector && guildSelector.value) {
+          currentGuildId = guildSelector.value;
+        } else {
+          // Se o servidor ainda estiver carregando, agenda uma nova tentativa automática
+          setTimeout(() => {
+            if (currentGuildId) {
+              loadReviewsData();
+            }
+          }, 350);
+          return;
+        }
+      }
       try {
-        const res = await fetch('/api/guilds/' + currentGuildId + '/reviews');
+        const res = await fetch('/api/guilds/' + currentGuildId + '/reviews', { credentials: 'same-origin' });
         if (!res.ok) throw new Error('Falha ao carregar avaliações (' + res.status + ')');
         const data = await res.json();
         window.reviewsDataCache = data;
@@ -8965,6 +8987,12 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         }
       } catch (err) {
         console.error('Erro ao buscar avaliações:', err);
+        const bd = document.getElementById('reviewBreakdownContainer');
+        if (bd) bd.innerHTML = '<div style="color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 1.5rem;">Não foi possível carregar as métricas de estrelas.</div>';
+        const lb = document.getElementById('reviewLeaderboardContainer');
+        if (lb) lb.innerHTML = '<div style="color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 1.5rem;">Não foi possível carregar o ranking de atendentes.</div>';
+        const list = document.getElementById('reviewsListContainer');
+        if (list) list.innerHTML = '<div style="text-align: center; padding: 2.5rem 1rem; color: var(--text-muted); font-size: 0.85rem;">Erro ao conectar com a API de avaliações. <button type="button" onclick="loadReviewsData();" class="secondary-btn" style="height: 30px; padding: 0 12px; margin-left: 8px; font-size: 0.78rem; display: inline-flex; align-items: center; gap: 4px;">Tentar novamente</button></div>';
       }
     }
 
@@ -10519,6 +10547,12 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           setInterval(syncBotLiveAvatar, 10000);
           fetchHealthMetrics();
           setInterval(fetchHealthMetrics, 30000);
+          setTimeout(() => {
+            const activeTabReview = localStorage.getItem('jarvis_active_tab') || (window.location.hash ? window.location.hash.replace('#', '') : null);
+            if (activeTabReview === 'tab-reviews' || document.getElementById('tab-reviews')?.classList.contains('active')) {
+              if (typeof loadReviewsData === 'function') loadReviewsData();
+            }
+          }, 350);
         } else {
           if (pinError) {
             pinError.innerText = data.error || 'Senha incorreta! Acesso negado.';

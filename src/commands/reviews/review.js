@@ -5,6 +5,11 @@ module.exports = {
     .setName('avaliar')
     .setDescription('Avalia um atendimento ou serviço recebido no servidor.')
     .setDMPermission(false)
+    .addUserOption(opt =>
+      opt.setName('atendente')
+        .setDescription('Administrador(a) da equipe que você deseja avaliar')
+        .setRequired(true)
+    )
     .addIntegerOption(opt =>
       opt.setName('estrelas')
         .setDescription('Nota de 1 a 5 estrelas')
@@ -17,11 +22,6 @@ module.exports = {
         .setDescription('Seu feedback sobre o atendimento (opcional)')
         .setMaxLength(500)
         .setRequired(false)
-    )
-    .addUserOption(opt =>
-      opt.setName('atendente')
-        .setDescription('Administrador(a) da equipe que você deseja avaliar')
-        .setRequired(true)
     ),
 
   async execute(interaction, context) {
