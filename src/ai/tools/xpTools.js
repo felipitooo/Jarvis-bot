@@ -37,18 +37,48 @@ const xpTools = [
     },
     riskLevel: 'LOW',
     async execute({ tipo = 'TOTAL', limite = 10 }, context) {
-      const { guild, xpRepository } = context;
-      if (!guild || !xpRepository) throw new ValidationError('Requer servidor.');
+      const { guild, xpRepository, xpRepo, experienceService, userRepo } = context;
+      const repo = xpRepository || xpRepo || experienceService?.xpRepo;
+      if (!guild || !repo) throw new ValidationError('Requer servidor.');
 
       const safeLimit = Math.min(15, Math.max(1, Number(limite) || 10));
-      const cleanTipo = tipo.toUpperCase().trim();
-      const ranking = xpRepository.getLeaderboard(guild.id, { type: cleanTipo, limit: safeLimit });
+      const cleanTipo = String(tipo || 'TOTAL').toUpperCase().trim();
+      const typeMap = {
+        TOTAL: 'TOTAL',
+        SEMANAL: 'WEEKLY',
+        WEEKLY: 'WEEKLY',
+        MENSAL: 'MONTHLY',
+        MONTHLY: 'MONTHLY'
+      };
+      const resolvedType = typeMap[cleanTipo] || 'TOTAL';
+      const rawRanking = repo.getLeaderboard(guild.id, { type: resolvedType, limit: safeLimit });
+
+      const ranking = rawRanking.map((r, idx) => {
+        const cachedMember = guild.members?.cache?.get(r.user_id);
+        const dbUser = !cachedMember && userRepo ? userRepo.getUser(r.user_id) : null;
+        const nome = cachedMember?.displayName || cachedMember?.user?.username || dbUser?.username || `Membro (${r.user_id})`;
+        return {
+          posicao: idx + 1,
+          user_id: r.user_id,
+          nome,
+          mencao: `<@${r.user_id}>`,
+          total_xp: r.total_xp,
+          current_level: r.current_level,
+          weekly_xp: r.weekly_xp,
+          monthly_xp: r.monthly_xp
+        };
+      });
+
+      const resumoLinhas = ranking.length > 0
+        ? ranking.map(r => `${r.posicao}º lugar: ${r.nome} (<@${r.user_id}>) — Nível ${r.current_level} (${r.total_xp} XP)`).join('\n')
+        : 'Ainda não há membros registrados no ranking de XP deste servidor.';
 
       return {
         status: 'sucesso',
         tipo: cleanTipo,
         total: ranking.length,
-        ranking
+        ranking,
+        mensagem: `Ranking de XP (${cleanTipo}):\n${resumoLinhas}`
       };
     }
   },
@@ -118,14 +148,15 @@ const xpTools = [
     requiredPermission: PermissionFlagsBits.ManageGuild,
     riskLevel: 'LOW',
     async execute({ canal_id, bloquear }, context) {
-      const { guild, xpRepository } = context;
-      if (!guild || !xpRepository) throw new ValidationError('Requer servidor.');
+      const { guild, xpRepository, xpRepo, experienceService } = context;
+      const repo = xpRepository || xpRepo || experienceService?.xpRepo;
+      if (!guild || !repo) throw new ValidationError('Requer servidor.');
 
       if (bloquear) {
-        xpRepository.setMultiplierOrBlock(guild.id, 'CHANNEL', canal_id, 1.0, 1);
+        repo.setMultiplierOrBlock(guild.id, 'CHANNEL', canal_id, 1.0, 1);
         return { status: 'sucesso', mensagem: `Canal <#${canal_id}> bloqueado para ganho de XP.` };
       } else {
-        xpRepository.removeMultiplierOrBlock(guild.id, 'CHANNEL', canal_id);
+        repo.removeMultiplierOrBlock(guild.id, 'CHANNEL', canal_id);
         return { status: 'sucesso', mensagem: `Bloqueio de XP removido do canal <#${canal_id}>.` };
       }
     }

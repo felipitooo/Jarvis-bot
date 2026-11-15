@@ -236,7 +236,8 @@ class WebPanelService {
       music: musicVoiceRepo ? musicVoiceRepo.getMusicConfig(guildId) : null,
       economy: economyRepo ? {
         ...economyRepo.getGuildConfig(guildId),
-        exchangeCurrencies: economyRepo.listExchangeCurrencies(guildId, false)
+        exchangeCurrencies: economyRepo.listExchangeCurrencies(guildId, false),
+        loanConfig: this.services.loanRepo ? this.services.loanRepo.getLoanConfig(guildId) : null
       } : null,
       casino: this.services.casinoRepo ? this.services.casinoRepo.getCasinoConfig(guildId) : null,
       quiz: this.services.quizRepo ? this.services.quizRepo.getQuizConfig(guildId) : null,
@@ -362,7 +363,8 @@ class WebPanelService {
       case 'economy':
         return economyRepo ? {
           ...economyRepo.getGuildConfig(guildId),
-          exchangeCurrencies: economyRepo.listExchangeCurrencies(guildId, false)
+          exchangeCurrencies: economyRepo.listExchangeCurrencies(guildId, false),
+          loanConfig: this.services.loanRepo ? this.services.loanRepo.getLoanConfig(guildId) : null
         } : null;
       case 'casino':
       case 'apostas':
@@ -614,7 +616,7 @@ class WebPanelService {
         break;
       }
       case 'economy': {
-        const { economyRepo } = this.services;
+        const { economyRepo, loanRepo } = this.services;
         if (!economyRepo) throw new Error('Serviço de economia indisponível.');
 
         if (updates.exchangeAction) {
@@ -627,7 +629,11 @@ class WebPanelService {
             economyRepo.deleteExchangeCurrency(guildId, currencyData.id);
           }
         } else {
+          if (updates.loanConfig && loanRepo) {
+            loanRepo.upsertLoanConfig(guildId, updates.loanConfig);
+          }
           const payload = { ...updates };
+          delete payload.loanConfig;
           if (updates.currencyName !== undefined) payload.currencyName = String(updates.currencyName).trim() || 'Moedas';
           if (updates.currencySymbol !== undefined) payload.currencySymbol = String(updates.currencySymbol).trim() || '🪙';
           if (updates.dailyAmount !== undefined) payload.dailyAmount = Number(updates.dailyAmount) || 500;
@@ -654,12 +660,15 @@ class WebPanelService {
           if (updates.initialBalance !== undefined) payload.initialBalance = Number(updates.initialBalance) || 100;
           if (updates.bankStartingCapacity !== undefined) payload.bankStartingCapacity = Number(updates.bankStartingCapacity) || 5000;
           if (updates.bankUnlimited !== undefined) payload.bankUnlimited = updates.bankUnlimited ? 1 : 0;
-          economyRepo.upsertGuildConfig(guildId, payload);
+          if (Object.keys(payload).length > 0) {
+            economyRepo.upsertGuildConfig(guildId, payload);
+          }
         }
 
         updated = {
           ...economyRepo.getGuildConfig(guildId),
-          exchangeCurrencies: economyRepo.listExchangeCurrencies(guildId, false)
+          exchangeCurrencies: economyRepo.listExchangeCurrencies(guildId, false),
+          loanConfig: loanRepo ? loanRepo.getLoanConfig(guildId) : null
         };
         break;
       }

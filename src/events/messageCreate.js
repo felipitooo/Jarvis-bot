@@ -255,7 +255,9 @@ module.exports = {
         result = await context.aiOrchestrator.processMessage({
           guildId: message.guild?.id || null,
           guildName: message.guild?.name || null,
+          guild: message.guild || null,
           channelId: message.channel.id,
+          channel: message.channel || null,
           user: { id: message.author.id, username: message.author.username },
           member: message.member,
           rawMessageText: cleanText,

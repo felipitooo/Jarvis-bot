@@ -21,11 +21,56 @@ class LoanService {
   }
 
   /**
-   * Calculate maximum allowable bank loan based on member's XP level.
+   * Get configurable loan settings for a guild.
+   * @param {string} guildId
+   */
+  getLoanConfig(guildId) {
+    if (this.loanRepo && typeof this.loanRepo.getLoanConfig === 'function') {
+      return this.loanRepo.getLoanConfig(guildId);
+    }
+    return {
+      guildId,
+      bankLoansEnabled: true,
+      p2pLoansEnabled: true,
+      bankInterestRate: 0.10,
+      bankTermDays: 7,
+      retentionRate: 0.40,
+      maxActiveLoans: 1,
+      p2pMaxInterestRate: 0.50,
+      p2pMaxTermDays: 30,
+      blockTransfersOnDefault: true,
+      blockShopOnDefault: true,
+      blockCasinoOnDefault: false,
+      levelTiers: [
+        { minLevel: 0, maxLoan: 500 },
+        { minLevel: 1, maxLoan: 2000 },
+        { minLevel: 5, maxLoan: 10000 },
+        { minLevel: 10, maxLoan: 30000 },
+        { minLevel: 20, maxLoan: 100000 }
+      ]
+    };
+  }
+
+  /**
+   * Update configurable loan settings for a guild.
+   * @param {string} guildId
+   * @param {object} updates
+   */
+  updateLoanConfig(guildId, updates = {}) {
+    if (!this.loanRepo || typeof this.loanRepo.upsertLoanConfig !== 'function') {
+      throw new Error('Repositório de configurações de empréstimo indisponível.');
+    }
+    return this.loanRepo.upsertLoanConfig(guildId, updates);
+  }
+
+  /**
+   * Calculate maximum allowable bank loan based on member's XP level and guild's configured levelTiers.
+   * Also computes maximum loan units in any exchange currency (maxLimit / currency.rate).
    * @param {string} guildId
    * @param {string} userId
+   * @param {string|null} [currencyCode=null]
    */
-  calculateMaxBankLoan(guildId, userId) {
+  calculateMaxBankLoan(guildId, userId, currencyCode = null) {
     let currentLevel = 0;
     if (this.experienceService && this.experienceService.getMemberProfile) {
       try {
@@ -34,54 +79,203 @@ class LoanService {
       } catch {}
     }
 
-    let maxLimit = 500;
-    if (currentLevel >= 20) {
-      maxLimit = 100000;
-    } else if (currentLevel >= 10) {
-      maxLimit = 30000;
-    } else if (currentLevel >= 5) {
-      maxLimit = 10000;
-    } else if (currentLevel >= 1) {
-      maxLimit = 2000;
+    const loanCfg = this.getLoanConfig(guildId);
+    const tiers = Array.isArray(loanCfg.levelTiers) && loanCfg.levelTiers.length > 0
+      ? [...loanCfg.levelTiers].sort((a, b) => Number(a.minLevel) - Number(b.minLevel))
+      : [
+          { minLevel: 0, maxLoan: 500 },
+          { minLevel: 1, maxLoan: 2000 },
+          { minLevel: 5, maxLoan: 10000 },
+          { minLevel: 10, maxLoan: 30000 },
+          { minLevel: 20, maxLoan: 100000 }
+        ];
+
+    let maxLimit = Number(tiers[0].maxLoan ?? tiers[0].maxLimit) || 500;
+    for (const tier of tiers) {
+      if (currentLevel >= Number(tier.minLevel)) {
+        maxLimit = Number(tier.maxLoan ?? tier.maxLimit);
+      }
+    }
+
+    let exchangeLimits = [];
+    if (this.economyRepo && typeof this.economyRepo.listExchangeCurrencies === 'function') {
+      try {
+        const currencies = this.economyRepo.listExchangeCurrencies(guildId, true) || [];
+        exchangeLimits = currencies.map(c => ({
+          currency: c,
+          maxUnits: Math.floor(maxLimit / c.rate)
+        }));
+      } catch {}
+    }
+
+    let selectedCurrency = null;
+    let maxCurrencyUnits = null;
+    if (currencyCode && this.economyRepo && typeof this.economyRepo.getExchangeCurrencyByCode === 'function') {
+      selectedCurrency = this.economyRepo.getExchangeCurrencyByCode(guildId, currencyCode);
+      if (selectedCurrency) {
+        maxCurrencyUnits = Math.floor(maxLimit / selectedCurrency.rate);
+      }
     }
 
     return {
       level: currentLevel,
-      maxLimit
+      maxLimit,
+      levelTiers: tiers,
+      loanConfig: loanCfg,
+      exchangeLimits,
+      currency: selectedCurrency,
+      maxCurrencyUnits
     };
   }
 
   /**
    * Request an automated bank loan from J.A.R.V.I.S (Modelo A).
+   * Supports borrowing either in base coins or directly in an Exchange Currency
+   * (calculating the max limit for the user's level and dividing by the currency's rate).
    * @param {string} guildId
    * @param {string} userId
-   * @param {number} amount
+   * @param {number|string} amount
+   * @param {string|null} [currencyCode=null]
    */
-  requestBankLoan(guildId, userId, amount) {
-    const val = parseInt(amount, 10);
-    if (!val || val <= 0) {
-      throw new Error('Informe uma quantia válida e positiva para solicitar o empréstimo!');
+  requestBankLoan(guildId, userId, amount, currencyCode = null) {
+    const loanCfg = this.getLoanConfig(guildId);
+    if (!loanCfg.bankLoansEnabled) {
+      throw new Error('Os empréstimos bancários automáticos estão desativados neste servidor no momento.');
     }
 
-    const activeLoan = this.loanRepo.getActiveLoan(guildId, userId);
-    if (activeLoan) {
-      const statusDesc = activeLoan.status === 'DEFAULTED' ? '⚠️ EM ATRASO' : 'ativo';
+    const activeLoans = this.loanRepo.getActiveLoans
+      ? this.loanRepo.getActiveLoans(guildId, userId)
+      : (this.loanRepo.getActiveLoan(guildId, userId) ? [this.loanRepo.getActiveLoan(guildId, userId)] : []);
+
+    const hasOverdue = activeLoans.some(l => l.status === 'DEFAULTED' || new Date() > new Date(l.due_date));
+    if (hasOverdue) {
       throw new Error(
-        `Você já possui um empréstimo ${statusDesc} no valor restante de **${formatCompactNumber(activeLoan.remaining_amount)} moedas**!\nQuite sua dívida atual com \`+emprestimo pagar\` antes de solicitar outro.`
+        '⚠️ **Nome Sujo (Serasa Stark):** Você possui um empréstimo em atraso! Quite sua dívida atual com `+emprestimo pagar` antes de solicitar novo crédito.'
+      );
+    }
+
+    const maxActiveLoans = Math.max(1, Number(loanCfg.maxActiveLoans) || 1);
+    if (activeLoans.length >= maxActiveLoans) {
+      const totalRemaining = activeLoans.reduce((sum, l) => sum + (Number(l.remaining_amount) || 0), 0);
+      throw new Error(
+        `Você já possui um empréstimo ativo (limite máximo: **${maxActiveLoans}**, dívida restante: **${formatCompactNumber(totalRemaining)} moedas**)!\nQuite sua dívida atual com \`+emprestimo pagar\` antes de solicitar outro.`
       );
     }
 
     const { level, maxLimit } = this.calculateMaxBankLoan(guildId, userId);
-    if (val > maxLimit) {
+    const currentPrincipalSum = activeLoans.reduce((sum, l) => sum + (Number(l.principal_amount) || 0), 0);
+    const availableCredit = Math.max(0, maxLimit - currentPrincipalSum);
+
+    const interestRate = Number(loanCfg.bankInterestRate ?? 0.10);
+    const retentionRate = Number(loanCfg.retentionRate ?? 0.40);
+    const termDays = Math.max(1, Number(loanCfg.bankTermDays) || 7);
+    const dueDate = new Date(Date.now() + termDays * 24 * 60 * 60 * 1000).toISOString();
+
+    const isAllInput = typeof amount === 'string' && ['all', 'tudo', 'max'].includes(amount.toLowerCase());
+
+    // Borrowing in an Exchange Currency (max limit by level divided by currency rate)
+    if (currencyCode) {
+      const currency = this.economyRepo.getExchangeCurrencyByCode(guildId, currencyCode);
+      if (!currency) {
+        throw new Error(`A moeda de câmbio \`${currencyCode}\` não foi encontrada neste servidor.`);
+      }
+      if (!currency.isActive) {
+        throw new Error(`O câmbio de **${currency.symbol} ${currency.name}** está temporariamente pausado neste servidor.`);
+      }
+
+      const maxCurrencyUnits = Math.floor(maxLimit / currency.rate);
+      const availableCurrencyUnits = Math.floor(availableCredit / currency.rate);
+
+      if (availableCurrencyUnits <= 0) {
+        throw new Error(
+          `Limite de crédito insuficiente para **${currency.symbol} ${currency.name}**! No seu Nível atual (${level}), seu crédito disponível é de **${formatCompactNumber(availableCredit)} moedas** e cada **${currency.symbol} ${currency.name}** vale **${formatCompactNumber(currency.rate)} moedas** (máximo permitido no seu nível: **${formatCompactNumber(maxCurrencyUnits)}x ${currency.name}**).`
+        );
+      }
+
+      const requestedUnits = isAllInput ? availableCurrencyUnits : parseInt(amount, 10);
+      if (!requestedUnits || requestedUnits <= 0) {
+        throw new Error(`Informe uma quantidade válida e positiva de **${currency.symbol} ${currency.name}** (ou digite \`tudo\`) para solicitar o empréstimo!`);
+      }
+
+      if (requestedUnits > availableCurrencyUnits) {
+        throw new Error(
+          `Limite de crédito insuficiente! No seu Nível atual (${level}), seu teto é de **${formatCompactNumber(maxLimit)} moedas** ÷ **${formatCompactNumber(currency.rate)}** = **${formatCompactNumber(maxCurrencyUnits)}x ${currency.symbol} ${currency.name}** (Disponível agora: **${formatCompactNumber(availableCurrencyUnits)}x ${currency.symbol} ${currency.name}**).`
+        );
+      }
+
+      const principalCoins = requestedUnits * currency.rate;
+      const totalDue = Math.round(principalCoins * (1 + interestRate));
+      const totalDueInCurrency = Number((totalDue / currency.rate).toFixed(2));
+
+      return this.economyRepo.db.transaction(() => {
+        // 1. Credit Exchange Currency directly to the borrower's wallet
+        const newCurrencyBalance = this.economyRepo.addUserCurrencyBalance(guildId, userId, currency.id, requestedUnits);
+        const account = this.economyRepo.getOrCreateAccount(guildId, userId);
+
+        // 2. Create loan record
+        const loan = this.loanRepo.createLoan({
+          guildId,
+          borrowerId: userId,
+          lenderId: null,
+          loanType: 'BANK',
+          principalAmount: principalCoins,
+          interestRate,
+          totalDue,
+          remainingAmount: totalDue,
+          retentionRate,
+          status: 'ACTIVE',
+          dueDate
+        });
+
+        // 3. Record transaction
+        this.economyRepo.recordTransaction({
+          guildId,
+          userId,
+          type: 'LOAN_TAKE',
+          amount: principalCoins,
+          walletAfter: account.walletBalance,
+          bankAfter: account.bankBalance,
+          description: `Empréstimo bancário em ${requestedUnits}x ${currency.code} (Equiv: ${principalCoins} moedas | Total devido: ${totalDue})`
+        });
+
+        const bal = this.economyService ? this.economyService.getBalance(guildId, userId) : account;
+
+        loanLogger.info(`Bank loan issued in exchange currency for user ${userId} in guild ${guildId}: ${requestedUnits}x ${currency.code} (${principalCoins} coins).`);
+
+        return {
+          loan,
+          currency,
+          currencyUnits: requestedUnits,
+          newCurrencyBalance,
+          maxCurrencyUnits,
+          availableCurrencyUnits,
+          principalAmount: principalCoins,
+          totalDue,
+          totalDueInCurrency,
+          interestRate,
+          interestPercent: Math.round(interestRate * 10000) / 100,
+          retentionRate,
+          retentionPercent: Math.round(retentionRate * 100),
+          termDays,
+          dueDate,
+          walletBalance: account.walletBalance,
+          effectiveWalletBalance: bal.effectiveWalletBalance ?? account.walletBalance
+        };
+      });
+    }
+
+    const val = isAllInput ? availableCredit : parseInt(amount, 10);
+    if (!val || val <= 0) {
+      throw new Error('Informe uma quantia válida e positiva para solicitar o empréstimo!');
+    }
+
+    if (val > availableCredit) {
       throw new Error(
-        `Limite de crédito insuficiente! No seu Nível atual (${level}), o limite máximo para empréstimo é de **${formatCompactNumber(maxLimit)} moedas**.`
+        `Limite de crédito insuficiente! No seu Nível atual (${level}), seu teto total de crédito é **${formatCompactNumber(maxLimit)} moedas** (Disponível: **${formatCompactNumber(availableCredit)} moedas**).`
       );
     }
 
-    const interestRate = 0.10; // 10%
     const totalDue = Math.round(val * (1 + interestRate));
-    const retentionRate = 0.40; // 40% retenção em ganhos
-    const dueDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(); // 7 dias
 
     return this.economyRepo.db.transaction(() => {
       // 1. Credit wallet
@@ -123,6 +317,10 @@ class LoanService {
         principalAmount: val,
         totalDue,
         interestRate,
+        interestPercent: Math.round(interestRate * 10000) / 100,
+        retentionRate,
+        retentionPercent: Math.round(retentionRate * 100),
+        termDays,
         dueDate,
         walletBalance: updated.walletBalance
       };
@@ -131,37 +329,79 @@ class LoanService {
 
   /**
    * Propose a P2P loan to another member (Modelo C).
+   * Supports proposing in normal coins or directly in an Exchange Currency.
    * @param {string} guildId
    * @param {string} lenderId
    * @param {string} borrowerId
-   * @param {number} amount
+   * @param {number|string} amount
    * @param {number} interestPercent
    * @param {number} days
+   * @param {string|null} [currencyCode=null]
    */
-  proposeP2PLoan(guildId, lenderId, borrowerId, amount, interestPercent = 10, days = 7) {
+  proposeP2PLoan(guildId, lenderId, borrowerId, amount, interestPercent = 10, days = 7, currencyCode = null) {
+    const loanCfg = this.getLoanConfig(guildId);
+    if (!loanCfg.p2pLoansEnabled) {
+      throw new Error('Os empréstimos P2P entre membros estão desativados neste servidor no momento.');
+    }
+
     if (lenderId === borrowerId) {
       throw new Error('Você não pode propor um empréstimo para si mesmo!');
     }
 
-    const val = parseInt(amount, 10);
-    if (!val || val <= 0) {
+    const rawVal = parseInt(amount, 10);
+    if (!rawVal || rawVal <= 0) {
       throw new Error('Informe uma quantia válida para o empréstimo!');
     }
 
-    const interest = Math.min(50, Math.max(0, parseInt(interestPercent, 10) || 10));
-    const termDays = Math.min(30, Math.max(1, parseInt(days, 10) || 7));
+    let currency = null;
+    let currencyUnits = null;
+    let val = rawVal;
 
-    const lenderAccount = this.economyRepo.getOrCreateAccount(guildId, lenderId);
-    if (lenderAccount.walletBalance < val) {
-      throw new Error(`Você não tem moedas suficientes na carteira para emprestar! Você possui apenas ${formatCompactNumber(lenderAccount.walletBalance)}.`);
+    if (currencyCode) {
+      currency = this.economyRepo.getExchangeCurrencyByCode(guildId, currencyCode);
+      if (!currency) {
+        throw new Error(`A moeda de câmbio \`${currencyCode}\` não foi encontrada neste servidor.`);
+      }
+      currencyUnits = rawVal;
+      val = currencyUnits * currency.rate;
     }
 
-    const borrowerActive = this.loanRepo.getActiveLoan(guildId, borrowerId);
-    if (borrowerActive) {
-      throw new Error('O membro devedor já possui um empréstimo ativo no servidor e não pode contrair outra dívida no momento.');
+    const maxInterestPct = Math.round((Number(loanCfg.p2pMaxInterestRate ?? 0.50)) * 100);
+    const maxTermDays = Math.max(1, Number(loanCfg.p2pMaxTermDays) || 30);
+
+    const parsedInterest = interestPercent !== undefined && interestPercent !== null ? Number(interestPercent) : 10;
+    const interest = Math.min(maxInterestPct, Math.max(0, isNaN(parsedInterest) ? 10 : parsedInterest));
+    const termDays = Math.min(maxTermDays, Math.max(1, parseInt(days, 10) || 7));
+
+    const lenderBalance = this.economyService
+      ? this.economyService.getBalance(guildId, lenderId)
+      : this.economyRepo.getOrCreateAccount(guildId, lenderId);
+    const effectiveLenderWallet = lenderBalance.effectiveWalletBalance ?? lenderBalance.walletBalance;
+
+    if (currency) {
+      const lenderCurrUnits = this.economyRepo.getUserCurrencyBalance(guildId, lenderId, currency.id);
+      if (lenderCurrUnits < currencyUnits && effectiveLenderWallet < val) {
+        throw new Error(
+          `Você não possui saldo suficiente de **${currency.symbol} ${currency.name}** (nem saldo equivalente na carteira) para emprestar! Você possui **${formatCompactNumber(lenderCurrUnits)}x ${currency.symbol} ${currency.name}**.`
+        );
+      }
+    } else if (effectiveLenderWallet < val) {
+      throw new Error(
+        `Você não tem saldo suficiente na carteira para emprestar! Você possui apenas **${formatCompactNumber(effectiveLenderWallet)} moedas** na carteira.`
+      );
+    }
+
+    const activeLoans = this.loanRepo.getActiveLoans
+      ? this.loanRepo.getActiveLoans(guildId, borrowerId)
+      : (this.loanRepo.getActiveLoan(guildId, borrowerId) ? [this.loanRepo.getActiveLoan(guildId, borrowerId)] : []);
+
+    const maxActiveLoans = Math.max(1, Number(loanCfg.maxActiveLoans) || 1);
+    if (activeLoans.length >= maxActiveLoans) {
+      throw new Error('O membro destinatário já atingiu o limite máximo de empréstimos ativos no servidor.');
     }
 
     const totalDue = Math.round(val * (1 + interest / 100));
+    const retentionRate = Number(loanCfg.retentionRate ?? 0.40);
     const dueDate = new Date(Date.now() + termDays * 24 * 60 * 60 * 1000).toISOString();
 
     const loan = this.loanRepo.createLoan({
@@ -173,19 +413,23 @@ class LoanService {
       interestRate: interest / 100,
       totalDue,
       remainingAmount: totalDue,
-      retentionRate: 0.40,
+      retentionRate,
       status: 'PENDING',
       dueDate
     });
 
-    loanLogger.info(`P2P loan proposed from ${lenderId} to ${borrowerId} for ${val} coins.`);
+    loanLogger.info(`P2P loan proposed from ${lenderId} to ${borrowerId} for ${val} coins${currency ? ` (${currencyUnits}x ${currency.code})` : ''}.`);
 
     return {
       loan,
+      currency,
+      currencyUnits,
       principalAmount: val,
       totalDue,
+      totalDueInCurrency: currency ? Number((totalDue / currency.rate).toFixed(2)) : null,
       interestPercent: interest,
       days: termDays,
+      retentionPercent: Math.round(retentionRate * 100),
       dueDate
     };
   }
@@ -195,20 +439,71 @@ class LoanService {
    * @param {string} guildId
    * @param {string} borrowerId
    * @param {number} loanId
+   * @param {string|null} [currencyCode=null]
    */
-  acceptP2PLoan(guildId, borrowerId, loanId) {
+  acceptP2PLoan(guildId, borrowerId, loanId, currencyCode = null) {
     const loan = this.loanRepo.getLoanById(loanId);
     if (!loan || loan.guild_id !== guildId || loan.borrower_id !== borrowerId || loan.status !== 'PENDING') {
       throw new Error('Proposta de empréstimo não encontrada ou já expirada!');
     }
 
-    const lenderAccount = this.economyRepo.getOrCreateAccount(guildId, loan.lender_id);
-    if (lenderAccount.walletBalance < loan.principal_amount) {
-      this.loanRepo.updateLoan(loan.id, { status: 'REJECTED' });
-      throw new Error('O credor não possui mais saldo suficiente na carteira para efetivar o empréstimo!');
-    }
-
     return this.economyRepo.db.transaction(() => {
+      if (currencyCode) {
+        const currency = this.economyRepo.getExchangeCurrencyByCode(guildId, currencyCode);
+        if (currency) {
+          const units = Math.max(1, Math.round(loan.principal_amount / currency.rate));
+          const lenderUnits = this.economyRepo.getUserCurrencyBalance(guildId, loan.lender_id, currency.id);
+          if (lenderUnits >= units) {
+            this.economyRepo.addUserCurrencyBalance(guildId, loan.lender_id, currency.id, -units);
+            this.economyRepo.addUserCurrencyBalance(guildId, borrowerId, currency.id, units);
+
+            const lenderAccount = this.economyRepo.getOrCreateAccount(guildId, loan.lender_id);
+            const borrowerAccount = this.economyRepo.getOrCreateAccount(guildId, borrowerId);
+            const updatedLoan = this.loanRepo.updateLoan(loan.id, { status: 'ACTIVE' });
+
+            this.economyRepo.recordTransaction({
+              guildId,
+              userId: loan.lender_id,
+              targetId: borrowerId,
+              type: 'LOAN_P2P_LEND',
+              amount: loan.principal_amount,
+              walletAfter: lenderAccount.walletBalance,
+              bankAfter: lenderAccount.bankBalance,
+              description: `Empréstimo P2P concedido (${units}x ${currency.code}) para usuário ${borrowerId}`
+            });
+
+            this.economyRepo.recordTransaction({
+              guildId,
+              userId: borrowerId,
+              targetId: loan.lender_id,
+              type: 'LOAN_P2P_RECEIVE',
+              amount: loan.principal_amount,
+              walletAfter: borrowerAccount.walletBalance,
+              bankAfter: borrowerAccount.bankBalance,
+              description: `Empréstimo P2P recebido (${units}x ${currency.code}) do usuário ${loan.lender_id}`
+            });
+
+            return {
+              loan: updatedLoan,
+              currency,
+              currencyUnits: units,
+              borrowerWallet: borrowerAccount.walletBalance
+            };
+          }
+        }
+      }
+
+      let lenderAccount = this.economyRepo.getOrCreateAccount(guildId, loan.lender_id);
+      if (lenderAccount.walletBalance < loan.principal_amount && this.economyService && this.economyService.ensureWalletLiquidity) {
+        const liq = this.economyService.ensureWalletLiquidity(guildId, loan.lender_id, loan.principal_amount);
+        lenderAccount = liq.account;
+      }
+
+      if (lenderAccount.walletBalance < loan.principal_amount) {
+        this.loanRepo.updateLoan(loan.id, { status: 'REJECTED' });
+        throw new Error('O credor não possui mais saldo suficiente na carteira para efetivar o empréstimo!');
+      }
+
       // 1. Deduct from lender
       const lenderUpdated = this.economyRepo.updateBalances(guildId, loan.lender_id, {
         walletBalance: lenderAccount.walletBalance - loan.principal_amount
@@ -273,36 +568,127 @@ class LoanService {
   }
 
   /**
-   * Pay or amortize an active loan.
+   * Pay or amortize an active loan (supports base coins, automatic wallet liquidity, or direct Exchange Currency units).
    * @param {string} guildId
    * @param {string} userId
-   * @param {number|'all'} amountToPay
+   * @param {number|'all'|'tudo'} amountToPay
+   * @param {string|null} [currencyCode=null]
    */
-  repayLoan(guildId, userId, amountToPay) {
+  repayLoan(guildId, userId, amountToPay, currencyCode = null) {
     const loan = this.loanRepo.getActiveLoan(guildId, userId);
     if (!loan) {
       throw new Error('Você não possui nenhum empréstimo ativo para pagar no momento!');
     }
 
-    let payVal = 0;
-    if (amountToPay === 'all' || amountToPay === 'tudo') {
-      payVal = loan.remaining_amount;
-    } else {
-      const parsed = parseInt(amountToPay, 10);
-      if (!parsed || parsed <= 0) {
-        throw new Error('Informe um valor válido para amortizar ou "tudo" para quitar o empréstimo!');
-      }
-      payVal = Math.min(parsed, loan.remaining_amount);
-    }
-
-    const account = this.economyRepo.getOrCreateAccount(guildId, userId);
-    if (account.walletBalance < payVal) {
-      throw new Error(
-        `Saldo insuficiente na carteira para pagar! Você precisa de **${formatCompactNumber(payVal)} moedas**, mas possui apenas **${formatCompactNumber(account.walletBalance)}**.`
-      );
-    }
-
     return this.economyRepo.db.transaction(() => {
+      let convertedNotice = '';
+      let usedCurrencyInfo = null;
+      let payVal = 0;
+
+      if (currencyCode) {
+        const currency = this.economyRepo.getExchangeCurrencyByCode(guildId, currencyCode);
+        if (!currency) {
+          throw new Error(`A moeda de câmbio \`${currencyCode}\` não foi encontrada neste servidor.`);
+        }
+
+        const userCurr = this.economyRepo.getUserCurrencyBalance(guildId, userId, currency.id);
+        if (userCurr <= 0) {
+          throw new Error(`Você não possui saldo de **${currency.symbol} ${currency.name}** na sua carteira.`);
+        }
+
+        const isAll = typeof amountToPay === 'string' && ['all', 'tudo', 'max'].includes(amountToPay.toLowerCase());
+        const requestedUnits = isAll
+          ? Math.min(userCurr, Math.ceil(loan.remaining_amount / currency.rate))
+          : parseInt(amountToPay, 10);
+
+        if (!requestedUnits || requestedUnits <= 0) {
+          throw new Error(`Informe uma quantidade válida de **${currency.symbol} ${currency.name}** para pagar o empréstimo.`);
+        }
+        if (userCurr < requestedUnits) {
+          throw new Error(`Saldo insuficiente! Você possui apenas **${formatCompactNumber(userCurr)}x ${currency.symbol} ${currency.name}**.`);
+        }
+
+        const neededUnits = Math.min(requestedUnits, Math.ceil(loan.remaining_amount / currency.rate));
+        const totalCurrencyValue = neededUnits * currency.rate;
+        payVal = Math.min(totalCurrencyValue, loan.remaining_amount);
+        const changeCoins = Math.max(0, totalCurrencyValue - payVal);
+
+        // Deduct exchange currency units and credit change if any
+        this.economyRepo.addUserCurrencyBalance(guildId, userId, currency.id, -neededUnits);
+        const account = this.economyRepo.getOrCreateAccount(guildId, userId);
+        const borrowerUpdated = this.economyRepo.updateBalances(guildId, userId, {
+          walletBalance: account.walletBalance + changeCoins
+        });
+
+        usedCurrencyInfo = {
+          currency,
+          unitsUsed: neededUnits,
+          changeCoins
+        };
+        convertedNotice = `\n💱 *(Pago com **${neededUnits}x ${currency.symbol} ${currency.name}**${changeCoins > 0 ? ` • Troco devolvido à carteira: **${formatCompactNumber(changeCoins)} moedas**` : ''})*`;
+
+        if (loan.lender_id) {
+          const lenderAccount = this.economyRepo.getOrCreateAccount(guildId, loan.lender_id);
+          this.economyRepo.updateBalances(guildId, loan.lender_id, {
+            walletBalance: lenderAccount.walletBalance + payVal
+          });
+        }
+
+        const newPaid = loan.amount_paid + payVal;
+        const newRemaining = Math.max(0, loan.remaining_amount - payVal);
+        const newStatus = newRemaining <= 0 ? 'PAID' : loan.status;
+
+        const updatedLoan = this.loanRepo.updateLoan(loan.id, {
+          amountPaid: newPaid,
+          remainingAmount: newRemaining,
+          status: newStatus
+        });
+
+        this.economyRepo.recordTransaction({
+          guildId,
+          userId,
+          targetId: loan.lender_id || null,
+          type: 'LOAN_REPAY',
+          amount: payVal,
+          walletAfter: borrowerUpdated.walletBalance,
+          bankAfter: borrowerUpdated.bankBalance,
+          description: `Pagamento de empréstimo com ${neededUnits}x ${currency.code} (Restante: ${newRemaining})`
+        });
+
+        return {
+          paymentAmount: payVal,
+          remainingAmount: newRemaining,
+          fullyPaid: newRemaining <= 0,
+          loan: updatedLoan,
+          walletBalance: borrowerUpdated.walletBalance,
+          usedCurrencyInfo,
+          convertedNotice
+        };
+      }
+
+      if (typeof amountToPay === 'string' && ['all', 'tudo', 'max'].includes(amountToPay.toLowerCase())) {
+        payVal = loan.remaining_amount;
+      } else {
+        const parsed = parseInt(amountToPay, 10);
+        if (!parsed || parsed <= 0) {
+          throw new Error('Informe um valor válido para amortizar ou "tudo" para quitar o empréstimo!');
+        }
+        payVal = Math.min(parsed, loan.remaining_amount);
+      }
+
+      let account = this.economyRepo.getOrCreateAccount(guildId, userId);
+      if (account.walletBalance < payVal && this.economyService && this.economyService.ensureWalletLiquidity) {
+        const liq = this.economyService.ensureWalletLiquidity(guildId, userId, payVal);
+        account = liq.account;
+        convertedNotice = liq.convertedNotice || '';
+      }
+
+      if (account.walletBalance < payVal) {
+        throw new Error(
+          `Saldo insuficiente na carteira para pagar! Você precisa de **${formatCompactNumber(payVal)} moedas**, mas possui apenas **${formatCompactNumber(account.walletBalance)}**.`
+        );
+      }
+
       // 1. Deduct from borrower
       const borrowerUpdated = this.economyRepo.updateBalances(guildId, userId, {
         walletBalance: account.walletBalance - payVal
@@ -346,7 +732,8 @@ class LoanService {
         remainingAmount: newRemaining,
         fullyPaid: newRemaining <= 0,
         loan: updatedLoan,
-        walletBalance: borrowerUpdated.walletBalance
+        walletBalance: borrowerUpdated.walletBalance,
+        convertedNotice
       };
     });
   }
@@ -367,8 +754,17 @@ class LoanService {
       return { retained: 0, netReward: grossReward, fullyPaid: false };
     }
 
+    const loanCfg = this.getLoanConfig(guildId);
+    const rate = loan.retention_rate !== undefined && loan.retention_rate !== null
+      ? Number(loan.retention_rate)
+      : Number(loanCfg.retentionRate ?? 0.40);
+
+    if (rate <= 0) {
+      return { retained: 0, netReward: grossReward, fullyPaid: false };
+    }
+
     const retention = Math.min(
-      Math.max(1, Math.round(grossReward * (loan.retention_rate || 0.40))),
+      Math.max(1, Math.round(grossReward * rate)),
       loan.remaining_amount
     );
 
@@ -413,7 +809,26 @@ class LoanService {
    */
   isDefaulted(guildId, userId) {
     const loan = this.loanRepo.getActiveLoan(guildId, userId);
-    return Boolean(loan && loan.status === 'DEFAULTED');
+    if (!loan) return false;
+    return Boolean(loan.status === 'DEFAULTED' || new Date() > new Date(loan.due_date));
+  }
+
+  canTransfer(guildId, userId) {
+    if (!this.isDefaulted(guildId, userId)) return true;
+    const cfg = this.getLoanConfig(guildId);
+    return !cfg.blockTransfersOnDefault;
+  }
+
+  canBuyShop(guildId, userId) {
+    if (!this.isDefaulted(guildId, userId)) return true;
+    const cfg = this.getLoanConfig(guildId);
+    return !cfg.blockShopOnDefault;
+  }
+
+  canUseCasino(guildId, userId) {
+    if (!this.isDefaulted(guildId, userId)) return true;
+    const cfg = this.getLoanConfig(guildId);
+    return !cfg.blockCasinoOnDefault;
   }
 
   /**
@@ -423,15 +838,20 @@ class LoanService {
    */
   getLoanStatus(guildId, userId) {
     const activeLoan = this.loanRepo.getActiveLoan(guildId, userId);
-    const { level, maxLimit } = this.calculateMaxBankLoan(guildId, userId);
+    const activeLoans = this.loanRepo.getActiveLoans ? this.loanRepo.getActiveLoans(guildId, userId) : (activeLoan ? [activeLoan] : []);
+    const { level, maxLimit, levelTiers, loanConfig, exchangeLimits } = this.calculateMaxBankLoan(guildId, userId);
     const profile = this.loanRepo.getProfile(guildId, userId);
 
     return {
       activeLoan,
+      activeLoans,
       hasActiveLoan: Boolean(activeLoan),
-      isDefaulted: Boolean(activeLoan && activeLoan.status === 'DEFAULTED'),
+      isDefaulted: this.isDefaulted(guildId, userId),
       level,
       maxLimit,
+      levelTiers,
+      loanConfig,
+      exchangeLimits,
       profile
     };
   }

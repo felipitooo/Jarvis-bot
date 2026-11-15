@@ -194,23 +194,37 @@ const economyTools = [
     },
     riskLevel: 'LOW',
     async execute({ limite = 10 }, context) {
-      const { guild, economyService } = context;
+      const { guild, economyService, userRepo } = context;
       if (!guild || !economyService) throw new ValidationError('Requer contexto de servidor e serviço de economia.');
 
       const safeLimit = Math.min(15, Math.max(1, Number(limite) || 10));
       const ranking = economyService.getLeaderboard(guild.id, safeLimit);
 
-      return {
-        status: 'sucesso',
-        total: ranking.length,
-        ranking: ranking.map(r => ({
+      const mapped = ranking.map(r => {
+        const cachedMember = guild.members?.cache?.get(r.userId);
+        const dbUser = !cachedMember && userRepo ? userRepo.getUser(r.userId) : null;
+        const nome = cachedMember?.displayName || cachedMember?.user?.username || dbUser?.username || `Membro (${r.userId})`;
+        return {
           posicao: r.rank,
           usuario_id: r.userId,
+          nome,
+          mencao: `<@${r.userId}>`,
           carteira: r.walletBalance,
           banco: r.bankBalance,
           total: r.totalBalance,
           total_formatado: r.formattedTotal
-        }))
+        };
+      });
+
+      const resumo = mapped.length > 0
+        ? mapped.map(r => `${r.posicao}º lugar: ${r.nome} (<@${r.usuario_id}>) — ${r.total_formatado}`).join('\n')
+        : 'Ainda não há membros no ranking de economia deste servidor.';
+
+      return {
+        status: 'sucesso',
+        total: mapped.length,
+        ranking: mapped,
+        mensagem: `Ranking de Economia:\n${resumo}`
       };
     }
   }

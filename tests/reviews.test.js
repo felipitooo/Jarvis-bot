@@ -98,6 +98,7 @@ describe('Reviews & Attendance Evaluation System (Etapa 8)', () => {
       async () => {
         await reviewService.submitReview(mockGuild, {
           authorUser: mockAuthor,
+          targetStaffUser: mockStaff,
           rating: 4,
           comment: 'Oi' // < 5 chars
         });
@@ -111,6 +112,7 @@ describe('Reviews & Attendance Evaluation System (Etapa 8)', () => {
 
     const result = await reviewService.submitReview(mockGuild, {
       authorUser: mockAuthor,
+      targetStaffUser: mockStaff,
       rating: 3,
       comment: 'Atendimento mediano, demorou um pouco.'
     });
@@ -152,6 +154,7 @@ describe('Reviews & Attendance Evaluation System (Etapa 8)', () => {
   test('respondReview allows staff to post official answer to review', async () => {
     const { review } = await reviewService.submitReview(mockGuild, {
       authorUser: mockAuthor,
+      targetStaffUser: mockStaff,
       rating: 4,
       comment: 'Gostei bastante do suporte, parabéns!'
     });
@@ -173,6 +176,7 @@ describe('Reviews & Attendance Evaluation System (Etapa 8)', () => {
 
     const { review } = await reviewService.submitReview(mockGuild, {
       authorUser: mockAuthor,
+      targetStaffUser: mockStaff,
       rating: 1,
       comment: 'Não gostei de nada aqui no servidor.'
     });

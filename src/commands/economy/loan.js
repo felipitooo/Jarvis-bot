@@ -9,13 +9,18 @@ module.exports = {
     .addSubcommand(sub =>
       sub
         .setName('solicitar')
-        .setDescription('Solicite um empréstimo bancário oficial ao J.A.R.V.I.S (Modelo A)')
-        .addIntegerOption(opt =>
+        .setDescription('Solicite um empréstimo bancário oficial ao J.A.R.V.I.S (em moedas ou moeda de câmbio)')
+        .addStringOption(opt =>
           opt
             .setName('quantia')
-            .setDescription('Valor que deseja pegar emprestado')
+            .setDescription('Quantidade que deseja pegar emprestado ou digite "tudo"')
             .setRequired(true)
-            .setMinValue(1)
+        )
+        .addStringOption(opt =>
+          opt
+            .setName('moeda')
+            .setDescription('Código ou nome da moeda de câmbio para pegar emprestado (opcional, ex: ouro)')
+            .setRequired(false)
         )
     )
     .addSubcommand(sub =>
@@ -27,6 +32,12 @@ module.exports = {
             .setName('quantia')
             .setDescription('Valor a pagar ou digite "tudo"')
             .setRequired(true)
+        )
+        .addStringOption(opt =>
+          opt
+            .setName('moeda')
+            .setDescription('Código ou nome da moeda de câmbio para pagar (opcional, ex: ouro)')
+            .setRequired(false)
         )
     )
     .addSubcommand(sub =>
@@ -53,7 +64,7 @@ module.exports = {
         .addIntegerOption(opt =>
           opt
             .setName('quantia')
-            .setDescription('Valor em moedas a emprestar')
+            .setDescription('Quantidade a emprestar')
             .setRequired(true)
             .setMinValue(1)
         )
@@ -72,6 +83,12 @@ module.exports = {
             .setRequired(false)
             .setMinValue(1)
             .setMaxValue(30)
+        )
+        .addStringOption(opt =>
+          opt
+            .setName('moeda')
+            .setDescription('Código ou nome da moeda de câmbio para emprestar (opcional, ex: ouro)')
+            .setRequired(false)
         )
     ),
 
@@ -95,23 +112,33 @@ module.exports = {
 
     // 1. SOLICITAR EMPRÉSTIMO BANCÁRIO
     if (sub === 'solicitar') {
-      const amount = interaction.options.getInteger('quantia');
+      const amount = interaction.options.getString('quantia');
+      const moeda = interaction.options.getString('moeda') || null;
       try {
-        const res = loanService.requestBankLoan(guild.id, user.id, amount);
+        const res = loanService.requestBankLoan(guild.id, user.id, amount, moeda);
         const dueTimestamp = Math.floor(new Date(res.dueDate).getTime() / 1000);
+
+        const desc = res.currency
+          ? `Você recebeu **${formatCompactNumber(res.currencyUnits)}x ${res.currency.symbol} ${res.currency.name}** diretamente na sua carteira *(equivalente a ${formatCompactNumber(res.principalAmount)} moedas)*!\n\n` +
+            `💱 **Moeda Emprestada:** **${formatCompactNumber(res.currencyUnits)}x ${res.currency.symbol} ${res.currency.name}** *(Cotação: ${formatCompactNumber(res.currency.rate)} cada)*\n` +
+            `📊 **Limite do seu Nível em ${res.currency.name}:** **${formatCompactNumber(res.maxCurrencyUnits)}x ${res.currency.symbol} ${res.currency.name}**\n` +
+            `📈 **Taxa de Juros:** ${res.interestPercent ?? Math.round((res.interestRate || 0.1) * 100)}%\n` +
+            `⚖️ **Total a Devolver:** **${formatCompactNumber(res.totalDue)} moedas** *(~${res.totalDueInCurrency}x ${res.currency.symbol} ${res.currency.name})*\n` +
+            `⏳ **Data de Vencimento:** <t:${dueTimestamp}:D> (<t:${dueTimestamp}:R>)\n` +
+            `💼 **Novo Saldo de ${res.currency.name}:** **${formatCompactNumber(res.newCurrencyBalance)}x ${res.currency.symbol} ${res.currency.name}**\n\n` +
+            `💡 *Nota: ${res.retentionPercent ?? Math.round((res.retentionRate ?? 0.4) * 100)}% de qualquer renda de +work/+daily será retida automaticamente até quitar a dívida.*`
+          : `O valor de **${formatCompactNumber(res.principalAmount)} moedas** foi creditado na sua carteira com sucesso!\n\n` +
+            `💰 **Valor Emprestado:** ${formatCompactNumber(res.principalAmount)} moedas\n` +
+            `📈 **Taxa de Juros:** ${res.interestPercent ?? Math.round((res.interestRate || 0.1) * 100)}%\n` +
+            `⚖️ **Total a Devolver:** ${formatCompactNumber(res.totalDue)} moedas\n` +
+            `⏳ **Data de Vencimento:** <t:${dueTimestamp}:D> (<t:${dueTimestamp}:R>)\n` +
+            `💼 **Saldo Atual na Carteira:** ${formatCompactNumber(res.walletBalance)} moedas\n\n` +
+            `💡 *Nota: ${res.retentionPercent ?? Math.round((res.retentionRate ?? 0.4) * 100)}% de qualquer renda de +work/+daily será retida automaticamente até quitar a dívida.*`;
 
         const embed = new EmbedBuilder()
           .setColor(0x00E5FF)
           .setTitle('🏦 Empréstimo Bancário J.A.R.V.I.S Concedido!')
-          .setDescription(
-            `O valor de **${formatCompactNumber(res.principalAmount)} moedas** foi creditado na sua carteira com sucesso!\n\n` +
-            `💰 **Valor Emprestado:** ${formatCompactNumber(res.principalAmount)} moedas\n` +
-            `📈 **Taxa de Juros:** 10%\n` +
-            `⚖️ **Total a Devolver:** ${formatCompactNumber(res.totalDue)} moedas\n` +
-            `⏳ **Data de Vencimento:** <t:${dueTimestamp}:D> (<t:${dueTimestamp}:R>)\n` +
-            `💼 **Saldo Atual na Carteira:** ${formatCompactNumber(res.walletBalance)} moedas\n\n` +
-            `💡 *Nota: 40% de qualquer renda de +work/+daily será retida automaticamente até quitar a dívida.*`
-          )
+          .setDescription(desc)
           .setFooter({ text: `${aiName} • Banco & Finanças` })
           .setTimestamp();
 
@@ -124,15 +151,16 @@ module.exports = {
     // 2. PAGAR / AMORTIZAR EMPRÉSTIMO
     if (sub === 'pagar') {
       const input = interaction.options.getString('quantia');
+      const moeda = interaction.options.getString('moeda') || null;
       try {
-        const res = loanService.repayLoan(guild.id, user.id, input);
+        const res = loanService.repayLoan(guild.id, user.id, input, moeda);
         const title = res.fullyPaid
           ? '🎉 Empréstimo Totalmente Quitado!'
           : '💵 Amortização de Empréstimo Registrada!';
 
         const desc = res.fullyPaid
-          ? `Parabéns, <@${user.id}>! Você pagou **${formatCompactNumber(res.paymentAmount)} moedas** e liquidou 100% da sua dívida!\nSeu nome está completamente limpo e seu limite de crédito foi restaurado.`
-          : `Você pagou **${formatCompactNumber(res.paymentAmount)} moedas**.\n` +
+          ? `Parabéns, <@${user.id}>! Você pagou **${formatCompactNumber(res.paymentAmount)} moedas** e liquidou 100% da sua dívida!${res.convertedNotice || ''}\nSeu nome está completamente limpo e seu limite de crédito foi restaurado.`
+          : `Você pagou **${formatCompactNumber(res.paymentAmount)} moedas**.${res.convertedNotice || ''}\n` +
             `Restam **${formatCompactNumber(res.remainingAmount)} moedas** para quitar o empréstimo.\n` +
             `Saldo restante na carteira: **${formatCompactNumber(res.walletBalance)} moedas**.`;
 
@@ -154,6 +182,7 @@ module.exports = {
       const target = interaction.options.getUser('membro') || user;
       const status = loanService.getLoanStatus(guild.id, target.id);
       const active = status.activeLoan;
+      const loanCfg = status.loanConfig || {};
 
       let loanDetails = '✅ **Ficha Financeira Limpa:** Nenhum empréstimo ativo.';
       if (active) {
@@ -169,8 +198,21 @@ module.exports = {
           `**Já Amortizado:** ${formatCompactNumber(active.amount_paid)} moedas\n` +
           `**Restante a Pagar:** **${formatCompactNumber(active.remaining_amount)} moedas**\n` +
           `**Vencimento:** <t:${dueTimestamp}:D> (<t:${dueTimestamp}:R>)\n` +
-          `**Retenção Automática:** ${Math.round((active.retention_rate || 0.4) * 100)}% de cada salário/daily`;
+          `**Retenção Automática:** ${Math.round((active.retention_rate ?? loanCfg.retentionRate ?? 0.4) * 100)}% de cada salário/daily`;
       }
+
+      const exchangeLimitsText = Array.isArray(status.exchangeLimits) && status.exchangeLimits.length > 0
+        ? `**Limite em Moedas de Câmbio (Nível ${status.level}):** ` +
+          status.exchangeLimits
+            .map(el => `${el.currency.symbol} **${formatCompactNumber(el.maxUnits)}x ${el.currency.name}** *(\`${el.currency.code}\`)*`)
+            .join(' • ') + '\n'
+        : '';
+
+      const tiersText = Array.isArray(status.levelTiers) && status.levelTiers.length > 0
+        ? status.levelTiers
+            .map(t => `• **Nível ${t.minLevel}+** ➔ até **${formatCompactNumber(t.maxLoan)} moedas**${status.level >= t.minLevel ? ' *(Desbloqueado)*' : ''}`)
+            .join('\n')
+        : '';
 
       const embed = new EmbedBuilder()
         .setColor(status.isDefaulted ? 0xED4245 : 0x00E5FF)
@@ -178,7 +220,10 @@ module.exports = {
         .setDescription(
           `**Membro:** <@${target.id}>\n` +
           `**Nível XP Atual:** ${status.level}\n` +
-          `**Limite Máximo para Empréstimo:** **${formatCompactNumber(status.maxLimit)} moedas**\n\n` +
+          `**Limite Máximo para Empréstimo:** **${formatCompactNumber(status.maxLimit)} moedas**\n` +
+          exchangeLimitsText +
+          `**Condições do Banco:** Juros de **${Math.round((loanCfg.bankInterestRate ?? 0.1) * 100)}%** • Prazo de **${loanCfg.bankTermDays || 7} dias** • Desconto em folha de **${Math.round((loanCfg.retentionRate ?? 0.4) * 100)}%**\n\n` +
+          (tiersText ? `### 📊 Tabela de Limites por Nível:\n${tiersText}\n\n` : '') +
           `### 📋 Detalhes do Empréstimo:\n${loanDetails}`
         )
         .setFooter({ text: `${aiName} • Sistema de Crédito & Finanças` })
@@ -193,18 +238,21 @@ module.exports = {
       const amount = interaction.options.getInteger('quantia');
       const interest = interaction.options.getInteger('juros') ?? 10;
       const days = interaction.options.getInteger('dias') ?? 7;
+      const moeda = interaction.options.getString('moeda') || null;
 
       if (borrower.id === user.id) {
         return interaction.reply({ content: '❌ Você não pode propor empréstimo para si mesmo!', ephemeral: true });
       }
 
       try {
-        const prop = loanService.proposeP2PLoan(guild.id, user.id, borrower.id, amount, interest, days);
+        const prop = loanService.proposeP2PLoan(guild.id, user.id, borrower.id, amount, interest, days, moeda);
         const dueTimestamp = Math.floor(new Date(prop.dueDate).getTime() / 1000);
+
+        const acceptId = prop.currency ? `loan_accept_${prop.loan.id}_${prop.currency.code}` : `loan_accept_${prop.loan.id}`;
 
         const row = new ActionRowBuilder().addComponents(
           new ButtonBuilder()
-            .setCustomId(`loan_accept_${prop.loan.id}`)
+            .setCustomId(acceptId)
             .setLabel('✅ Aceitar Empréstimo')
             .setStyle(ButtonStyle.Success),
           new ButtonBuilder()
@@ -213,12 +261,16 @@ module.exports = {
             .setStyle(ButtonStyle.Danger)
         );
 
+        const amountText = prop.currency
+          ? `**${formatCompactNumber(prop.currencyUnits)}x ${prop.currency.symbol} ${prop.currency.name}** *(equivalente a ${formatCompactNumber(prop.principalAmount)} moedas)*`
+          : `${formatCompactNumber(prop.principalAmount)} moedas`;
+
         const embed = new EmbedBuilder()
           .setColor(0xFEE75C)
           .setTitle('🤝 Proposta Formal de Empréstimo P2P')
           .setDescription(
             `Olá <@${borrower.id}>! O membro <@${user.id}> enviou uma proposta de empréstimo para você.\n\n` +
-            `💰 **Quantia Oferecida:** ${formatCompactNumber(prop.principalAmount)} moedas\n` +
+            `💰 **Quantia Oferecida:** ${amountText}\n` +
             `📈 **Taxa de Juros:** ${prop.interestPercent}%\n` +
             `⚖️ **Total a Devolver:** **${formatCompactNumber(prop.totalDue)} moedas**\n` +
             `⏳ **Prazo de Pagamento:** ${prop.days} dias (<t:${dueTimestamp}:D>)\n\n` +

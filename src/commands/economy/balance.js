@@ -23,9 +23,20 @@ module.exports = {
     const balance = economyService.getBalance(guild.id, targetUser.id);
     const isDebt = balance.walletBalance < 0;
 
-    const walletDisplay = Math.abs(balance.walletBalance) >= 1e6
-      ? `${balance.formattedCompactWallet}\n*(${balance.walletBalance.toLocaleString('pt-BR')})*`
-      : balance.formattedWallet;
+    const hasExchangeInWallet = (balance.exchangeAssetsValue || 0) > 0;
+    const effectiveWalletVal = balance.effectiveWalletBalance ?? balance.walletBalance;
+
+    let walletDisplay = Math.abs(effectiveWalletVal) >= 1e6
+      ? `${balance.formattedCompactEffectiveWallet || balance.formattedCompactWallet}\n*(${effectiveWalletVal.toLocaleString('pt-BR')})*`
+      : (balance.formattedEffectiveWallet || balance.formattedWallet);
+
+    if (hasExchangeInWallet) {
+      const currencySummary = balance.userCurrencies
+        .map(c => `${c.symbol} **${formatCompactNumber(c.amount)}** ${c.name}`)
+        .join(', ');
+      walletDisplay += `\n*(Moedas comuns: ${balance.formattedCompactWallet} + Câmbio: ${currencySummary})*`;
+    }
+
     const bankDisplay = Math.abs(balance.bankBalance) >= 1e6
       ? `${balance.formattedCompactBank}\n*(${balance.bankBalance.toLocaleString('pt-BR')})*`
       : balance.formattedBank;
@@ -39,7 +50,7 @@ module.exports = {
       .setThumbnail(targetUser.displayAvatarURL())
       .addFields(
         {
-          name: '👛 Carteira',
+          name: '👛 Carteira (Valor Total)',
           value: isDebt ? `${walletDisplay}\n*(⚠️ Endividado)*` : walletDisplay,
           inline: true
         },
@@ -50,10 +61,10 @@ module.exports = {
 
     if (balance.userCurrencies && balance.userCurrencies.length > 0) {
       const exchangeLines = balance.userCurrencies.map(c =>
-        `${c.symbol} **${formatCompactNumber(c.amount)}** ${c.name} • *Cotação: ${formatCompactNumber(c.rate)} (Total: ${formatCompactNumber(c.totalValue)})*`
+        `${c.symbol} **${formatCompactNumber(c.amount)}** ${c.name} (\`${c.code}\`) • *Vale ${formatCompactNumber(c.rate)} cada (Total na carteira: ${formatCompactNumber(c.totalValue)})*`
       ).join('\n');
       embed.addFields({
-        name: '💱 Moedas de Câmbio & Prestígio',
+        name: '💱 Moedas de Câmbio na Carteira',
         value: exchangeLines,
         inline: false
       });

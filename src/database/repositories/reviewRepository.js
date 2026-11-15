@@ -205,6 +205,10 @@ class ReviewRepository {
     }));
   }
 
+  getStaffLeaderboard(guildId) {
+    return this.getStaffReviewLeaderboard(guildId);
+  }
+
   respondReview(guildId, reviewId, { response, respondedBy }) {
     const now = new Date().toISOString();
     this.db.run(

@@ -249,4 +249,78 @@ describe('Loan System (Model A Bank & Model C P2P) & Enhanced Profile', () => {
     const socialTab = await buildProfilePayload({ id: guildId, ownerId: 'other' }, targetUser, null, mockContext, 'social');
     assert.ok(socialTab.embeds[0].data.title.includes('Vida Social & Reputação'));
   });
+
+  test('Exchange Currencies & Configurable Loans: Wallet power, transfer, casino bet, auto-liquidity & custom level tiers', () => {
+    // 1. Create an exchange currency (Ouro = 10,000 coins)
+    const gold = economyRepo.createExchangeCurrency(guildId, {
+      name: 'Barra de Ouro',
+      code: 'ouro',
+      symbol: '🏆',
+      rate: 10000,
+      isActive: true
+    });
+    assert.ok(gold.id);
+
+    // 2. Give borrower 25,000 coins and buy max ("tudo") -> 2x Ouro + 5,000 loose coins
+    economyRepo.updateBalances(guildId, borrowerId, { walletBalance: 25000 });
+    const buyRes = economyService.buyExchangeCurrency(guildId, borrowerId, 'ouro', 'tudo');
+    assert.equal(buyRes.quantity, 2);
+    assert.equal(buyRes.remainingWallet, 5000);
+
+    // 3. Check effective wallet balance keeps the exact same total value (25,000)
+    const bal = economyService.getBalance(guildId, borrowerId);
+    assert.equal(bal.walletBalance, 5000);
+    assert.equal(bal.exchangeAssetsValue, 20000);
+    assert.equal(bal.effectiveWalletBalance, 25000);
+
+    // 4. Direct transfer of 1x Ouro to lender
+    const transCurr = economyService.transfer(guildId, borrowerId, lenderId, 1, 'ouro');
+    assert.equal(transCurr.success, true);
+    assert.equal(economyRepo.getUserCurrencyBalance(guildId, borrowerId, gold.id), 1);
+    assert.equal(economyRepo.getUserCurrencyBalance(guildId, lenderId, gold.id), 1);
+
+    // 5. Auto-liquidity: borrower has 5,000 loose coins + 1x Ouro (10,000) = 15,000 total wallet power.
+    // Transferring 8,000 normal coins automatically converts 1x Ouro and leaves 7,000 loose coins!
+    const transCoins = economyService.transfer(guildId, borrowerId, lenderId, 8000);
+    assert.equal(transCoins.success, true);
+    assert.equal(transCoins.senderWallet, 7000);
+    assert.equal(economyRepo.getUserCurrencyBalance(guildId, borrowerId, gold.id), 0);
+
+    // 6. Configurable Loan Settings & Custom Level Tiers
+    const updatedCfg = loanService.updateLoanConfig(guildId, {
+      bankInterestRate: 0.20, // 20%
+      bankTermDays: 14,
+      retentionRate: 0.25, // 25%
+      levelTiers: [
+        { minLevel: 0, maxLoan: 1000 },
+        { minLevel: 5, maxLoan: 50000 },
+        { minLevel: 30, maxLoan: 500000 }
+      ]
+    });
+    assert.equal(updatedCfg.bankInterestRate, 0.20);
+    assert.equal(updatedCfg.bankTermDays, 14);
+    assert.equal(updatedCfg.retentionRate, 0.25);
+
+    const calc = loanService.calculateMaxBankLoan(guildId, borrowerId, 'ouro'); // borrower is level 5 (50,000 limit), Ouro = 10,000 -> max 5x Ouro
+    assert.equal(calc.maxLimit, 50000);
+    assert.equal(calc.maxCurrencyUnits, 5);
+
+    // 7. Borrowing in Exchange Currency: max is 50,000 / 10,000 = 5x Ouro
+    assert.throws(() => {
+      loanService.requestBankLoan(guildId, borrowerId, 6, 'ouro');
+    }, /Limite de crédito insuficiente/);
+
+    const currencyLoan = loanService.requestBankLoan(guildId, borrowerId, 3, 'ouro');
+    assert.equal(currencyLoan.currencyUnits, 3);
+    assert.equal(currencyLoan.principalAmount, 30000);
+    assert.equal(currencyLoan.totalDue, 36000); // 30,000 + 20%
+    assert.equal(economyRepo.getUserCurrencyBalance(guildId, borrowerId, gold.id), 3);
+
+    // Repay loan using the 3x Ouro + loose coins
+    const repayCurr = loanService.repayLoan(guildId, borrowerId, 'tudo', 'ouro');
+    assert.equal(repayCurr.paymentAmount, 30000);
+    assert.equal(repayCurr.remainingAmount, 6000);
+    const repayRest = loanService.repayLoan(guildId, borrowerId, 'tudo');
+    assert.equal(repayRest.fullyPaid, true);
+  });
 });

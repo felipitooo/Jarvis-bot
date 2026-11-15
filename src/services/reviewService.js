@@ -34,15 +34,21 @@ class ReviewService {
       throw new Error('Bots não podem ser avaliados.');
     }
 
-    let targetMember = guild.members?.cache?.get(targetStaffUser.id);
-    if (!targetMember && guild.members?.fetch) {
-      try {
-        targetMember = await guild.members.fetch(targetStaffUser.id);
-      } catch (e) {}
-    }
+    if (guild.members) {
+      let targetMember = guild.members.cache?.get(targetStaffUser.id);
+      if (!targetMember && guild.members.fetch) {
+        try {
+          targetMember = await guild.members.fetch(targetStaffUser.id);
+        } catch (e) {}
+      }
 
-    if (!permissionService.isAdmin(targetMember)) {
-      throw new Error('Apenas membros com cargo de Administrador podem ser avaliados.');
+      if (!permissionService.isAdmin(targetMember)) {
+        throw new Error('Apenas membros com cargo de Administrador podem ser avaliados.');
+      }
+    } else if (targetStaffUser.permissions || targetStaffUser.roles) {
+      if (!permissionService.isAdmin(targetStaffUser)) {
+        throw new Error('Apenas membros com cargo de Administrador podem ser avaliados.');
+      }
     }
 
     const config = this.reviewRepo.getReviewConfig(guild.id);

@@ -350,9 +350,26 @@ class EconomyRepository {
 
   getLeaderboard(guildId, limit = 10, offset = 0) {
     const rows = this.db.all(
-      `SELECT user_id, wallet_balance, bank_balance, (wallet_balance + bank_balance) as total_balance
-       FROM economy_accounts
-       WHERE guild_id = ?
+      `SELECT 
+         ea.user_id,
+         ea.wallet_balance,
+         ea.bank_balance,
+         COALESCE((
+           SELECT SUM(uc.amount * c.rate)
+           FROM economy_user_currencies uc
+           JOIN economy_currencies c ON c.id = uc.currency_id
+           WHERE uc.guild_id = ea.guild_id AND uc.user_id = ea.user_id AND uc.amount > 0
+         ), 0) AS exchange_balance,
+         (
+           ea.wallet_balance + ea.bank_balance + COALESCE((
+             SELECT SUM(uc.amount * c.rate)
+             FROM economy_user_currencies uc
+             JOIN economy_currencies c ON c.id = uc.currency_id
+             WHERE uc.guild_id = ea.guild_id AND uc.user_id = ea.user_id AND uc.amount > 0
+           ), 0)
+         ) AS total_balance
+       FROM economy_accounts ea
+       WHERE ea.guild_id = ?
        ORDER BY total_balance DESC
        LIMIT ? OFFSET ?`,
       [guildId, limit, offset]
@@ -361,7 +378,9 @@ class EconomyRepository {
     return rows.map((r, idx) => ({
       rank: offset + idx + 1,
       userId: r.user_id,
-      walletBalance: Number(r.wallet_balance),
+      walletBalance: Number(r.wallet_balance) + Number(r.exchange_balance || 0),
+      rawWalletBalance: Number(r.wallet_balance),
+      exchangeBalance: Number(r.exchange_balance || 0),
       bankBalance: Number(r.bank_balance),
       totalBalance: Number(r.total_balance)
     }));
@@ -371,11 +390,27 @@ class EconomyRepository {
     const target = this.getAccount(guildId, userId);
     if (!target) return null;
 
+    const exchangeRow = this.db.get(
+      `SELECT COALESCE(SUM(uc.amount * c.rate), 0) AS exchange_val
+       FROM economy_user_currencies uc
+       JOIN economy_currencies c ON c.id = uc.currency_id
+       WHERE uc.guild_id = ? AND uc.user_id = ? AND uc.amount > 0`,
+      [guildId, userId]
+    );
+    const targetTotal = target.totalBalance + Number(exchangeRow?.exchange_val || 0);
+
     const row = this.db.get(
       `SELECT COUNT(*) as rank_above
-       FROM economy_accounts
-       WHERE guild_id = ? AND (wallet_balance + bank_balance) > ?`,
-      [guildId, target.totalBalance]
+       FROM economy_accounts ea
+       WHERE ea.guild_id = ? AND (
+         ea.wallet_balance + ea.bank_balance + COALESCE((
+           SELECT SUM(uc.amount * c.rate)
+           FROM economy_user_currencies uc
+           JOIN economy_currencies c ON c.id = uc.currency_id
+           WHERE uc.guild_id = ea.guild_id AND uc.user_id = ea.user_id AND uc.amount > 0
+         ), 0)
+       ) > ?`,
+      [guildId, targetTotal]
     );
 
     return (row?.rank_above || 0) + 1;
@@ -598,9 +633,10 @@ class EconomyRepository {
 
   getExchangeCurrencyByCode(guildId, code) {
     if (!code) return null;
+    const clean = String(code).trim().toLowerCase();
     const row = this.db.get(
-      'SELECT * FROM economy_currencies WHERE guild_id = ? AND LOWER(code) = LOWER(?)',
-      [guildId, String(code).trim().toLowerCase()]
+      'SELECT * FROM economy_currencies WHERE guild_id = ? AND (LOWER(code) = ? OR LOWER(name) = ?)',
+      [guildId, clean, clean]
     );
     if (!row) return null;
     return {

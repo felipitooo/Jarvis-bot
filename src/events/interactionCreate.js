@@ -67,14 +67,20 @@ module.exports = {
 
         // Loans Acceptance / Decline Buttons (Modelo C P2P)
         if (customId.startsWith('loan_accept_')) {
-          const loanId = parseInt(customId.replace('loan_accept_', ''), 10);
+          const rest = customId.replace('loan_accept_', '');
+          const parts = rest.split('_');
+          const loanId = parseInt(parts[0], 10);
+          const currencyCode = parts.slice(1).join('_') || null;
           if (!context.loanService) {
             return await interaction.reply({ content: '❌ O sistema de empréstimos está indisponível.', ephemeral: true }).catch(() => {});
           }
           try {
-            const res = context.loanService.acceptP2PLoan(guild.id, user.id, loanId);
+            const res = context.loanService.acceptP2PLoan(guild.id, user.id, loanId, currencyCode);
+            const receivedMsg = res.currency
+              ? `**${res.currencyUnits}x ${res.currency.symbol} ${res.currency.name}** *(equivalente a ${res.loan.principal_amount} moedas)*`
+              : `**${res.loan.principal_amount} moedas**`;
             return await interaction.update({
-              content: `🎉 **EMPRÉSTIMO P2P CONFIRMADO!**\n<@${user.id}> aceitou a proposta! O valor de **${res.loan.principal_amount} moedas** foi creditado na sua carteira.`,
+              content: `🎉 **EMPRÉSTIMO P2P CONFIRMADO!**\n<@${user.id}> aceitou a proposta! O valor de ${receivedMsg} foi creditado na sua carteira.`,
               components: []
             }).catch(() => {});
           } catch (err) {

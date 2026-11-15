@@ -104,6 +104,86 @@ class EconomyService {
   // 1. Balance & Banking
   // ==========================================
 
+  /**
+   * Automatically converts exchange currencies into base coins in the wallet
+   * whenever an operation requires more base coins than currently loose in wallet.
+   */
+  ensureWalletLiquidity(guildId, userId, requiredAmount) {
+    const config = this.economyRepo.getGuildConfig(guildId);
+    let account = this.economyRepo.getOrCreateAccount(guildId, userId, config.bankStartingCapacity);
+
+    if (account.walletBalance >= requiredAmount) {
+      return { account, convertedCurrencies: [], convertedNotice: '' };
+    }
+
+    const userCurrencies = this.economyRepo.getUserExchangeCurrencies
+      ? this.economyRepo.getUserExchangeCurrencies(guildId, userId)
+      : [];
+
+    const exchangeAssetsValue = userCurrencies.reduce((sum, c) => sum + (c.totalValue || 0), 0);
+    const totalWalletPower = account.walletBalance + exchangeAssetsValue;
+
+    if (totalWalletPower < requiredAmount) {
+      return { account, convertedCurrencies: [], convertedNotice: '' };
+    }
+
+    // Sort currencies from lowest rate to highest rate so we preserve the highest-tier currencies first
+    const sorted = [...userCurrencies].sort((a, b) => a.rate - b.rate);
+    let deficit = requiredAmount - account.walletBalance;
+    let totalConvertedCoins = 0;
+    const convertedCurrencies = [];
+
+    for (const c of sorted) {
+      if (deficit <= 0) break;
+      if (c.amount <= 0 || c.rate <= 0) continue;
+
+      const unitsNeeded = Math.min(c.amount, Math.ceil(deficit / c.rate));
+      if (unitsNeeded > 0) {
+        const gained = unitsNeeded * c.rate;
+        this.economyRepo.addUserCurrencyBalance(guildId, userId, c.currencyId, -unitsNeeded);
+        totalConvertedCoins += gained;
+        deficit -= gained;
+        convertedCurrencies.push({
+          currencyId: c.currencyId,
+          name: c.name,
+          code: c.code,
+          symbol: c.symbol,
+          rate: c.rate,
+          units: unitsNeeded,
+          coinsGained: gained
+        });
+      }
+    }
+
+    if (totalConvertedCoins > 0) {
+      account = this.economyRepo.updateBalances(guildId, userId, {
+        walletBalance: account.walletBalance + totalConvertedCoins
+      });
+
+      const summaryStr = convertedCurrencies
+        .map(item => `${item.units}x ${item.symbol} ${item.name}`)
+        .join(', ');
+
+      this.economyRepo.recordTransaction({
+        guildId,
+        userId,
+        type: 'EXCHANGE_AUTO_CONVERT',
+        amount: totalConvertedCoins,
+        walletAfter: account.walletBalance,
+        bankAfter: account.bankBalance,
+        description: `Câmbio automático na carteira: ${summaryStr}`
+      });
+
+      return {
+        account,
+        convertedCurrencies,
+        convertedNotice: `\n💱 *(Câmbio automático: ${summaryStr} utilizado(s) da sua carteira)*`
+      };
+    }
+
+    return { account, convertedCurrencies: [], convertedNotice: '' };
+  }
+
   getBalance(guildId, userId) {
     const config = this.economyRepo.getGuildConfig(guildId);
     const account = this.economyRepo.getOrCreateAccount(guildId, userId, config.bankStartingCapacity);
@@ -115,6 +195,7 @@ class EconomyService {
       ? this.economyRepo.getUserExchangeCurrencies(guildId, userId)
       : [];
     const exchangeAssetsValue = userCurrencies.reduce((sum, c) => sum + (c.totalValue || 0), 0);
+    const effectiveWalletBalance = account.walletBalance + exchangeAssetsValue;
     const totalNetWorth = account.totalBalance + exchangeAssetsValue;
 
     const isBankUnlimited = Boolean(config.bankUnlimited) || config.bankStartingCapacity <= 0;
@@ -127,10 +208,13 @@ class EconomyService {
       debtAmount,
       userCurrencies,
       exchangeAssetsValue,
+      effectiveWalletBalance,
       totalNetWorth,
       isBankUnlimited,
       formattedWallet: this.formatCurrency(account.walletBalance, config),
       formattedCompactWallet: this.formatCompactCurrency(account.walletBalance, config),
+      formattedEffectiveWallet: this.formatCurrency(effectiveWalletBalance, config),
+      formattedCompactEffectiveWallet: this.formatCompactCurrency(effectiveWalletBalance, config),
       formattedBank: this.formatCurrency(account.bankBalance, config),
       formattedCompactBank: this.formatCompactCurrency(account.bankBalance, config),
       formattedTotal: this.formatCurrency(account.totalBalance, config),
@@ -144,7 +228,7 @@ class EconomyService {
   deposit(guildId, userId, amountInput) {
     return this.economyRepo.db.transaction(() => {
       const config = this.economyRepo.getGuildConfig(guildId);
-      const account = this.economyRepo.getOrCreateAccount(guildId, userId, config.bankStartingCapacity);
+      let account = this.economyRepo.getOrCreateAccount(guildId, userId, config.bankStartingCapacity);
       const isBankUnlimited = Boolean(config.bankUnlimited) || config.bankStartingCapacity <= 0;
 
       const availableCapacity = isBankUnlimited ? Infinity : Math.max(0, account.bankCapacity - account.bankBalance);
@@ -165,6 +249,11 @@ class EconomyService {
 
       if (isNaN(depositAmount) || depositAmount <= 0) {
         throw new Error('A quantia de depósito deve ser um número positivo ou "all".');
+      }
+
+      if (account.walletBalance < depositAmount) {
+        const liq = this.ensureWalletLiquidity(guildId, userId, depositAmount);
+        account = liq.account;
       }
 
       if (account.walletBalance < depositAmount) {
@@ -251,13 +340,20 @@ class EconomyService {
     });
   }
 
-  transfer(guildId, senderId, recipientId, amount) {
-    if (this.loanService && this.loanService.isDefaulted(guildId, senderId)) {
-      throw new Error('⚠️ **Nome Sujo (Serasa Stark):** Você possui um empréstimo em atraso! Quite sua dívida com `+emprestimo pagar` antes de realizar transferências.');
+  transfer(guildId, senderId, recipientId, amount, currencyCode = null) {
+    if (this.loanService) {
+      const canTrans = this.loanService.canTransfer ? this.loanService.canTransfer(guildId, senderId) : !this.loanService.isDefaulted(guildId, senderId);
+      if (!canTrans) {
+        throw new Error('⚠️ **Nome Sujo (Serasa Stark):** Você possui um empréstimo em atraso! Quite sua dívida com `+emprestimo pagar` antes de realizar transferências.');
+      }
     }
 
     if (senderId === recipientId) {
       throw new Error('Você não pode transferir dinheiro para você mesmo.');
+    }
+
+    if (currencyCode) {
+      return this.transferExchangeCurrency(guildId, senderId, recipientId, currencyCode, amount);
     }
 
     const transferAmount = parseInt(amount, 10);
@@ -267,8 +363,15 @@ class EconomyService {
 
     return this.economyRepo.db.transaction(() => {
       const config = this.economyRepo.getGuildConfig(guildId);
-      const sender = this.economyRepo.getOrCreateAccount(guildId, senderId);
+      let sender = this.economyRepo.getOrCreateAccount(guildId, senderId);
       const recipient = this.economyRepo.getOrCreateAccount(guildId, recipientId);
+
+      let convertedNotice = '';
+      if (sender.walletBalance < transferAmount) {
+        const liq = this.ensureWalletLiquidity(guildId, senderId, transferAmount);
+        sender = liq.account;
+        convertedNotice = liq.convertedNotice || '';
+      }
 
       if (sender.walletBalance < transferAmount) {
         throw new Error(`Saldo insuficiente na carteira para transferir. Você possui ${this.formatCurrency(sender.walletBalance, config)}.`);
@@ -307,13 +410,117 @@ class EconomyService {
         description: `Transferência recebida de ${senderId}`
       });
 
+      const formattedAmount = this.formatCurrency(transferAmount, config);
       return {
+        success: true,
         senderId,
         recipientId,
         amount: transferAmount,
         senderWallet: updatedSender.walletBalance,
         recipientWallet: updatedRecipient.walletBalance,
-        formattedAmount: this.formatCurrency(transferAmount, config)
+        formattedAmount,
+        convertedNotice,
+        message: `Você transferiu com sucesso ${formattedAmount} para <@${recipientId}>!${convertedNotice}`
+      };
+    });
+  }
+
+  transferExchangeCurrency(guildId, senderId, recipientId, codeOrId, quantityInput) {
+    if (this.loanService) {
+      const canTrans = this.loanService.canTransfer ? this.loanService.canTransfer(guildId, senderId) : !this.loanService.isDefaulted(guildId, senderId);
+      if (!canTrans) {
+        throw new Error('⚠️ **Nome Sujo (Serasa Stark):** Você possui um empréstimo em atraso! Quite sua dívida com `+emprestimo pagar` antes de realizar transferências.');
+      }
+    }
+
+    if (senderId === recipientId) {
+      throw new Error('Você não pode transferir para você mesmo.');
+    }
+
+    const currency = this.getExchangeCurrency(guildId, codeOrId);
+    if (!currency) {
+      throw new Error(`Moeda de câmbio "${codeOrId}" não encontrada.`);
+    }
+
+    const currentSenderBalance = this.economyRepo.getUserCurrencyBalance(guildId, senderId, currency.id);
+    let qty;
+    if (typeof quantityInput === 'string' && ['all', 'tudo', 'max'].includes(quantityInput.toLowerCase())) {
+      qty = currentSenderBalance;
+    } else {
+      qty = parseInt(quantityInput, 10);
+    }
+
+    if (isNaN(qty) || qty <= 0) {
+      throw new Error('A quantidade a transferir deve ser um número positivo.');
+    }
+
+    return this.economyRepo.db.transaction(() => {
+      const config = this.economyRepo.getGuildConfig(guildId);
+      let senderHoldings = this.economyRepo.getUserCurrencyBalance(guildId, senderId, currency.id);
+
+      // If sender doesn't have enough units of this currency directly, check if their wallet can buy the missing units automatically!
+      if (senderHoldings < qty) {
+        const missingUnits = qty - senderHoldings;
+        const costNeeded = missingUnits * currency.rate;
+        const senderAcc = this.economyRepo.getOrCreateAccount(guildId, senderId);
+        const liq = this.ensureWalletLiquidity(guildId, senderId, costNeeded);
+        if (liq.account.walletBalance >= costNeeded) {
+          this.economyRepo.updateBalances(guildId, senderId, {
+            walletBalance: liq.account.walletBalance - costNeeded
+          });
+          senderHoldings = this.economyRepo.addUserCurrencyBalance(guildId, senderId, currency.id, missingUnits);
+        }
+      }
+
+      if (senderHoldings < qty) {
+        throw new Error(`Saldo insuficiente de ${currency.symbol} **${currency.name}**. Você possui apenas **${senderHoldings}** unidade(s).`);
+      }
+
+      const newSenderHoldings = this.economyRepo.addUserCurrencyBalance(guildId, senderId, currency.id, -qty);
+      const newRecipientHoldings = this.economyRepo.addUserCurrencyBalance(guildId, recipientId, currency.id, qty);
+
+      const senderAcc = this.economyRepo.getOrCreateAccount(guildId, senderId);
+      const recipientAcc = this.economyRepo.getOrCreateAccount(guildId, recipientId);
+      const equivalentValue = qty * currency.rate;
+
+      this.economyRepo.recordTransaction({
+        guildId,
+        userId: senderId,
+        type: 'EXCHANGE_TRANSFER_SEND',
+        amount: -equivalentValue,
+        targetId: recipientId,
+        walletAfter: senderAcc.walletBalance,
+        bankAfter: senderAcc.bankBalance,
+        description: `Enviou ${qty}x ${currency.symbol} ${currency.name} para ${recipientId}`
+      });
+
+      this.economyRepo.recordTransaction({
+        guildId,
+        userId: recipientId,
+        type: 'EXCHANGE_TRANSFER_RECEIVE',
+        amount: equivalentValue,
+        targetId: senderId,
+        walletAfter: recipientAcc.walletBalance,
+        bankAfter: recipientAcc.bankBalance,
+        description: `Recebeu ${qty}x ${currency.symbol} ${currency.name} de ${senderId}`
+      });
+
+      const formattedAmount = `${currency.symbol} **${formatCompactNumber(qty)}** ${currency.name} *(equiv. ${this.formatCompactCurrency(equivalentValue, config)})*`;
+
+      return {
+        success: true,
+        isExchangeCurrency: true,
+        currency,
+        senderId,
+        recipientId,
+        amount: qty,
+        equivalentValue,
+        senderCurrencyBalance: newSenderHoldings,
+        recipientCurrencyBalance: newRecipientHoldings,
+        senderWallet: senderAcc.walletBalance,
+        recipientWallet: recipientAcc.walletBalance,
+        formattedAmount,
+        message: `Você transferiu com sucesso ${formattedAmount} para <@${recipientId}>!`
       };
     });
   }
@@ -324,8 +531,15 @@ class EconomyService {
 
     return this.economyRepo.db.transaction(() => {
       const config = this.economyRepo.getGuildConfig(guildId);
-      const account = this.economyRepo.getOrCreateAccount(guildId, userId, config.bankStartingCapacity);
-      const totalAvailable = (account.walletBalance || 0) + (account.bankBalance || 0);
+      let account = this.economyRepo.getOrCreateAccount(guildId, userId, config.bankStartingCapacity);
+      let totalAvailable = (account.walletBalance || 0) + (account.bankBalance || 0);
+
+      if (totalAvailable < amount) {
+        const neededFromWallet = amount - Math.max(0, account.bankBalance || 0);
+        const liq = this.ensureWalletLiquidity(guildId, userId, neededFromWallet);
+        account = liq.account;
+        totalAvailable = (account.walletBalance || 0) + (account.bankBalance || 0);
+      }
 
       if (totalAvailable < amount) {
         throw new Error(`Saldo insuficiente! Para formalizar o casamento são necessárias ${this.formatCurrency(amount, config)}. Você possui um total de ${this.formatCurrency(totalAvailable, config)}.`);
@@ -987,13 +1201,91 @@ class EconomyService {
   }
 
   // ==========================================
-  // 3. Virtual Gambling (Coinflip, Dice, Slots, Gamble)
+  // 3. Virtual Gambling (Coinflip, Dice, Slots, Gamble, Roulette)
   // ==========================================
 
-  coinflip(guildId, userId, choice, betAmountInput) {
-    const bet = parseInt(betAmountInput, 10);
-    if (isNaN(bet) || bet <= 0) {
-      throw new Error('O valor da aposta deve ser um número positivo.');
+  _checkCasinoAccess(guildId, userId) {
+    if (this.loanService) {
+      const canPlay = this.loanService.canUseCasino
+        ? this.loanService.canUseCasino(guildId, userId)
+        : !this.loanService.isDefaulted(guildId, userId);
+      if (!canPlay) {
+        throw new Error('⚠️ **Nome Sujo (Serasa Stark):** Você possui um empréstimo em atraso! Quite sua dívida com `+emprestimo pagar` antes de apostar no cassino.');
+      }
+    }
+  }
+
+  _settleExchangeCurrencyBet(guildId, userId, currency, betUnits, netMultiplierDelta, txTypeWin, txTypeLoss, desc) {
+    // netMultiplierDelta: e.g. +1 for 2x win, +5 for 6x win, +0.5 for 1.5x win, -1 for loss
+    const config = this.economyRepo.getGuildConfig(guildId);
+    let holdings = this.economyRepo.getUserCurrencyBalance(guildId, userId, currency.id);
+
+    if (holdings < betUnits) {
+      const missingUnits = betUnits - holdings;
+      const neededCoins = missingUnits * currency.rate;
+      const liq = this.ensureWalletLiquidity(guildId, userId, neededCoins);
+      if (liq.account.walletBalance >= neededCoins) {
+        this.economyRepo.updateBalances(guildId, userId, {
+          walletBalance: liq.account.walletBalance - neededCoins
+        });
+        holdings = this.economyRepo.addUserCurrencyBalance(guildId, userId, currency.id, missingUnits);
+      }
+    }
+
+    if (holdings < betUnits) {
+      throw new Error(`Saldo insuficiente de ${currency.symbol} **${currency.name}** na carteira. Você possui **${holdings}** unidade(s).`);
+    }
+
+    const isWin = netMultiplierDelta > 0;
+    const rawUnitDelta = betUnits * netMultiplierDelta;
+    const wholeUnitsDelta = isWin ? Math.floor(rawUnitDelta) : -betUnits;
+    const fractionalUnits = isWin ? (rawUnitDelta - wholeUnitsDelta) : 0;
+    const bonusBaseCoins = fractionalUnits > 0 ? Math.round(fractionalUnits * currency.rate) : 0;
+
+    const newHoldings = this.economyRepo.addUserCurrencyBalance(guildId, userId, currency.id, wholeUnitsDelta);
+    let account = this.economyRepo.getOrCreateAccount(guildId, userId, config.bankStartingCapacity);
+    if (bonusBaseCoins > 0) {
+      account = this.economyRepo.updateBalances(guildId, userId, {
+        walletBalance: account.walletBalance + bonusBaseCoins
+      });
+    }
+
+    const equivalentCoinDelta = Math.round(rawUnitDelta * currency.rate);
+    this.economyRepo.recordTransaction({
+      guildId,
+      userId,
+      type: isWin ? txTypeWin : txTypeLoss,
+      amount: equivalentCoinDelta,
+      walletAfter: account.walletBalance,
+      bankAfter: account.bankBalance,
+      description: `${desc} [${betUnits}x ${currency.symbol} ${currency.name}]`
+    });
+
+    const formattedBet = `${currency.symbol} **${formatCompactNumber(betUnits)}** ${currency.name}`;
+    let formattedGain;
+    if (isWin) {
+      const parts = [];
+      if (wholeUnitsDelta > 0) parts.push(`${currency.symbol} **${formatCompactNumber(wholeUnitsDelta)}** ${currency.name}`);
+      if (bonusBaseCoins > 0) parts.push(this.formatCurrency(bonusBaseCoins, config));
+      formattedGain = parts.join(' + ') || formattedBet;
+    } else {
+      formattedGain = formattedBet;
+    }
+
+    return {
+      newHoldings,
+      walletBalance: account.walletBalance,
+      formattedBet,
+      formattedGain
+    };
+  }
+
+  coinflip(guildId, userId, choice, betAmountInput, currencyCode = null) {
+    this._checkCasinoAccess(guildId, userId);
+
+    const cleanChoice = String(choice).toLowerCase().trim();
+    if (cleanChoice !== 'cara' && cleanChoice !== 'coroa') {
+      throw new Error('Escolha inválida. Você deve escolher entre "cara" ou "coroa".');
     }
 
     const casinoConfig = this.casinoRepo?.getCasinoConfig(guildId) || {
@@ -1007,22 +1299,74 @@ class EconomyService {
       throw new Error('O jogo de Cara ou Coroa está temporariamente desativado neste servidor pela administração.');
     }
 
+    if (currencyCode) {
+      const currency = this.getExchangeCurrency(guildId, currencyCode);
+      if (!currency) throw new Error(`Moeda "${currencyCode}" não encontrada.`);
+      const currentHoldings = this.economyRepo.getUserCurrencyBalance(guildId, userId, currency.id);
+      const betUnits = (typeof betAmountInput === 'string' && ['all', 'tudo', 'max'].includes(betAmountInput.toLowerCase()))
+        ? currentHoldings
+        : parseInt(betAmountInput, 10);
+      if (isNaN(betUnits) || betUnits <= 0) {
+        throw new Error(`Informe uma quantidade válida de ${currency.symbol} ${currency.name} para apostar.`);
+      }
+
+      return this.economyRepo.db.transaction(() => {
+        const winRate = Number(casinoConfig.coinflipWinRate) || 0.5;
+        const isWin = Math.random() < winRate;
+        const coinResult = isWin ? cleanChoice : (cleanChoice === 'cara' ? 'coroa' : 'cara');
+
+        const settled = this._settleExchangeCurrencyBet(
+          guildId,
+          userId,
+          currency,
+          betUnits,
+          isWin ? 1 : -1,
+          'COINFLIP_WIN',
+          'COINFLIP_LOSS',
+          `Cara ou Coroa: escolheu ${cleanChoice}, deu ${coinResult}`
+        );
+
+        return {
+          success: isWin,
+          isExchangeCurrency: true,
+          currency,
+          coinResult,
+          choice: cleanChoice,
+          bet: betUnits,
+          currencyBalance: settled.newHoldings,
+          walletBalance: settled.walletBalance,
+          formattedBet: settled.formattedBet,
+          message: isWin
+            ? `🪙 A moeda caiu em **${coinResult.toUpperCase()}**! Você acertou e ganhou ${settled.formattedGain}!`
+            : `🪙 A moeda caiu em **${coinResult.toUpperCase()}**! Você errou e perdeu ${settled.formattedBet}.`
+        };
+      });
+    }
+
+    const bet = parseInt(betAmountInput, 10);
+    if (isNaN(bet) || bet <= 0) {
+      throw new Error('O valor da aposta deve ser um número positivo.');
+    }
+
     if (bet < casinoConfig.coinflipMin || bet > casinoConfig.coinflipMax) {
       throw new Error(`A aposta no Cara ou Coroa deve ser entre ${casinoConfig.coinflipMin.toLocaleString('pt-BR')} e ${casinoConfig.coinflipMax.toLocaleString('pt-BR')} moedas.`);
     }
 
-    const cleanChoice = String(choice).toLowerCase().trim();
-    if (cleanChoice !== 'cara' && cleanChoice !== 'coroa') {
-      throw new Error('Escolha inválida. Você deve escolher entre "cara" ou "coroa".');
-    }
-
     return this.economyRepo.db.transaction(() => {
       const config = this.economyRepo.getGuildConfig(guildId);
-      const account = this.economyRepo.getOrCreateAccount(guildId, userId, config.bankStartingCapacity);
+      let account = this.economyRepo.getOrCreateAccount(guildId, userId, config.bankStartingCapacity);
 
       if (account.walletBalance < 0) {
         throw new Error(`❌ Você está endividado (${this.formatCurrency(account.walletBalance, config)})! O cassino não aceita apostas de membros com dívidas ativas.`);
       }
+
+      let convertedNotice = '';
+      if (account.walletBalance < bet) {
+        const liq = this.ensureWalletLiquidity(guildId, userId, bet);
+        account = liq.account;
+        convertedNotice = liq.convertedNotice || '';
+      }
+
       if (account.walletBalance < bet) {
         throw new Error(`Saldo insuficiente na carteira. Você possui ${this.formatCurrency(account.walletBalance, config)}.`);
       }
@@ -1031,13 +1375,7 @@ class EconomyService {
       const isWin = Math.random() < winRate;
       const coinResult = isWin ? cleanChoice : (cleanChoice === 'cara' ? 'coroa' : 'cara');
 
-      let newWallet;
-      if (isWin) {
-        newWallet = account.walletBalance + bet;
-      } else {
-        newWallet = account.walletBalance - bet;
-      }
-
+      const newWallet = isWin ? account.walletBalance + bet : account.walletBalance - bet;
       const updated = this.economyRepo.updateBalances(guildId, userId, { walletBalance: newWallet });
 
       this.economyRepo.recordTransaction({
@@ -1058,19 +1396,19 @@ class EconomyService {
         bet,
         walletBalance: updated.walletBalance,
         formattedBet,
-        message: isWin
+        message: (isWin
           ? `🪙 A moeda caiu em **${coinResult.toUpperCase()}**! Você acertou e ganhou ${formattedBet}!`
-          : `🪙 A moeda caiu em **${coinResult.toUpperCase()}**! Você errou e perdeu ${formattedBet}.`
+          : `🪙 A moeda caiu em **${coinResult.toUpperCase()}**! Você errou e perdeu ${formattedBet}.`) + convertedNotice
       };
     });
   }
 
-  dice(guildId, userId, guessInput, betAmountInput) {
-    const bet = parseInt(betAmountInput, 10);
-    const guess = parseInt(guessInput, 10);
+  dice(guildId, userId, guessInput, betAmountInput, currencyCode = null) {
+    this._checkCasinoAccess(guildId, userId);
 
-    if (isNaN(bet) || bet <= 0) {
-      throw new Error('O valor da aposta deve ser um número positivo.');
+    const guess = parseInt(guessInput, 10);
+    if (isNaN(guess) || guess < 1 || guess > 6) {
+      throw new Error('O palpite no dado deve ser um número de 1 a 6.');
     }
 
     const casinoConfig = this.casinoRepo?.getCasinoConfig(guildId) || {
@@ -1084,21 +1422,74 @@ class EconomyService {
       throw new Error('O jogo de Dados está temporariamente desativado neste servidor pela administração.');
     }
 
+    if (currencyCode) {
+      const currency = this.getExchangeCurrency(guildId, currencyCode);
+      if (!currency) throw new Error(`Moeda "${currencyCode}" não encontrada.`);
+      const currentHoldings = this.economyRepo.getUserCurrencyBalance(guildId, userId, currency.id);
+      const betUnits = (typeof betAmountInput === 'string' && ['all', 'tudo', 'max'].includes(betAmountInput.toLowerCase()))
+        ? currentHoldings
+        : parseInt(betAmountInput, 10);
+      if (isNaN(betUnits) || betUnits <= 0) {
+        throw new Error(`Informe uma quantidade válida de ${currency.symbol} ${currency.name} para apostar.`);
+      }
+
+      return this.economyRepo.db.transaction(() => {
+        const diceResult = Math.floor(Math.random() * 6) + 1;
+        const isWin = diceResult === guess;
+        const mult = Number(casinoConfig.diceMultiplier) || 5;
+
+        const settled = this._settleExchangeCurrencyBet(
+          guildId,
+          userId,
+          currency,
+          betUnits,
+          isWin ? mult : -1,
+          'DICE_WIN',
+          'DICE_LOSS',
+          `Aposta de dado: palpite ${guess}, rolou ${diceResult}`
+        );
+
+        return {
+          success: isWin,
+          isExchangeCurrency: true,
+          currency,
+          diceResult,
+          guess,
+          bet: betUnits,
+          currencyBalance: settled.newHoldings,
+          walletBalance: settled.walletBalance,
+          formattedGain: settled.formattedGain,
+          message: isWin
+            ? `🎲 O dado rolou **${diceResult}**! Parabéns, você acertou em cheio e faturou ${settled.formattedGain}!`
+            : `🎲 O dado rolou **${diceResult}**! Você apostou no **${guess}** e perdeu ${settled.formattedBet}.`
+        };
+      });
+    }
+
+    const bet = parseInt(betAmountInput, 10);
+    if (isNaN(bet) || bet <= 0) {
+      throw new Error('O valor da aposta deve ser um número positivo.');
+    }
+
     if (bet < casinoConfig.diceMin || bet > casinoConfig.diceMax) {
       throw new Error(`A aposta no Dado deve ser entre ${casinoConfig.diceMin.toLocaleString('pt-BR')} e ${casinoConfig.diceMax.toLocaleString('pt-BR')} moedas.`);
     }
 
-    if (isNaN(guess) || guess < 1 || guess > 6) {
-      throw new Error('O palpite no dado deve ser um número de 1 a 6.');
-    }
-
     return this.economyRepo.db.transaction(() => {
       const config = this.economyRepo.getGuildConfig(guildId);
-      const account = this.economyRepo.getOrCreateAccount(guildId, userId, config.bankStartingCapacity);
+      let account = this.economyRepo.getOrCreateAccount(guildId, userId, config.bankStartingCapacity);
 
       if (account.walletBalance < 0) {
         throw new Error(`❌ Você está endividado (${this.formatCurrency(account.walletBalance, config)})! O cassino não aceita apostas de membros com dívidas ativas.`);
       }
+
+      let convertedNotice = '';
+      if (account.walletBalance < bet) {
+        const liq = this.ensureWalletLiquidity(guildId, userId, bet);
+        account = liq.account;
+        convertedNotice = liq.convertedNotice || '';
+      }
+
       if (account.walletBalance < bet) {
         throw new Error(`Saldo insuficiente na carteira. Você possui ${this.formatCurrency(account.walletBalance, config)}.`);
       }
@@ -1140,18 +1531,15 @@ class EconomyService {
         netGain,
         walletBalance: updated.walletBalance,
         formattedGain,
-        message: isWin
+        message: (isWin
           ? `🎲 O dado rolou **${diceResult}**! Parabéns, você acertou em cheio e faturou ${formattedGain} (6x)!`
-          : `🎲 O dado rolou **${diceResult}**! Você apostou no **${guess}** e perdeu ${formattedBet}.`
+          : `🎲 O dado rolou **${diceResult}**! Você apostou no **${guess}** e perdeu ${formattedBet}.`) + convertedNotice
       };
     });
   }
 
-  slots(guildId, userId, betAmountInput) {
-    const bet = parseInt(betAmountInput, 10);
-    if (isNaN(bet) || bet <= 0) {
-      throw new Error('O valor da aposta deve ser um número positivo.');
-    }
+  slots(guildId, userId, betAmountInput, currencyCode = null) {
+    this._checkCasinoAccess(guildId, userId);
 
     const casinoConfig = this.casinoRepo?.getCasinoConfig(guildId) || {
       slotsEnabled: true,
@@ -1165,46 +1553,98 @@ class EconomyService {
       throw new Error('A máquina de Caça-Níqueis está temporariamente desativada neste servidor pela administração.');
     }
 
+    const icons = ['🍒', '🍋', '🍇', '💎', '7️⃣'];
+    const reel1 = icons[Math.floor(Math.random() * icons.length)];
+    const reel2 = icons[Math.floor(Math.random() * icons.length)];
+    const reel3 = icons[Math.floor(Math.random() * icons.length)];
+    const displayReels = `[ ${reel1} | ${reel2} | ${reel3} ]`;
+
+    let isWin = false;
+    let multiplier = 0;
+    if (reel1 === reel2 && reel2 === reel3) {
+      multiplier = Number(casinoConfig.slotsMultiplier3x) || 10;
+      isWin = true;
+    } else if (reel1 === reel2 || reel2 === reel3 || reel1 === reel3) {
+      multiplier = Number(casinoConfig.slotsMultiplier2x) || 2;
+      isWin = true;
+    }
+
+    if (currencyCode) {
+      const currency = this.getExchangeCurrency(guildId, currencyCode);
+      if (!currency) throw new Error(`Moeda "${currencyCode}" não encontrada.`);
+      const currentHoldings = this.economyRepo.getUserCurrencyBalance(guildId, userId, currency.id);
+      const betUnits = (typeof betAmountInput === 'string' && ['all', 'tudo', 'max'].includes(betAmountInput.toLowerCase()))
+        ? currentHoldings
+        : parseInt(betAmountInput, 10);
+      if (isNaN(betUnits) || betUnits <= 0) {
+        throw new Error(`Informe uma quantidade válida de ${currency.symbol} ${currency.name} para apostar.`);
+      }
+
+      return this.economyRepo.db.transaction(() => {
+        const netMult = isWin ? Math.max(0.5, multiplier - 1) : -1;
+        const settled = this._settleExchangeCurrencyBet(
+          guildId,
+          userId,
+          currency,
+          betUnits,
+          netMult,
+          'SLOTS_WIN',
+          'SLOTS_LOSS',
+          `Caça-níqueis: ${reel1}${reel2}${reel3} (multiplicador ${multiplier}x)`
+        );
+
+        let message;
+        if (reel1 === reel2 && reel2 === reel3) {
+          message = `🎰 **JACKPOT!** ${displayReels}\nTrinca perfeita! Você ganhou ${settled.formattedGain} (${multiplier}x)!`;
+        } else if (isWin) {
+          message = `🎰 ${displayReels}\nDupla premiada! Você lucrou ${settled.formattedGain} (${multiplier}x)!`;
+        } else {
+          message = `🎰 ${displayReels}\nNenhuma combinação premiada. Você perdeu ${settled.formattedBet}.`;
+        }
+
+        return {
+          success: isWin,
+          isExchangeCurrency: true,
+          currency,
+          displayReels,
+          multiplier,
+          bet: betUnits,
+          currencyBalance: settled.newHoldings,
+          walletBalance: settled.walletBalance,
+          message
+        };
+      });
+    }
+
+    const bet = parseInt(betAmountInput, 10);
+    if (isNaN(bet) || bet <= 0) {
+      throw new Error('O valor da aposta deve ser um número positivo.');
+    }
+
     if (bet < casinoConfig.slotsMin || bet > casinoConfig.slotsMax) {
       throw new Error(`A aposta no Caça-Níqueis deve ser entre ${casinoConfig.slotsMin.toLocaleString('pt-BR')} e ${casinoConfig.slotsMax.toLocaleString('pt-BR')} moedas.`);
     }
 
     return this.economyRepo.db.transaction(() => {
       const config = this.economyRepo.getGuildConfig(guildId);
-      const account = this.economyRepo.getOrCreateAccount(guildId, userId, config.bankStartingCapacity);
+      let account = this.economyRepo.getOrCreateAccount(guildId, userId, config.bankStartingCapacity);
 
       if (account.walletBalance < 0) {
         throw new Error(`❌ Você está endividado (${this.formatCurrency(account.walletBalance, config)})! O cassino não aceita apostas de membros com dívidas ativas.`);
       }
+
+      let convertedNotice = '';
+      if (account.walletBalance < bet) {
+        const liq = this.ensureWalletLiquidity(guildId, userId, bet);
+        account = liq.account;
+        convertedNotice = liq.convertedNotice || '';
+      }
+
       if (account.walletBalance < bet) {
         throw new Error(`Saldo insuficiente na carteira. Você possui ${this.formatCurrency(account.walletBalance, config)}.`);
       }
 
-      const icons = ['🍒', '🍋', '🍇', '💎', '7️⃣'];
-      const reel1 = icons[Math.floor(Math.random() * icons.length)];
-      const reel2 = icons[Math.floor(Math.random() * icons.length)];
-      const reel3 = icons[Math.floor(Math.random() * icons.length)];
-
-      const displayReels = `[ ${reel1} | ${reel2} | ${reel3} ]`;
-
-      let isWin = false;
-      let netGain = 0;
-      let multiplier = 0;
-
-      if (reel1 === reel2 && reel2 === reel3) {
-        multiplier = Number(casinoConfig.slotsMultiplier3x) || 10;
-        netGain = bet * (multiplier - 1);
-        isWin = true;
-      } else if (reel1 === reel2 || reel2 === reel3 || reel1 === reel3) {
-        multiplier = Number(casinoConfig.slotsMultiplier2x) || 2;
-        netGain = bet * (multiplier - 1);
-        isWin = true;
-      } else {
-        // Lose
-        netGain = -bet;
-        isWin = false;
-      }
-
+      const netGain = isWin ? Math.round(bet * (multiplier - 1)) : -bet;
       const newWallet = account.walletBalance + netGain;
       const updated = this.economyRepo.updateBalances(guildId, userId, { walletBalance: newWallet });
 
@@ -1222,10 +1662,10 @@ class EconomyService {
       const formattedGain = this.formatCurrency(Math.abs(netGain), config);
 
       let message;
-      if (multiplier === 5) {
-        message = `🎰 **JACKPOT!** ${displayReels}\nTrinca perfeita! Você ganhou ${formattedGain} (5x)!`;
-      } else if (multiplier === 1.5) {
-        message = `🎰 ${displayReels}\nDupla premiada! Você lucrou ${formattedGain} (1.5x)!`;
+      if (reel1 === reel2 && reel2 === reel3) {
+        message = `🎰 **JACKPOT!** ${displayReels}\nTrinca perfeita! Você ganhou ${formattedGain} (${multiplier}x)!`;
+      } else if (isWin) {
+        message = `🎰 ${displayReels}\nDupla premiada! Você lucrou ${formattedGain} (${multiplier}x)!`;
       } else {
         message = `🎰 ${displayReels}\nNenhuma combinação premiada. Você perdeu ${formattedBet}.`;
       }
@@ -1236,20 +1676,65 @@ class EconomyService {
         multiplier,
         netGain,
         walletBalance: updated.walletBalance,
-        message
+        message: message + convertedNotice
       };
     });
   }
 
-  gamble(guildId, userId, betAmountInput) {
+  gamble(guildId, userId, betAmountInput, currencyCode = null) {
+    this._checkCasinoAccess(guildId, userId);
+
+    const config = this.economyRepo.getGuildConfig(guildId);
+    const winThreshold = Math.round((config.gambleWinRate ?? 0.48) * 100);
+    const userRoll = Math.floor(Math.random() * 100) + 1;
+    const isWin = userRoll <= winThreshold;
+
+    if (currencyCode) {
+      const currency = this.getExchangeCurrency(guildId, currencyCode);
+      if (!currency) throw new Error(`Moeda "${currencyCode}" não encontrada.`);
+      const currentHoldings = this.economyRepo.getUserCurrencyBalance(guildId, userId, currency.id);
+      const betUnits = (typeof betAmountInput === 'string' && ['all', 'tudo', 'max'].includes(betAmountInput.toLowerCase()))
+        ? currentHoldings
+        : parseInt(betAmountInput, 10);
+      if (isNaN(betUnits) || betUnits <= 0) {
+        throw new Error(`Informe uma quantidade válida de ${currency.symbol} ${currency.name} para apostar.`);
+      }
+
+      return this.economyRepo.db.transaction(() => {
+        const settled = this._settleExchangeCurrencyBet(
+          guildId,
+          userId,
+          currency,
+          betUnits,
+          isWin ? 1 : -1,
+          'GAMBLE_WIN',
+          'GAMBLE_LOSS',
+          `Aposta geral: rolagem ${userRoll}/100`
+        );
+
+        return {
+          success: isWin,
+          won: isWin,
+          isExchangeCurrency: true,
+          currency,
+          roll: userRoll,
+          bet: betUnits,
+          currencyBalance: settled.newHoldings,
+          walletBalance: settled.walletBalance,
+          message: isWin
+            ? `🎲 Você rolou **${userRoll}**/100 e venceu a banca! Ganhou ${settled.formattedGain}!`
+            : `🎲 Você rolou **${userRoll}**/100 e perdeu para a banca. Perdeu ${settled.formattedBet}.`
+        };
+      });
+    }
+
     const bet = parseInt(betAmountInput, 10);
     if (isNaN(bet) || bet <= 0) {
       throw new Error('O valor da aposta deve ser um número positivo.');
     }
 
     return this.economyRepo.db.transaction(() => {
-      const config = this.economyRepo.getGuildConfig(guildId);
-      const account = this.economyRepo.getOrCreateAccount(guildId, userId, config.bankStartingCapacity);
+      let account = this.economyRepo.getOrCreateAccount(guildId, userId, config.bankStartingCapacity);
 
       if (config.gambleMin && bet < config.gambleMin) {
         throw new Error(`O valor mínimo para apostar é de ${this.formatCurrency(config.gambleMin, config)}.`);
@@ -1261,21 +1746,19 @@ class EconomyService {
       if (account.walletBalance < 0) {
         throw new Error(`❌ Você está endividado (${this.formatCurrency(account.walletBalance, config)})! O cassino não aceita apostas de membros com dívidas ativas.`);
       }
+
+      let convertedNotice = '';
+      if (account.walletBalance < bet) {
+        const liq = this.ensureWalletLiquidity(guildId, userId, bet);
+        account = liq.account;
+        convertedNotice = liq.convertedNotice || '';
+      }
+
       if (account.walletBalance < bet) {
         throw new Error(`Saldo insuficiente na carteira. Você possui ${this.formatCurrency(account.walletBalance, config)}.`);
       }
 
-      const winThreshold = Math.round((config.gambleWinRate ?? 0.48) * 100);
-      const userRoll = Math.floor(Math.random() * 100) + 1;
-      const isWin = userRoll <= winThreshold;
-
-      let netGain;
-      if (isWin) {
-        netGain = bet;
-      } else {
-        netGain = -bet;
-      }
-
+      const netGain = isWin ? bet : -bet;
       const updated = this.economyRepo.updateBalances(guildId, userId, {
         walletBalance: account.walletBalance + netGain
       });
@@ -1293,21 +1776,19 @@ class EconomyService {
       const formattedBet = this.formatCurrency(bet, config);
       return {
         success: isWin,
+        won: isWin,
         roll: userRoll,
         bet,
         walletBalance: updated.walletBalance,
-        message: isWin
+        message: (isWin
           ? `🎲 Você rolou **${userRoll}**/100 e venceu a banca! Ganhou ${formattedBet}!`
-          : `🎲 Você rolou **${userRoll}**/100 e perdeu para a banca. Perdeu ${formattedBet}.`
+          : `🎲 Você rolou **${userRoll}**/100 e perdeu para a banca. Perdeu ${formattedBet}.`) + convertedNotice
       };
     });
   }
 
-  roulette(guildId, userId, betAmountInput, choiceInput) {
-    const bet = parseInt(betAmountInput, 10);
-    if (isNaN(bet) || bet <= 0) {
-      throw new Error('O valor da aposta deve ser um número positivo.');
-    }
+  roulette(guildId, userId, betAmountInput, choiceInput, currencyCode = null) {
+    this._checkCasinoAccess(guildId, userId);
 
     const casinoConfig = this.casinoRepo?.getCasinoConfig(guildId) || {
       rouletteEnabled: true,
@@ -1319,10 +1800,6 @@ class EconomyService {
 
     if (!casinoConfig.rouletteEnabled) {
       throw new Error('A Roleta Europeia está temporariamente desativada neste servidor pela administração.');
-    }
-
-    if (bet < casinoConfig.rouletteMin || bet > casinoConfig.rouletteMax) {
-      throw new Error(`A aposta na Roleta deve ser entre ${casinoConfig.rouletteMin.toLocaleString('pt-BR')} e ${casinoConfig.rouletteMax.toLocaleString('pt-BR')} moedas.`);
     }
 
     const choiceRaw = String(choiceInput || '').toLowerCase().trim();
@@ -1356,63 +1833,114 @@ class EconomyService {
       throw new Error('Aposta inválida! Escolha entre: "vermelho", "preto", "par", "impar" ou um número de 0 a 36.');
     }
 
+    const landedNumber = Math.floor(Math.random() * 37);
+    let landedColor = '🟢';
+    let landedColorName = 'Verde (Zero)';
+    if (redNumbers.includes(landedNumber)) {
+      landedColor = '🔴';
+      landedColorName = 'Vermelho';
+    } else if (blackNumbers.includes(landedNumber)) {
+      landedColor = '⚫';
+      landedColorName = 'Preto';
+    }
+
+    let isWin = false;
+    let multiplier = 0;
+
+    const colorPayout = Number(casinoConfig.rouletteColorPayout) || 2;
+    const numPayout = Number(casinoConfig.rouletteNumberPayout) || 36;
+
+    if (betType === 'COLOR_RED' && redNumbers.includes(landedNumber)) {
+      isWin = true;
+      multiplier = colorPayout;
+    } else if (betType === 'COLOR_BLACK' && blackNumbers.includes(landedNumber)) {
+      isWin = true;
+      multiplier = colorPayout;
+    } else if (betType === 'EVEN' && landedNumber > 0 && landedNumber % 2 === 0) {
+      isWin = true;
+      multiplier = colorPayout;
+    } else if (betType === 'ODD' && landedNumber % 2 !== 0) {
+      isWin = true;
+      multiplier = colorPayout;
+    } else if (betType === 'EXACT_NUMBER' && landedNumber === targetNum) {
+      isWin = true;
+      multiplier = numPayout;
+    }
+
+    if (currencyCode) {
+      const currency = this.getExchangeCurrency(guildId, currencyCode);
+      if (!currency) throw new Error(`Moeda "${currencyCode}" não encontrada.`);
+      const currentHoldings = this.economyRepo.getUserCurrencyBalance(guildId, userId, currency.id);
+      const betUnits = (typeof betAmountInput === 'string' && ['all', 'tudo', 'max'].includes(betAmountInput.toLowerCase()))
+        ? currentHoldings
+        : parseInt(betAmountInput, 10);
+      if (isNaN(betUnits) || betUnits <= 0) {
+        throw new Error(`Informe uma quantidade válida de ${currency.symbol} ${currency.name} para apostar.`);
+      }
+
+      return this.economyRepo.db.transaction(() => {
+        const netMult = isWin ? Math.max(0.5, multiplier - 1) : -1;
+        const settled = this._settleExchangeCurrencyBet(
+          guildId,
+          userId,
+          currency,
+          betUnits,
+          netMult,
+          'ROULETTE_WIN',
+          'ROULETTE_LOSS',
+          `Roleta: apostou em ${choiceRaw}, caiu ${landedNumber} ${landedColor}`
+        );
+
+        const message = isWin
+          ? `🎡 **A roleta parou no número ${landedNumber} ${landedColor} (${landedColorName})!**\n🎉 Parabéns! Você acertou sua aposta e lucrou **${settled.formattedGain}** (${multiplier}x)!`
+          : `🎡 **A roleta parou no número ${landedNumber} ${landedColor} (${landedColorName})!**\n💸 A banca venceu desta vez. Você perdeu **${settled.formattedBet}**.`;
+
+        return {
+          success: isWin,
+          isExchangeCurrency: true,
+          currency,
+          landedNumber,
+          landedColor,
+          landedColorName,
+          bet: betUnits,
+          multiplier,
+          currencyBalance: settled.newHoldings,
+          walletBalance: settled.walletBalance,
+          message
+        };
+      });
+    }
+
+    const bet = parseInt(betAmountInput, 10);
+    if (isNaN(bet) || bet <= 0) {
+      throw new Error('O valor da aposta deve ser um número positivo.');
+    }
+
+    if (bet < casinoConfig.rouletteMin || bet > casinoConfig.rouletteMax) {
+      throw new Error(`A aposta na Roleta deve ser entre ${casinoConfig.rouletteMin.toLocaleString('pt-BR')} e ${casinoConfig.rouletteMax.toLocaleString('pt-BR')} moedas.`);
+    }
+
     return this.economyRepo.db.transaction(() => {
       const config = this.economyRepo.getGuildConfig(guildId);
-      const account = this.economyRepo.getOrCreateAccount(guildId, userId, config.bankStartingCapacity);
+      let account = this.economyRepo.getOrCreateAccount(guildId, userId, config.bankStartingCapacity);
 
       if (account.walletBalance < 0) {
         throw new Error(`❌ Você está endividado (${this.formatCurrency(account.walletBalance, config)})! O cassino não aceita apostas de membros com dívidas ativas.`);
       }
+
+      let convertedNotice = '';
+      if (account.walletBalance < bet) {
+        const liq = this.ensureWalletLiquidity(guildId, userId, bet);
+        account = liq.account;
+        convertedNotice = liq.convertedNotice || '';
+      }
+
       if (account.walletBalance < bet) {
         throw new Error(`Saldo insuficiente na carteira. Você possui ${this.formatCurrency(account.walletBalance, config)}.`);
       }
 
-      // Spin standard European roulette (0-36)
-      const landedNumber = Math.floor(Math.random() * 37);
-      let landedColor = '🟢';
-      let landedColorName = 'Verde (Zero)';
-      if (redNumbers.includes(landedNumber)) {
-        landedColor = '🔴';
-        landedColorName = 'Vermelho';
-      } else if (blackNumbers.includes(landedNumber)) {
-        landedColor = '⚫';
-        landedColorName = 'Preto';
-      }
-
-      let isWin = false;
-      let multiplier = 0;
-
-      const colorPayout = Number(casinoConfig.rouletteColorPayout) || 2;
-      const numPayout = Number(casinoConfig.rouletteNumberPayout) || 36;
-
-      if (betType === 'COLOR_RED' && redNumbers.includes(landedNumber)) {
-        isWin = true;
-        multiplier = colorPayout;
-      } else if (betType === 'COLOR_BLACK' && blackNumbers.includes(landedNumber)) {
-        isWin = true;
-        multiplier = colorPayout;
-      } else if (betType === 'EVEN' && landedNumber > 0 && landedNumber % 2 === 0) {
-        isWin = true;
-        multiplier = colorPayout;
-      } else if (betType === 'ODD' && landedNumber % 2 !== 0) {
-        isWin = true;
-        multiplier = colorPayout;
-      } else if (betType === 'EXACT_NUMBER' && landedNumber === targetNum) {
-        isWin = true;
-        multiplier = numPayout;
-      }
-
-      let netGain = 0;
-      let newWallet = account.walletBalance;
-
-      if (isWin) {
-        netGain = bet * (multiplier - 1);
-        newWallet = account.walletBalance + netGain;
-      } else {
-        netGain = -bet;
-        newWallet = account.walletBalance - bet;
-      }
-
+      const netGain = isWin ? bet * (multiplier - 1) : -bet;
+      const newWallet = account.walletBalance + netGain;
       const updated = this.economyRepo.updateBalances(guildId, userId, { walletBalance: newWallet });
 
       this.economyRepo.recordTransaction({
@@ -1428,12 +1956,9 @@ class EconomyService {
       const formattedBet = this.formatCurrency(bet, config);
       const formattedGain = this.formatCurrency(Math.abs(netGain), config);
 
-      let message;
-      if (isWin) {
-        message = `🎡 **A roleta parou no número ${landedNumber} ${landedColor} (${landedColorName})!**\n🎉 Parabéns! Você acertou sua aposta e lucrou **${formattedGain}** (${multiplier}x)!`;
-      } else {
-        message = `🎡 **A roleta parou no número ${landedNumber} ${landedColor} (${landedColorName})!**\n💸 A banca venceu desta vez. Você perdeu **${formattedBet}**.`;
-      }
+      const message = isWin
+        ? `🎡 **A roleta parou no número ${landedNumber} ${landedColor} (${landedColorName})!**\n🎉 Parabéns! Você acertou sua aposta e lucrou **${formattedGain}** (${multiplier}x)!${convertedNotice}`
+        : `🎡 **A roleta parou no número ${landedNumber} ${landedColor} (${landedColorName})!**\n💸 A banca venceu desta vez. Você perdeu **${formattedBet}**.${convertedNotice}`;
 
       return {
         success: isWin,
@@ -1484,8 +2009,13 @@ class EconomyService {
   }
 
   async buyShopItem(guildId, userId, itemIdOrName, quantityInput = 1, guildMember = null) {
-    if (this.loanService && this.loanService.isDefaulted(guildId, userId)) {
-      throw new Error('⚠️ **Nome Sujo (Serasa Stark):** Você possui um empréstimo em atraso! Quite sua dívida com `+emprestimo pagar` antes de realizar compras na loja.');
+    if (this.loanService) {
+      const canShop = this.loanService.canBuyShop
+        ? this.loanService.canBuyShop(guildId, userId)
+        : !this.loanService.isDefaulted(guildId, userId);
+      if (!canShop) {
+        throw new Error('⚠️ **Nome Sujo (Serasa Stark):** Você possui um empréstimo em atraso! Quite sua dívida com `+emprestimo pagar` antes de realizar compras na loja.');
+      }
     }
 
     const quantity = parseInt(quantityInput, 10);
@@ -1506,7 +2036,14 @@ class EconomyService {
 
     const result = this.economyRepo.db.transaction(() => {
       const config = this.economyRepo.getGuildConfig(guildId);
-      const account = this.economyRepo.getOrCreateAccount(guildId, userId);
+      let account = this.economyRepo.getOrCreateAccount(guildId, userId);
+
+      let convertedNotice = '';
+      if (account.walletBalance < totalCost) {
+        const liq = this.ensureWalletLiquidity(guildId, userId, totalCost);
+        account = liq.account;
+        convertedNotice = liq.convertedNotice || '';
+      }
 
       if (account.walletBalance < totalCost) {
         throw new Error(`Saldo insuficiente na carteira. O custo total é ${this.formatCurrency(totalCost, config)} e você possui ${this.formatCurrency(account.walletBalance, config)}.`);
@@ -1537,7 +2074,8 @@ class EconomyService {
         quantity,
         totalCost,
         walletBalance: updated.walletBalance,
-        formattedCost: this.formatCurrency(totalCost, config)
+        formattedCost: this.formatCurrency(totalCost, config),
+        convertedNotice
       };
     });
 
@@ -1795,7 +2333,11 @@ class EconomyService {
     if (amt <= 0) return null;
 
     return this.economyRepo.db.transaction(() => {
-      const account = this.economyRepo.getOrCreateAccount(guildId, userId);
+      let account = this.economyRepo.getOrCreateAccount(guildId, userId);
+      if (account.walletBalance < amt) {
+        const liq = this.ensureWalletLiquidity(guildId, userId, amt);
+        account = liq.account;
+      }
       if (account.walletBalance < amt) {
         throw new Error(`Saldo insuficiente na carteira para pagar ${amt} moedas. Você possui apenas ${account.walletBalance} moedas.`);
       }
@@ -1852,7 +2394,6 @@ class EconomyService {
   }
 
   buyExchangeCurrency(guildId, userId, codeOrId, quantityInput) {
-    const qty = Math.max(1, parseInt(quantityInput, 10) || 1);
     const currency = this.getExchangeCurrency(guildId, codeOrId);
 
     if (!currency) {
@@ -1862,12 +2403,24 @@ class EconomyService {
       throw new Error(`A moeda "${currency.name}" (${currency.symbol}) está temporariamente desativada para novas conversões.`);
     }
 
-    const totalCost = qty * currency.rate;
-
     return this.economyRepo.db.transaction(() => {
-      const account = this.economyRepo.getOrCreateAccount(guildId, userId);
+      let account = this.economyRepo.getOrCreateAccount(guildId, userId);
+      const config = this.economyRepo.getGuildConfig(guildId);
+
+      let qty;
+      const isAll = typeof quantityInput === 'string' && ['all', 'tudo', 'max'].includes(quantityInput.toLowerCase());
+      if (isAll) {
+        qty = Math.floor(Math.max(0, account.walletBalance) / currency.rate);
+        if (qty <= 0) {
+          throw new Error(`Você precisa de pelo menos ${this.formatCurrency(currency.rate, config)} na carteira para adquirir 1x ${currency.symbol} ${currency.name}.`);
+        }
+      } else {
+        qty = Math.max(1, parseInt(quantityInput, 10) || 1);
+      }
+
+      const totalCost = qty * currency.rate;
+
       if (account.walletBalance < totalCost) {
-        const config = this.economyRepo.getGuildConfig(guildId);
         const needed = this.formatCurrency(totalCost, config);
         const current = this.formatCurrency(account.walletBalance, config);
         throw new Error(`Saldo insuficiente na carteira para comprar ${qty}x ${currency.symbol} ${currency.name}. Custo: ${needed} (você possui ${current}).`);

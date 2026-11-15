@@ -3945,6 +3945,125 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
             </table>
           </div>
         </div>
+
+        <!-- CARD 6: SISTEMA DE EMPRÉSTIMOS, JUROS, PRAZOS & LIMITES POR NÍVEL -->
+        <div class="card" style="grid-column: 1 / -1;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
+            <div>
+              <h2 style="margin-bottom: 0.25rem;">🏦 Sistema de Empréstimos, Juros, Prazos & Limites por Nível (+emprestimo)</h2>
+              <p style="margin: 0; color: var(--text-muted); font-size: 0.88rem;">
+                Configure todas as regras de crédito bancário J.A.R.V.I.S, contratos P2P entre membros, desconto automático em folha, restrições do Serasa Stark e os limites máximos de empréstimo para cada nível de XP!
+              </p>
+            </div>
+            <button type="button" class="primary-btn" id="saveLoanConfigQuickBtn" style="white-space: nowrap;">💾 Salvar Regras de Empréstimo</button>
+          </div>
+
+          <!-- Parâmetros Gerais de Juros, Prazos e Retenção -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label>Empréstimo Bancário (J.A.R.V.I.S)</label>
+              <select id="loanBankEnabledSelect">
+                <option value="true">🟢 Ativado</option>
+                <option value="false">🔴 Desativado</option>
+              </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+              <label>Empréstimo P2P (Entre Membros)</label>
+              <select id="loanP2pEnabledSelect">
+                <option value="true">🟢 Ativado</option>
+                <option value="false">🔴 Desativado</option>
+              </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+              <label>Taxa de Juros do Banco (%)</label>
+              <input type="number" id="loanBankInterestInput" value="10" min="0" max="500" step="1">
+              <small style="color: var(--text-muted); font-size: 0.75rem;">Juros cobrados sobre o valor emprestado</small>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+              <label>Prazo de Vencimento (Dias)</label>
+              <input type="number" id="loanBankTermDaysInput" value="7" min="1" max="365" step="1">
+              <small style="color: var(--text-muted); font-size: 0.75rem;">Dias até o empréstimo entrar em atraso</small>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+              <label>Desconto Automático em Folha (%)</label>
+              <input type="number" id="loanRetentionRateInput" value="40" min="0" max="100" step="1">
+              <small style="color: var(--text-muted); font-size: 0.75rem;">Retido de +work e +daily para abater a dívida</small>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+              <label>Máx. Empréstimos Simultâneos</label>
+              <input type="number" id="loanMaxActiveInput" value="1" min="1" max="20" step="1">
+              <small style="color: var(--text-muted); font-size: 0.75rem;">Quantos empréstimos ativos por membro</small>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+              <label>Juros Máximo P2P (%)</label>
+              <input type="number" id="loanP2pMaxInterestInput" value="50" min="0" max="500" step="1">
+              <small style="color: var(--text-muted); font-size: 0.75rem;">Teto de juros em contratos entre membros</small>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+              <label>Prazo Máximo P2P (Dias)</label>
+              <input type="number" id="loanP2pMaxTermDaysInput" value="30" min="1" max="365" step="1">
+              <small style="color: var(--text-muted); font-size: 0.75rem;">Prazo máximo em contratos P2P</small>
+            </div>
+          </div>
+
+          <!-- Bloqueios do Serasa Stark (Inadimplência) -->
+          <div style="background: rgba(0,0,0,0.22); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 1rem; margin-bottom: 1.25rem;">
+            <div style="font-weight: 700; color: #FEE75C; margin-bottom: 0.65rem; font-size: 0.92rem;">
+              ⚠️ Regras do Serasa Stark (Restrições para Membros com Empréstimo Vencido / Nome Sujo)
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 1.5rem;">
+              <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.86rem; color: #e2e8f0; margin: 0;">
+                <input type="checkbox" id="loanBlockTransfersCheck" checked style="width: auto; cursor: pointer;">
+                Bloquear Transferências (+pay / /transferir)
+              </label>
+              <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.86rem; color: #e2e8f0; margin: 0;">
+                <input type="checkbox" id="loanBlockShopCheck" checked style="width: auto; cursor: pointer;">
+                Bloquear Compras na Loja (+loja / /comprar)
+              </label>
+              <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.86rem; color: #e2e8f0; margin: 0;">
+                <input type="checkbox" id="loanBlockCasinoCheck" style="width: auto; cursor: pointer;">
+                Bloquear Apostas no Cassino (+bj, +slots, +roleta, +coinflip)
+              </label>
+            </div>
+          </div>
+
+          <!-- Tabela Dinâmica de Limites de Empréstimo por Nível -->
+          <div style="background: rgba(0,0,0,0.25); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 8px; padding: 1.15rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.85rem;">
+              <div>
+                <h3 style="margin: 0; font-size: 1rem; color: #38bdf8;">📊 Limites de Empréstimo por Nível de XP</h3>
+                <small style="color: var(--text-muted); font-size: 0.78rem;">
+                  Edite o limite de qualquer nível existente, remova faixas ou acrescente novos patamares de nível (ex: Nível 30, 50, 100).
+                </small>
+              </div>
+              <button type="button" class="secondary-btn" id="addLoanTierBtn" style="background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.4); color: #38bdf8; font-weight: 600; padding: 0.45rem 0.9rem; border-radius: 6px; cursor: pointer;">
+                ➕ Acrescentar Faixa de Nível
+              </button>
+            </div>
+
+            <div style="overflow-x: auto;">
+              <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.88rem;">
+                <thead>
+                  <tr style="border-bottom: 1px solid rgba(255,255,255,0.1); color: var(--text-muted);">
+                    <th style="padding: 0.55rem 0.5rem; width: 180px;">Nível Mínimo (XP)</th>
+                    <th style="padding: 0.55rem 0.5rem;">Limite Máximo de Empréstimo (Moedas)</th>
+                    <th style="padding: 0.55rem 0.5rem; width: 120px; text-align: right;">Ação</th>
+                  </tr>
+                </thead>
+                <tbody id="loanLevelTiersTableBody">
+                  <!-- Renderizado dinamicamente via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div style="margin-top: 1.25rem;">
@@ -6662,6 +6781,10 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           } else {
             renderExchangeCurrencies([]);
           }
+
+          if (typeof renderLoanConfig === 'function') {
+            renderLoanConfig(mods.economy.loanConfig || null);
+          }
         }
 
         // Casino & Bets
@@ -8486,6 +8609,191 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       }
     });
 
+    window.currentLoanLevelTiers = [
+      { minLevel: 0, maxLoan: 500 },
+      { minLevel: 1, maxLoan: 2000 },
+      { minLevel: 5, maxLoan: 10000 },
+      { minLevel: 10, maxLoan: 30000 },
+      { minLevel: 20, maxLoan: 100000 }
+    ];
+
+    function renderLoanLevelTiersTable() {
+      const tbody = document.getElementById('loanLevelTiersTableBody');
+      if (!tbody) return;
+      const tiers = Array.isArray(window.currentLoanLevelTiers) ? window.currentLoanLevelTiers : [];
+      if (tiers.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" style="padding: 1rem; text-align: center; color: var(--text-muted);">Nenhuma faixa configurada. Clique em "➕ Acrescentar Faixa de Nível" acima.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = tiers.map((t, idx) => {
+        return '<tr class="loan-tier-row" style="border-bottom: 1px solid rgba(255,255,255,0.06);">' +
+          '<td style="padding: 0.55rem 0.5rem;">' +
+            '<div style="display: flex; align-items: center; gap: 0.4rem;">' +
+              '<span style="color: var(--text-muted); font-size: 0.82rem;">Nível</span>' +
+              '<input type="number" class="loan-tier-level-input" data-idx="' + idx + '" value="' + Number(t.minLevel || 0) + '" min="0" max="1000" style="width: 90px; padding: 0.35rem 0.5rem; font-weight: 700;">' +
+            '</div>' +
+          '</td>' +
+          '<td style="padding: 0.55rem 0.5rem;">' +
+            '<div style="display: flex; align-items: center; gap: 0.4rem;">' +
+              '<span style="color: #FEE75C; font-size: 0.88rem;">🪙</span>' +
+              '<input type="number" class="loan-tier-max-input" data-idx="' + idx + '" value="' + Number(t.maxLoan || 500) + '" min="1" step="100" style="max-width: 220px; padding: 0.35rem 0.5rem; font-weight: 600; color: #57F287;">' +
+            '</div>' +
+          '</td>' +
+          '<td style="padding: 0.55rem 0.5rem; text-align: right;">' +
+            (tiers.length > 1
+              ? '<button type="button" class="remove-loan-tier-btn" data-idx="' + idx + '" style="background: rgba(237,66,69,0.15); color: #ED4245; border: 1px solid rgba(237,66,69,0.3); padding: 0.3rem 0.65rem; border-radius: 5px; cursor: pointer; font-size: 0.78rem;">🗑️ Remover</button>'
+              : '<span style="color: var(--text-muted); font-size: 0.75rem;">Base</span>') +
+          '</td>' +
+        '</tr>';
+      }).join('');
+
+      tbody.querySelectorAll('.loan-tier-level-input').forEach(inp => {
+        inp.addEventListener('change', (e) => {
+          const idx = Number(e.target.getAttribute('data-idx'));
+          if (window.currentLoanLevelTiers[idx]) {
+            window.currentLoanLevelTiers[idx].minLevel = Math.max(0, parseInt(e.target.value, 10) || 0);
+          }
+        });
+      });
+
+      tbody.querySelectorAll('.loan-tier-max-input').forEach(inp => {
+        inp.addEventListener('change', (e) => {
+          const idx = Number(e.target.getAttribute('data-idx'));
+          if (window.currentLoanLevelTiers[idx]) {
+            window.currentLoanLevelTiers[idx].maxLoan = Math.max(1, parseInt(e.target.value, 10) || 500);
+          }
+        });
+      });
+
+      tbody.querySelectorAll('.remove-loan-tier-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const idx = Number(btn.getAttribute('data-idx'));
+          window.currentLoanLevelTiers.splice(idx, 1);
+          renderLoanLevelTiersTable();
+        });
+      });
+    }
+
+    function renderLoanConfig(loanCfg) {
+      const cfg = loanCfg || {
+        bankLoansEnabled: true,
+        p2pLoansEnabled: true,
+        bankInterestRate: 0.10,
+        bankTermDays: 7,
+        retentionRate: 0.40,
+        maxActiveLoans: 1,
+        p2pMaxInterestRate: 0.50,
+        p2pMaxTermDays: 30,
+        blockTransfersOnDefault: true,
+        blockShopOnDefault: true,
+        blockCasinoOnDefault: false,
+        levelTiers: [
+          { minLevel: 0, maxLoan: 500 },
+          { minLevel: 1, maxLoan: 2000 },
+          { minLevel: 5, maxLoan: 10000 },
+          { minLevel: 10, maxLoan: 30000 },
+          { minLevel: 20, maxLoan: 100000 }
+        ]
+      };
+
+      if (document.getElementById('loanBankEnabledSelect')) {
+        document.getElementById('loanBankEnabledSelect').value = cfg.bankLoansEnabled !== false ? 'true' : 'false';
+      }
+      if (document.getElementById('loanP2pEnabledSelect')) {
+        document.getElementById('loanP2pEnabledSelect').value = cfg.p2pLoansEnabled !== false ? 'true' : 'false';
+      }
+      if (document.getElementById('loanBankInterestInput')) {
+        document.getElementById('loanBankInterestInput').value = Math.round((Number(cfg.bankInterestRate ?? 0.10)) * 100);
+      }
+      if (document.getElementById('loanBankTermDaysInput')) {
+        document.getElementById('loanBankTermDaysInput').value = Number(cfg.bankTermDays) || 7;
+      }
+      if (document.getElementById('loanRetentionRateInput')) {
+        document.getElementById('loanRetentionRateInput').value = Math.round((Number(cfg.retentionRate ?? 0.40)) * 100);
+      }
+      if (document.getElementById('loanMaxActiveInput')) {
+        document.getElementById('loanMaxActiveInput').value = Number(cfg.maxActiveLoans) || 1;
+      }
+      if (document.getElementById('loanP2pMaxInterestInput')) {
+        document.getElementById('loanP2pMaxInterestInput').value = Math.round((Number(cfg.p2pMaxInterestRate ?? 0.50)) * 100);
+      }
+      if (document.getElementById('loanP2pMaxTermDaysInput')) {
+        document.getElementById('loanP2pMaxTermDaysInput').value = Number(cfg.p2pMaxTermDays) || 30;
+      }
+      if (document.getElementById('loanBlockTransfersCheck')) {
+        document.getElementById('loanBlockTransfersCheck').checked = cfg.blockTransfersOnDefault !== false;
+      }
+      if (document.getElementById('loanBlockShopCheck')) {
+        document.getElementById('loanBlockShopCheck').checked = cfg.blockShopOnDefault !== false;
+      }
+      if (document.getElementById('loanBlockCasinoCheck')) {
+        document.getElementById('loanBlockCasinoCheck').checked = Boolean(cfg.blockCasinoOnDefault);
+      }
+
+      window.currentLoanLevelTiers = Array.isArray(cfg.levelTiers) && cfg.levelTiers.length > 0
+        ? cfg.levelTiers.map(t => ({ minLevel: Number(t.minLevel) || 0, maxLoan: Number(t.maxLoan) || 500 }))
+        : [
+            { minLevel: 0, maxLoan: 500 },
+            { minLevel: 1, maxLoan: 2000 },
+            { minLevel: 5, maxLoan: 10000 },
+            { minLevel: 10, maxLoan: 30000 },
+            { minLevel: 20, maxLoan: 100000 }
+          ];
+      renderLoanLevelTiersTable();
+    }
+
+    function collectLoanConfigFromDOM() {
+      const rows = document.querySelectorAll('#loanLevelTiersTableBody .loan-tier-row');
+      const tiers = [];
+      rows.forEach(r => {
+        const lvlInp = r.querySelector('.loan-tier-level-input');
+        const maxInp = r.querySelector('.loan-tier-max-input');
+        if (lvlInp && maxInp) {
+          tiers.push({
+            minLevel: Math.max(0, parseInt(lvlInp.value, 10) || 0),
+            maxLoan: Math.max(1, parseInt(maxInp.value, 10) || 500)
+          });
+        }
+      });
+      tiers.sort((a, b) => a.minLevel - b.minLevel);
+
+      return {
+        bankLoansEnabled: document.getElementById('loanBankEnabledSelect')?.value !== 'false',
+        p2pLoansEnabled: document.getElementById('loanP2pEnabledSelect')?.value !== 'false',
+        bankInterestRate: Math.max(0, parseFloat(document.getElementById('loanBankInterestInput')?.value ?? 10)) / 100,
+        bankTermDays: Math.max(1, parseInt(document.getElementById('loanBankTermDaysInput')?.value, 10) || 7),
+        retentionRate: Math.max(0, Math.min(100, parseFloat(document.getElementById('loanRetentionRateInput')?.value ?? 40))) / 100,
+        maxActiveLoans: Math.max(1, parseInt(document.getElementById('loanMaxActiveInput')?.value, 10) || 1),
+        p2pMaxInterestRate: Math.max(0, parseFloat(document.getElementById('loanP2pMaxInterestInput')?.value ?? 50)) / 100,
+        p2pMaxTermDays: Math.max(1, parseInt(document.getElementById('loanP2pMaxTermDaysInput')?.value, 10) || 30),
+        blockTransfersOnDefault: Boolean(document.getElementById('loanBlockTransfersCheck')?.checked),
+        blockShopOnDefault: Boolean(document.getElementById('loanBlockShopCheck')?.checked),
+        blockCasinoOnDefault: Boolean(document.getElementById('loanBlockCasinoCheck')?.checked),
+        levelTiers: tiers.length > 0 ? tiers : window.currentLoanLevelTiers
+      };
+    }
+
+    document.getElementById('addLoanTierBtn')?.addEventListener('click', () => {
+      // Sync current input values before adding
+      const current = collectLoanConfigFromDOM();
+      window.currentLoanLevelTiers = current.levelTiers || [];
+      const highest = window.currentLoanLevelTiers.reduce((acc, t) => Math.max(acc, Number(t.minLevel) || 0), 0);
+      const highestLoan = window.currentLoanLevelTiers.reduce((acc, t) => Math.max(acc, Number(t.maxLoan) || 0), 500);
+      window.currentLoanLevelTiers.push({
+        minLevel: highest + 10,
+        maxLoan: highestLoan * 2
+      });
+      renderLoanLevelTiersTable();
+    });
+
+    document.getElementById('saveLoanConfigQuickBtn')?.addEventListener('click', async () => {
+      await saveModule('economy', {
+        loanConfig: collectLoanConfigFromDOM()
+      });
+      loadGuildData(currentGuildId);
+    });
+
     document.getElementById('saveEconomyBtn')?.addEventListener('click', () => {
       saveModule('economy', {
         currencyName: document.getElementById('ecoCurrencyName').value,
@@ -8510,7 +8818,8 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         slutSuccessRate: (parseFloat(document.getElementById('ecoSlutRate').value) || 65) / 100,
         robCooldownSeconds: parseInt(document.getElementById('ecoRobCooldown').value, 10) || 7200,
         robSuccessRate: (parseFloat(document.getElementById('ecoRobRate').value) || 45) / 100,
-        robFinePercent: (parseFloat(document.getElementById('ecoRobFinePercent').value) || 25) / 100
+        robFinePercent: (parseFloat(document.getElementById('ecoRobFinePercent').value) || 25) / 100,
+        loanConfig: collectLoanConfigFromDOM()
       });
     });
 

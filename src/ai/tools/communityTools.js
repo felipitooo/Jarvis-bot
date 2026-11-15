@@ -96,16 +96,62 @@ const communityTools = [
     },
     riskLevel: 'LOW',
     async execute({ atendente_id }, context) {
-      const { guild, reviewService } = context;
+      const { guild, reviewService, reviewRepo, reviewRepository, userRepo } = context;
       if (!guild || !reviewService) throw new ValidationError('Requer contexto de servidor e serviço de avaliações.');
 
       const stats = reviewService.getStats(guild.id, atendente_id);
+      const repo = reviewRepo || reviewRepository || reviewService.reviewRepo;
+      const rawLeaderboard = repo && typeof repo.getStaffReviewLeaderboard === 'function'
+        ? repo.getStaffReviewLeaderboard(guild.id)
+        : [];
+
+      const resolveName = (uid) => {
+        if (!uid) return 'Desconhecido';
+        const cachedMember = guild.members?.cache?.get(uid);
+        const dbUser = !cachedMember && userRepo ? userRepo.getUser(uid) : null;
+        return cachedMember?.displayName || cachedMember?.user?.username || dbUser?.username || `Membro (${uid})`;
+      };
+
+      const rankingStaff = rawLeaderboard.map((item, idx) => {
+        const nome = resolveName(item.staffId);
+        return {
+          posicao: idx + 1,
+          staff_id: item.staffId,
+          nome,
+          mencao: `<@${item.staffId}>`,
+          media_estrelas: item.average,
+          total_avaliacoes: item.total,
+          aprovacao_percentual: item.positivePercent
+        };
+      });
+
+      const rawReviews = repo && typeof repo.getReviews === 'function'
+        ? repo.getReviews(guild.id, { targetStaffId: atendente_id || null, status: 'APPROVED', limit: 15 })
+        : [];
+
+      const avaliacoesRecentes = rawReviews.map(r => ({
+        id: r.id,
+        avaliador_id: r.authorId,
+        avaliador_nome: resolveName(r.authorId),
+        atendente_id: r.targetStaffId,
+        atendente_nome: resolveName(r.targetStaffId),
+        atendente_mencao: r.targetStaffId ? `<@${r.targetStaffId}>` : null,
+        estrelas: r.rating,
+        comentario: r.comment
+      }));
+
+      const resumoStaff = rankingStaff.length > 0
+        ? rankingStaff.map(s => `${s.posicao}º: ${s.nome} (<@${s.staff_id}>) — ⭐ ${s.media_estrelas}/5.0 (${s.total_avaliacoes} avaliações, ${s.aprovacao_percentual}% aprovação)`).join('\n')
+        : 'Nenhum administrador avaliado ainda.';
 
       return {
         status: 'sucesso',
         total_avaliacoes: stats.total,
         media_estrelas: stats.average,
-        distribuicao: stats.breakdown
+        distribuicao: stats.breakdown,
+        ranking_staff: rankingStaff,
+        avaliacoes_recentes: avaliacoesRecentes,
+        mensagem: `Média geral do servidor: ⭐ ${stats.average}/5.0 (${stats.total} avaliações).\nTop Administradores Avaliados:\n${resumoStaff}`
       };
     }
   },

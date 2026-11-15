@@ -137,4 +137,75 @@ describe('AI Tools Catalog & Friday Tool Suite', () => {
       }, context);
     }, ValidationError);
   });
+
+  test('AIOrchestrator injects guild and server services into tool execution context and synthesizes natural response', async () => {
+    const { AIOrchestrator } = require('../src/ai/orchestrator');
+    const { XpRepository } = require('../src/database/repositories/xpRepository');
+    const { xpTools } = require('../src/ai/tools/xpTools');
+
+    for (const tool of xpTools) {
+      if (!registry.has(tool.name)) registry.register(tool);
+    }
+
+    const xpRepo = new XpRepository(db);
+    xpRepo.setMemberXp('guild_test', 'user_admin', 1500, 5);
+    xpRepo.setMemberXp('guild_test', 'user_regular', 800, 3);
+
+    let callCount = 0;
+    const fakeLlm = {
+      mockMode: false,
+      currentKeyIndex: 0,
+      async generate({ tools }) {
+        callCount++;
+        if (callCount === 1 && tools && tools.length > 0) {
+          return {
+            text: '',
+            toolCalls: [{ name: 'consultar_ranking_servidor', args: { limite: 3, tipo: 'SEMANAL' } }]
+          };
+        }
+        return {
+          text: 'Certamente, senhor. O Top 3 do servidor é liderado por AdminUser (Nível 5) e RegularUser (Nível 3).'
+        };
+      }
+    };
+
+    const orchestrator = new AIOrchestrator({
+      llmAdapter: fakeLlm,
+      toolRegistry: registry,
+      memoryRepo: context.memoryRepo,
+      notesRepo: context.notesRepo,
+      identityService: { getDisplayName: () => 'J.A.R.V.I.S' },
+      permissionService: context.permissionService,
+      auditService: null,
+      services: {
+        xpRepository: xpRepo,
+        xpRepo
+      }
+    });
+
+    const mockGuild = {
+      id: 'guild_test',
+      name: 'Test Guild',
+      members: {
+        cache: new Map([
+          ['user_admin', { id: 'user_admin', displayName: 'AdminUser', user: { username: 'AdminUser' } }],
+          ['user_regular', { id: 'user_regular', displayName: 'RegularUser', user: { username: 'RegularUser' } }]
+        ])
+      }
+    };
+
+    const res = await orchestrator.processMessage({
+      guildId: 'guild_test',
+      guildName: 'Test Guild',
+      guild: mockGuild,
+      channelId: 'chan_1',
+      user: { id: 'user_regular', username: 'RegularUser' },
+      member: context.member,
+      rawMessageText: 'me fale o top 3'
+    });
+
+    assert.ok(!res.text.includes('Requer servidor'));
+    assert.ok(res.text.includes('Top 3 do servidor'));
+    assert.equal(callCount, 2);
+  });
 });

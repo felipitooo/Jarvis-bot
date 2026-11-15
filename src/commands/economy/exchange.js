@@ -14,25 +14,24 @@ module.exports = {
     .addSubcommand(sub =>
       sub
         .setName('comprar')
-        .setDescription('Converte moedas comuns em moedas de prestígio.')
+        .setDescription('Adquire moedas de câmbio usando o saldo da carteira.')
         .addStringOption(opt =>
           opt
             .setName('moeda')
             .setDescription('Código ou nome da moeda (ex: ouro, gema)')
             .setRequired(true)
         )
-        .addIntegerOption(opt =>
+        .addStringOption(opt =>
           opt
             .setName('quantidade')
-            .setDescription('Quantidade a comprar (padrão: 1)')
-            .setMinValue(1)
+            .setDescription('Quantidade a comprar (número ou "tudo", padrão: 1)')
             .setRequired(false)
         )
     )
     .addSubcommand(sub =>
       sub
         .setName('vender')
-        .setDescription('Vende moedas de prestígio de volta para moedas comuns.')
+        .setDescription('Converte moedas de câmbio de volta para moedas comuns na carteira.')
         .addStringOption(opt =>
           opt
             .setName('moeda')
@@ -44,6 +43,29 @@ module.exports = {
             .setName('quantidade')
             .setDescription('Quantidade a vender (número ou "tudo")')
             .setRequired(false)
+        )
+    )
+    .addSubcommand(sub =>
+      sub
+        .setName('enviar')
+        .setDescription('Envia moedas de câmbio da sua carteira diretamente para outro membro.')
+        .addUserOption(opt =>
+          opt
+            .setName('membro')
+            .setDescription('Membro que receberá a moeda de câmbio')
+            .setRequired(true)
+        )
+        .addStringOption(opt =>
+          opt
+            .setName('moeda')
+            .setDescription('Código ou nome da moeda (ex: ouro, diamante)')
+            .setRequired(true)
+        )
+        .addStringOption(opt =>
+          opt
+            .setName('quantidade')
+            .setDescription('Quantidade a enviar (número ou "tudo")')
+            .setRequired(true)
         )
     ),
 
@@ -96,8 +118,9 @@ module.exports = {
       });
 
       embed.setDescription(
-        `Converta seu volume de moedas em ativos de prestígio para evitar quebras de colunas e proteger seu patrimônio!\n\n` +
-        `👛 **Sua Carteira:** ${balance.formattedCompactWallet} *(${balance.walletBalance.toLocaleString('pt-BR')})*\n\n` +
+        `As moedas de câmbio mantêm o mesmo valor total na sua carteira e no ranking, podendo ser enviadas, apostadas no cassino ou usadas automaticamente nas suas compras!\n\n` +
+        `👛 **Valor Total na Carteira:** ${balance.formattedCompactEffectiveWallet || balance.formattedCompactWallet} *(${(balance.effectiveWalletBalance ?? balance.walletBalance).toLocaleString('pt-BR')})*\n` +
+        `🪙 **Moedas Comuns:** ${balance.formattedCompactWallet}\n\n` +
         lines.join('\n\n')
       );
 
@@ -106,7 +129,7 @@ module.exports = {
 
     if (sub === 'comprar') {
       const moedaInput = interaction.options.getString('moeda');
-      const qty = interaction.options.getInteger('quantidade') || 1;
+      const qty = interaction.options.getString('quantidade') || '1';
 
       try {
         const result = economyService.buyExchangeCurrency(guild.id, user.id, moedaInput, qty);
@@ -114,9 +137,9 @@ module.exports = {
           .setColor(0x57F287)
           .setTitle('✅ Operação de Câmbio Concluída!')
           .setDescription(
-            `Você converteu **${economyService.formatCompactCurrency(result.totalCost, config)}** e adquiriu **${formatCompactNumber(result.quantity)}x ${result.currency.symbol} ${result.currency.name}**!\n\n` +
+            `Você utilizou **${economyService.formatCompactCurrency(result.totalCost, config)}** e adquiriu **${formatCompactNumber(result.quantity)}x ${result.currency.symbol} ${result.currency.name}**!\n\n` +
             `• **Novo saldo de ${result.currency.name}:** **${formatCompactNumber(result.newCurrencyBalance)}**\n` +
-            `• **Restante na Carteira:** ${economyService.formatCompactCurrency(result.remainingWallet, config)}`
+            `• **Moedas comuns restantes:** ${economyService.formatCompactCurrency(result.remainingWallet, config)}`
           )
           .setFooter({ text: `${aiName} • Câmbio Executado` })
           .setTimestamp();
@@ -125,6 +148,32 @@ module.exports = {
       } catch (err) {
         return interaction.reply({
           content: `❌ **Falha na operação de câmbio:** ${err.message}`,
+          ephemeral: true
+        });
+      }
+    }
+
+    if (sub === 'enviar') {
+      const targetUser = interaction.options.getUser('membro');
+      const moedaInput = interaction.options.getString('moeda');
+      const qtyInput = interaction.options.getString('quantidade') || '1';
+
+      try {
+        const res = economyService.transferExchangeCurrency(guild.id, user.id, targetUser.id, moedaInput, qtyInput);
+        const embed = new EmbedBuilder()
+          .setColor(0x57F287)
+          .setTitle('💸 Envio de Moeda de Câmbio Concluído!')
+          .setDescription(
+            `Você enviou **${res.formattedAmount}** *(equivalente a ${res.formattedEquivalentCoins})* para a carteira de <@${targetUser.id}>!\n\n` +
+            `• **Seu saldo restante de ${res.currency.name}:** **${formatCompactNumber(res.senderCurrencyBalance)}**`
+          )
+          .setFooter({ text: `${aiName} • Sistema de Câmbio` })
+          .setTimestamp();
+
+        return interaction.reply({ embeds: [embed] });
+      } catch (err) {
+        return interaction.reply({
+          content: `❌ **Falha ao enviar moeda de câmbio:** ${err.message}`,
           ephemeral: true
         });
       }

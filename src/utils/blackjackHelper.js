@@ -19,6 +19,13 @@ function buildBlackjackResponse({ game, aiName = 'Jarvis', user = null }) {
   const playerTotal = calculateHandValue(game.playerHand);
   const dealerTotal = calculateHandValue(game.dealerHand);
 
+  const formatBetLabel = (amt) => {
+    if (game.currency) {
+      return `${game.currency.symbol} ${amt.toLocaleString('pt-BR')} ${game.currency.name}`;
+    }
+    return `${Math.floor(amt).toLocaleString('pt-BR')} moedas`;
+  };
+
   const embed = new EmbedBuilder().setTimestamp();
 
   if (!isFinished) {
@@ -39,7 +46,7 @@ function buildBlackjackResponse({ game, aiName = 'Jarvis', user = null }) {
         },
         {
           name: '💰 Aposta na Mesa',
-          value: `\`${game.bet.toLocaleString('pt-BR')} moedas\``,
+          value: `\`${formatBetLabel(game.bet)}\``,
           inline: true
         }
       )
@@ -80,43 +87,43 @@ function buildBlackjackResponse({ game, aiName = 'Jarvis', user = null }) {
     case 'BLACKJACK':
       color = 0xFEE75C;
       title = '🏆 BLACKJACK NATURAL! (21)';
-      description = `🎉 **INCRÍVEL!** Você tirou 21 logo de cara! Pagamento especial 3:2 (+${Math.floor(game.bet * 1.5).toLocaleString('pt-BR')} de lucro)!`;
+      description = `🎉 **INCRÍVEL!** Você tirou 21 logo de cara! Pagamento especial 3:2 (+${formatBetLabel(game.bet * 1.5)} de lucro)!`;
       break;
 
     case 'PLAYER_WIN':
       color = 0x57F287;
       title = '🎉 VITÓRIA NO BLACKJACK!';
-      description = `Você venceu a banca (**${playerTotal}** contra **${dealerTotal}** do Dealer) e faturou **+${game.bet.toLocaleString('pt-BR')} moedas**!`;
+      description = `Você venceu a banca (**${playerTotal}** contra **${dealerTotal}** do Dealer) e faturou **+${formatBetLabel(game.bet)}**!`;
       break;
 
     case 'DEALER_BUST':
       color = 0x57F287;
       title = '💥 O DEALER ESTOUROU! VITÓRIA!';
-      description = `O Dealer somou **${dealerTotal}** e estourou! Você faturou **+${game.bet.toLocaleString('pt-BR')} moedas**!`;
+      description = `O Dealer somou **${dealerTotal}** e estourou! Você faturou **+${formatBetLabel(game.bet)}**!`;
       break;
 
     case 'PLAYER_BUST':
       color = 0xED4245;
       title = '💥 VOCÊ ESTOUROU! (> 21)';
-      description = `Sua mão totalizou **${playerTotal}**. Você estourou e perdeu a aposta de **${game.bet.toLocaleString('pt-BR')} moedas**.`;
+      description = `Sua mão totalizou **${playerTotal}**. Você estourou e perdeu a aposta de **${formatBetLabel(game.bet)}**.`;
       break;
 
     case 'DEALER_WIN':
       color = 0xED4245;
       title = '💀 A BANCA VENCEU!';
-      description = `O Dealer teve pontuação superior (**${dealerTotal}** contra seus **${playerTotal}**). Você perdeu **${game.bet.toLocaleString('pt-BR')} moedas**.`;
+      description = `O Dealer teve pontuação superior (**${dealerTotal}** contra seus **${playerTotal}**). Você perdeu **${formatBetLabel(game.bet)}**.`;
       break;
 
     case 'PUSH':
       color = 0x95A5A6;
       title = '⚖️ EMPATE! (PUSH)';
-      description = `Ambos somaram **${playerTotal}**. Sua aposta de **${game.bet.toLocaleString('pt-BR')} moedas** foi integralmente devolvida à carteira.`;
+      description = `Ambos somaram **${playerTotal}**. Sua aposta de **${formatBetLabel(game.bet)}** foi integralmente devolvida à carteira.`;
       break;
 
     case 'SURRENDER':
       color = 0x95A5A6;
       title = '🏳️ RENDIÇÃO NO BLACKJACK';
-      description = `Você se rendeu e recuperou 50% da aposta (**${Math.floor(game.bet / 2).toLocaleString('pt-BR')} moedas** devolvidas).`;
+      description = `Você se rendeu e recuperou 50% da aposta (**${formatBetLabel(game.bet / 2)}** devolvido).`;
       break;
   }
 
@@ -137,7 +144,7 @@ function buildBlackjackResponse({ game, aiName = 'Jarvis', user = null }) {
       },
       {
         name: '💰 Aposta',
-        value: `\`${game.bet.toLocaleString('pt-BR')} moedas\``,
+        value: `\`${formatBetLabel(game.bet)}\``,
         inline: true
       }
     )

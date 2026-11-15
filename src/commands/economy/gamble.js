@@ -26,6 +26,11 @@ module.exports = {
       opt.setName('palpite')
         .setDescription('Seu palpite: "cara" / "coroa" para coinflip ou "1" a "6" para dado')
         .setRequired(false)
+    )
+    .addStringOption(opt =>
+      opt.setName('moeda')
+        .setDescription('Código ou nome da moeda de câmbio para apostar (opcional, ex: ouro)')
+        .setRequired(false)
     ),
 
   /**
@@ -38,6 +43,7 @@ module.exports = {
     const tipo = interaction.options.getString('tipo');
     const quantia = interaction.options.getInteger('quantia');
     const palpite = interaction.options.getString('palpite');
+    const moeda = interaction.options.getString('moeda') || null;
     const aiName = identityService.getDisplayName(guild.id);
 
     try {
@@ -52,7 +58,7 @@ module.exports = {
             ephemeral: true
           });
         }
-        result = economyService.coinflip(guild.id, interaction.user.id, palpite, quantia);
+        result = economyService.coinflip(guild.id, interaction.user.id, palpite, quantia, moeda);
         title = '🪙 Cara ou Coroa';
         color = result.success ? 0x57F287 : 0xED4245;
       } else if (tipo === 'dice') {
@@ -62,15 +68,15 @@ module.exports = {
             ephemeral: true
           });
         }
-        result = economyService.dice(guild.id, interaction.user.id, palpite, quantia);
+        result = economyService.dice(guild.id, interaction.user.id, palpite, quantia, moeda);
         title = '🎲 Jogo do Dado';
         color = result.success ? 0x57F287 : 0xED4245;
       } else if (tipo === 'slots') {
-        result = economyService.slots(guild.id, interaction.user.id, quantia);
+        result = economyService.slots(guild.id, interaction.user.id, quantia, moeda);
         title = '🎰 Caça-Níqueis';
         color = result.success ? 0xFEE75C : 0xED4245;
       } else {
-        result = economyService.gamble(guild.id, interaction.user.id, quantia);
+        result = economyService.gamble(guild.id, interaction.user.id, quantia, moeda);
         title = '🎯 Aposta Geral';
         color = result.success ? 0x57F287 : 0xED4245;
       }

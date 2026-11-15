@@ -445,7 +445,35 @@ function createAppContext(customDbPath = null) {
     notesRepo,
     identityService,
     permissionService,
-    auditService
+    auditService,
+    services: {
+      xpRepository: xpRepo,
+      xpRepo,
+      experienceService,
+      economyRepository: economyRepo,
+      economyRepo,
+      economyService,
+      loanService,
+      serverAdminService,
+      moderationRepository: moderationRepo,
+      moderationRepo,
+      moderationService,
+      protectionService,
+      musicService,
+      socialFunService,
+      quizService,
+      ticketService,
+      reviewRepository: reviewRepo,
+      reviewRepo,
+      reviewService,
+      communityRepository: communityRepo,
+      communityRepo,
+      communityService,
+      automationService,
+      lockdownService,
+      backupSecurityService,
+      userRepo
+    }
   });
 
   // 10. Register Commands

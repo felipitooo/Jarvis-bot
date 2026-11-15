@@ -524,24 +524,35 @@ class PrefixCommandHandler {
 
           const sub = (args[0] || '').toLowerCase();
 
-          // +emprestimo pedir <valor> ou +emprestimo <valor> (se for numero)
-          if (sub === 'pedir' || sub === 'solicitar' || /^\d+$/.test(sub)) {
-            const amountInput = sub === 'pedir' || sub === 'solicitar' ? args[1] : sub;
+          // +emprestimo pedir <valor|tudo> [moeda] ou +emprestimo <valor> [moeda]
+          if (sub === 'pedir' || sub === 'solicitar' || /^\d+$/.test(sub) || ['tudo', 'all', 'max'].includes(sub)) {
+            const isExplicitSub = sub === 'pedir' || sub === 'solicitar';
+            const amountInput = isExplicitSub ? (args[1] || 'tudo') : sub;
+            const currencyArg = isExplicitSub ? (args[2] || null) : (args[1] || null);
             try {
-              const res = context.loanService.requestBankLoan(guild.id, author.id, amountInput);
+              const res = context.loanService.requestBankLoan(guild.id, author.id, amountInput, currencyArg);
               const dueTimestamp = Math.floor(new Date(res.dueDate).getTime() / 1000);
-              const embed = new EmbedBuilder()
-                .setColor(0x00E5FF)
-                .setTitle('🏦 Empréstimo Bancário J.A.R.V.I.S Concedido!')
-                .setDescription(
-                  `O valor de **${formatCompactNumber(res.principalAmount)} moedas** foi creditado na sua carteira!\n\n` +
+              const desc = res.currency
+                ? `Você recebeu **${formatCompactNumber(res.currencyUnits)}x ${res.currency.symbol} ${res.currency.name}** diretamente na sua carteira *(equivalente a ${formatCompactNumber(res.principalAmount)} moedas)*!\n\n` +
+                  `💱 **Moeda Emprestada:** **${formatCompactNumber(res.currencyUnits)}x ${res.currency.symbol} ${res.currency.name}** *(Cotação: ${formatCompactNumber(res.currency.rate)} cada)*\n` +
+                  `📊 **Limite do seu Nível em ${res.currency.name}:** **${formatCompactNumber(res.maxCurrencyUnits)}x ${res.currency.symbol} ${res.currency.name}**\n` +
+                  `📈 **Taxa de Juros:** ${res.interestPercent ?? Math.round((res.interestRate || 0.1) * 100)}%\n` +
+                  `⚖️ **Total a Devolver:** **${formatCompactNumber(res.totalDue)} moedas** *(~${res.totalDueInCurrency}x ${res.currency.symbol} ${res.currency.name})*\n` +
+                  `⏳ **Vencimento:** <t:${dueTimestamp}:D> (<t:${dueTimestamp}:R>)\n` +
+                  `💼 **Novo Saldo de ${res.currency.name}:** **${formatCompactNumber(res.newCurrencyBalance)}x ${res.currency.symbol} ${res.currency.name}**\n\n` +
+                  `💡 *Nota: ${res.retentionPercent ?? Math.round((res.retentionRate ?? 0.4) * 100)}% de qualquer ganho de +work e +daily será retido automaticamente para abater a dívida.*`
+                : `O valor de **${formatCompactNumber(res.principalAmount)} moedas** foi creditado na sua carteira!\n\n` +
                   `💰 **Valor Emprestado:** ${formatCompactNumber(res.principalAmount)} moedas\n` +
-                  `📈 **Taxa de Juros:** 10%\n` +
+                  `📈 **Taxa de Juros:** ${res.interestPercent ?? Math.round((res.interestRate || 0.1) * 100)}%\n` +
                   `⚖️ **Total a Devolver:** ${formatCompactNumber(res.totalDue)} moedas\n` +
                   `⏳ **Vencimento:** <t:${dueTimestamp}:D> (<t:${dueTimestamp}:R>)\n` +
                   `💼 **Saldo Atual na Carteira:** ${formatCompactNumber(res.walletBalance)} moedas\n\n` +
-                  `💡 *Nota: 40% de qualquer ganho de +work e +daily será retido automaticamente para abater a dívida.*`
-                )
+                  `💡 *Nota: ${res.retentionPercent ?? Math.round((res.retentionRate ?? 0.4) * 100)}% de qualquer ganho de +work e +daily será retido automaticamente para abater a dívida.*`;
+
+              const embed = new EmbedBuilder()
+                .setColor(0x00E5FF)
+                .setTitle('🏦 Empréstimo Bancário J.A.R.V.I.S Concedido!')
+                .setDescription(desc)
                 .setFooter({ text: `${aiName} • Banco & Finanças` });
               await message.reply({ embeds: [embed] });
             } catch (err) {
@@ -550,18 +561,19 @@ class PrefixCommandHandler {
             return true;
           }
 
-          // +emprestimo pagar [valor | tudo]
+          // +emprestimo pagar [valor | tudo] [moeda]
           if (sub === 'pagar' || sub === 'quitar') {
             const payArg = args[1] || 'tudo';
+            const currencyArg = args[2] || null;
             try {
-              const res = context.loanService.repayLoan(guild.id, author.id, payArg);
+              const res = context.loanService.repayLoan(guild.id, author.id, payArg, currencyArg);
               const title = res.fullyPaid
                 ? '🎉 Empréstimo Totalmente Quitado!'
                 : '💵 Amortização de Empréstimo Registrada!';
 
               const desc = res.fullyPaid
-                ? `Parabéns, <@${author.id}>! Você pagou **${formatCompactNumber(res.paymentAmount)} moedas** e liquidou 100% da sua dívida!\nSeu nome está completamente limpo e seu limite de crédito foi restaurado.`
-                : `Você pagou **${formatCompactNumber(res.paymentAmount)} moedas**.\n` +
+                ? `Parabéns, <@${author.id}>! Você pagou **${formatCompactNumber(res.paymentAmount)} moedas** e liquidou 100% da sua dívida!${res.convertedNotice || ''}\nSeu nome está completamente limpo e seu limite de crédito foi restaurado.`
+                : `Você pagou **${formatCompactNumber(res.paymentAmount)} moedas**.${res.convertedNotice || ''}\n` +
                   `Restam **${formatCompactNumber(res.remainingAmount)} moedas** para quitar o empréstimo.\n` +
                   `Saldo restante na carteira: **${formatCompactNumber(res.walletBalance)} moedas**.`;
 
@@ -577,24 +589,37 @@ class PrefixCommandHandler {
             return true;
           }
 
-          // +emprestimo p2p @membro <valor> [juros%] [dias]
+          // +emprestimo p2p @membro <valor> [juros%] [dias] [moeda]
           if (sub === 'p2p' || sub === 'propor') {
             const borrower = await resolveUser(message, args[1]);
             if (!borrower) {
-              await message.reply('❌ Marque o membro que receberá a proposta de empréstimo. Exemplo: `+emprestimo p2p @usuario 1000 10 7`');
+              await message.reply('❌ Marque o membro que receberá a proposta de empréstimo. Exemplo: `+emprestimo p2p @usuario 1000 10 7` ou `+emprestimo p2p @usuario 5 ouro`');
               return true;
             }
             const amount = args[2];
-            const interest = args[3] || 10;
-            const days = args[4] || 7;
+            let interest = 10;
+            let days = 7;
+            let currencyCode = null;
+            if (args[3] && isNaN(Number(args[3]))) {
+              currencyCode = args[3];
+            } else {
+              interest = args[3] || 10;
+              if (args[4] && isNaN(Number(args[4]))) {
+                currencyCode = args[4];
+              } else {
+                days = args[4] || 7;
+                currencyCode = args[5] || null;
+              }
+            }
 
             try {
-              const prop = context.loanService.proposeP2PLoan(guild.id, author.id, borrower.id, amount, interest, days);
+              const prop = context.loanService.proposeP2PLoan(guild.id, author.id, borrower.id, amount, interest, days, currencyCode);
               const dueTimestamp = Math.floor(new Date(prop.dueDate).getTime() / 1000);
+              const acceptId = prop.currency ? `loan_accept_${prop.loan.id}_${prop.currency.code}` : `loan_accept_${prop.loan.id}`;
 
               const row = new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
-                  .setCustomId(`loan_accept_${prop.loan.id}`)
+                  .setCustomId(acceptId)
                   .setLabel('✅ Aceitar Empréstimo')
                   .setStyle(ButtonStyle.Success),
                 new ButtonBuilder()
@@ -603,12 +628,16 @@ class PrefixCommandHandler {
                   .setStyle(ButtonStyle.Danger)
               );
 
+              const amountText = prop.currency
+                ? `**${formatCompactNumber(prop.currencyUnits)}x ${prop.currency.symbol} ${prop.currency.name}** *(equivalente a ${formatCompactNumber(prop.principalAmount)} moedas)*`
+                : `${formatCompactNumber(prop.principalAmount)} moedas`;
+
               const embed = new EmbedBuilder()
                 .setColor(0xFEE75C)
                 .setTitle('🤝 Proposta Formal de Empréstimo P2P')
                 .setDescription(
                   `Olá <@${borrower.id}>! O membro <@${author.id}> enviou uma proposta de empréstimo para você.\n\n` +
-                  `💰 **Quantia Oferecida:** ${formatCompactNumber(prop.principalAmount)} moedas\n` +
+                  `💰 **Quantia Oferecida:** ${amountText}\n` +
                   `📈 **Taxa de Juros:** ${prop.interestPercent}%\n` +
                   `⚖️ **Total a Devolver:** **${formatCompactNumber(prop.totalDue)} moedas**\n` +
                   `⏳ **Prazo de Pagamento:** ${prop.days} dias (<t:${dueTimestamp}:D>)\n\n` +
@@ -628,9 +657,10 @@ class PrefixCommandHandler {
           }
 
           // +emprestimo status ou apenas +emprestimo
-          const target = (await resolveUser(message, args[0])) || author;
+          const target = (await resolveUser(message, args[0] === 'status' ? args[1] : args[0])) || author;
           const status = context.loanService.getLoanStatus(guild.id, target.id);
           const active = status.activeLoan;
+          const loanCfg = status.loanConfig || {};
 
           let loanDetails = '✅ **Ficha Financeira Limpa:** Nenhum empréstimo ativo no momento.';
           if (active) {
@@ -646,8 +676,21 @@ class PrefixCommandHandler {
               `**Já Amortizado:** ${formatCompactNumber(active.amount_paid)} moedas\n` +
               `**Restante a Pagar:** **${formatCompactNumber(active.remaining_amount)} moedas**\n` +
               `**Vencimento:** <t:${dueTimestamp}:D> (<t:${dueTimestamp}:R>)\n` +
-              `**Retenção Automática:** ${Math.round((active.retention_rate || 0.4) * 100)}% de cada renda`;
+              `**Retenção Automática:** ${Math.round((active.retention_rate ?? loanCfg.retentionRate ?? 0.4) * 100)}% de cada renda`;
           }
+
+          const exchangeLimitsText = Array.isArray(status.exchangeLimits) && status.exchangeLimits.length > 0
+            ? `**Limite em Moedas de Câmbio (Nível ${status.level}):** ` +
+              status.exchangeLimits
+                .map(el => `${el.currency.symbol} **${formatCompactNumber(el.maxUnits)}x ${el.currency.name}** *(\`${el.currency.code}\`)*`)
+                .join(' • ') + '\n'
+            : '';
+
+          const tiersText = Array.isArray(status.levelTiers) && status.levelTiers.length > 0
+            ? status.levelTiers
+                .map(t => `• **Nível ${t.minLevel}+** ➔ até **${formatCompactNumber(t.maxLoan)} moedas**${status.level >= t.minLevel ? ' *(Desbloqueado)*' : ''}`)
+                .join('\n')
+            : '';
 
           const embed = new EmbedBuilder()
             .setColor(status.isDefaulted ? 0xED4245 : 0x00E5FF)
@@ -655,12 +698,15 @@ class PrefixCommandHandler {
             .setDescription(
               `**Membro:** <@${target.id}>\n` +
               `**Nível XP Atual:** ${status.level}\n` +
-              `**Limite Máximo para Empréstimo:** **${formatCompactNumber(status.maxLimit)} moedas**\n\n` +
+              `**Limite Máximo para Empréstimo:** **${formatCompactNumber(status.maxLimit)} moedas**\n` +
+              exchangeLimitsText +
+              `**Condições do Banco:** Juros de **${Math.round((loanCfg.bankInterestRate ?? 0.1) * 100)}%** • Prazo de **${loanCfg.bankTermDays || 7} dias** • Desconto em folha de **${Math.round((loanCfg.retentionRate ?? 0.4) * 100)}%**\n\n` +
+              (tiersText ? `### 📊 Tabela de Limites por Nível:\n${tiersText}\n\n` : '') +
               `### 📋 Detalhes do Empréstimo:\n${loanDetails}\n\n` +
               `💡 **Comandos Úteis:**\n` +
-              `• \`+emprestimo pedir <valor>\` — Pede empréstimo ao bot\n` +
-              `• \`+emprestimo pagar [valor|tudo]\` — Amortece ou quita a dívida\n` +
-              `• \`+emprestimo p2p @membro <valor> [juros%] [dias]\` — Empresta para outro membro`
+              `• \`+emprestimo pedir <valor|tudo> [moeda]\` — Pede empréstimo em moedas ou moeda de câmbio\n` +
+              `• \`+emprestimo pagar [valor|tudo] [moeda]\` — Amortece ou quita a dívida\n` +
+              `• \`+emprestimo p2p @membro <valor> [juros%] [dias] [moeda]\` — Empresta para outro membro`
             )
             .setFooter({ text: `${aiName} • Sistema de Crédito & Finanças` });
 
@@ -675,20 +721,33 @@ class PrefixCommandHandler {
           }
           const borrower = await resolveUser(message, args[0]);
           if (!borrower) {
-            await message.reply('❌ Uso correto: `+emprestar @membro <valor> [juros%] [dias]`');
+            await message.reply('❌ Uso correto: `+emprestar @membro <valor> [juros%] [dias] [moeda]`');
             return true;
           }
           const amount = args[1];
-          const interest = args[2] || 10;
-          const days = args[3] || 7;
+          let interest = 10;
+          let days = 7;
+          let currencyCode = null;
+          if (args[2] && isNaN(Number(args[2]))) {
+            currencyCode = args[2];
+          } else {
+            interest = args[2] || 10;
+            if (args[3] && isNaN(Number(args[3]))) {
+              currencyCode = args[3];
+            } else {
+              days = args[3] || 7;
+              currencyCode = args[4] || null;
+            }
+          }
 
           try {
-            const prop = context.loanService.proposeP2PLoan(guild.id, author.id, borrower.id, amount, interest, days);
+            const prop = context.loanService.proposeP2PLoan(guild.id, author.id, borrower.id, amount, interest, days, currencyCode);
             const dueTimestamp = Math.floor(new Date(prop.dueDate).getTime() / 1000);
+            const acceptId = prop.currency ? `loan_accept_${prop.loan.id}_${prop.currency.code}` : `loan_accept_${prop.loan.id}`;
 
             const row = new ActionRowBuilder().addComponents(
               new ButtonBuilder()
-                .setCustomId(`loan_accept_${prop.loan.id}`)
+                .setCustomId(acceptId)
                 .setLabel('✅ Aceitar Empréstimo')
                 .setStyle(ButtonStyle.Success),
               new ButtonBuilder()
@@ -697,12 +756,16 @@ class PrefixCommandHandler {
                 .setStyle(ButtonStyle.Danger)
             );
 
+            const amountText = prop.currency
+              ? `**${formatCompactNumber(prop.currencyUnits)}x ${prop.currency.symbol} ${prop.currency.name}** *(equivalente a ${formatCompactNumber(prop.principalAmount)} moedas)*`
+              : `${formatCompactNumber(prop.principalAmount)} moedas`;
+
             const embed = new EmbedBuilder()
               .setColor(0xFEE75C)
               .setTitle('🤝 Proposta Formal de Empréstimo P2P')
               .setDescription(
                 `Olá <@${borrower.id}>! O membro <@${author.id}> enviou uma proposta de empréstimo para você.\n\n` +
-                `💰 **Quantia Oferecida:** ${formatCompactNumber(prop.principalAmount)} moedas\n` +
+                `💰 **Quantia Oferecida:** ${amountText}\n` +
                 `📈 **Taxa de Juros:** ${prop.interestPercent}%\n` +
                 `⚖️ **Total a Devolver:** **${formatCompactNumber(prop.totalDue)} moedas**\n` +
                 `⏳ **Prazo de Pagamento:** ${prop.days} dias (<t:${dueTimestamp}:D>)\n\n` +
@@ -955,9 +1018,20 @@ class PrefixCommandHandler {
           const balance = economyService.getBalance(guild.id, target.id);
           const isDebt = balance.walletBalance < 0;
 
-          const walletDisplay = Math.abs(balance.walletBalance) >= 1e6
-            ? `${balance.formattedCompactWallet}\n*(${balance.walletBalance.toLocaleString('pt-BR')})*`
-            : balance.formattedWallet;
+          const hasExchangeInWallet = (balance.exchangeAssetsValue || 0) > 0;
+          const effectiveWalletVal = balance.effectiveWalletBalance ?? balance.walletBalance;
+
+          let walletDisplay = Math.abs(effectiveWalletVal) >= 1e6
+            ? `${balance.formattedCompactEffectiveWallet || balance.formattedCompactWallet}\n*(${effectiveWalletVal.toLocaleString('pt-BR')})*`
+            : (balance.formattedEffectiveWallet || balance.formattedWallet);
+
+          if (hasExchangeInWallet) {
+            const currencySummary = balance.userCurrencies
+              .map(c => `${c.symbol} **${formatCompactNumber(c.amount)}** ${c.name}`)
+              .join(', ');
+            walletDisplay += `\n*(Moedas comuns: ${balance.formattedCompactWallet} + Câmbio: ${currencySummary})*`;
+          }
+
           const bankDisplay = Math.abs(balance.bankBalance) >= 1e6
             ? `${balance.formattedCompactBank}\n*(${balance.bankBalance.toLocaleString('pt-BR')})*`
             : balance.formattedBank;
@@ -971,7 +1045,7 @@ class PrefixCommandHandler {
             .setThumbnail(target.displayAvatarURL())
             .addFields(
               {
-                name: '👛 Carteira',
+                name: '👛 Carteira (Valor Total)',
                 value: isDebt ? `${walletDisplay}\n*(⚠️ Endividado)*` : walletDisplay,
                 inline: true
               },
@@ -982,10 +1056,10 @@ class PrefixCommandHandler {
 
           if (balance.userCurrencies && balance.userCurrencies.length > 0) {
             const exchangeLines = balance.userCurrencies.map(c =>
-              `${c.symbol} **${formatCompactNumber(c.amount)}** ${c.name} • *Cotação: ${formatCompactNumber(c.rate)} (Total: ${formatCompactNumber(c.totalValue)})*`
+              `${c.symbol} **${formatCompactNumber(c.amount)}** ${c.name} (\`${c.code}\`) • *Vale ${formatCompactNumber(c.rate)} cada (Total na carteira: ${formatCompactNumber(c.totalValue)})*`
             ).join('\n');
             embed.addFields({
-              name: '💱 Moedas de Câmbio & Prestígio',
+              name: '💱 Moedas de Câmbio na Carteira',
               value: exchangeLines,
               inline: false
             });
@@ -1155,19 +1229,20 @@ class PrefixCommandHandler {
         case 'apostar':
         case 'aposta': {
           if (!args[0]) {
-            await message.reply('❌ Informe a quantia da aposta. Ex: `+apostar 200`');
+            await message.reply('❌ Informe a quantia da aposta (e opcionalmente a moeda de câmbio). Ex: `+apostar 200` ou `+apostar 2 ouro`');
             return true;
           }
           const amount = parseInt(args[0], 10);
+          const currencyCode = args[1] || null;
           if (isNaN(amount) || amount <= 0) {
             await message.reply('❌ Quantia inválida para aposta.');
             return true;
           }
           try {
-            const res = economyService.gamble(guild.id, author.id, amount);
+            const res = economyService.gamble(guild.id, author.id, amount, currencyCode);
             const embed = new EmbedBuilder()
-              .setColor(res.won ? 0x57F287 : 0xED4245)
-              .setTitle(res.won ? '🎰 VITÓRIA NO CASSINO!' : '💀 DERROTA NO CASSINO!')
+              .setColor(res.won || res.success ? 0x57F287 : 0xED4245)
+              .setTitle(res.won || res.success ? '🎰 VITÓRIA NO CASSINO!' : '💀 DERROTA NO CASSINO!')
               .setDescription(res.message)
               .setFooter({ text: `${aiName} • Cassino & Apostas` })
               .setTimestamp();
@@ -1177,17 +1252,85 @@ class PrefixCommandHandler {
           }
           return true;
         }
+
+        case 'coinflip':
+        case 'cf':
+        case 'caraoucoroa': {
+          if (!args[0] || !args[1]) {
+            await message.reply('🪙 **Cara ou Coroa:** Uso: `+coinflip <cara|coroa> <quantia> [moeda]`\nExemplo: `+coinflip cara 500` ou `+coinflip coroa 2 ouro`');
+            return true;
+          }
+          let choice = args[0].toLowerCase();
+          let amount = parseInt(args[1], 10);
+          let currencyCode = args[2] || null;
+          if (!['cara', 'coroa'].includes(choice) && ['cara', 'coroa'].includes((args[1] || '').toLowerCase())) {
+            choice = args[1].toLowerCase();
+            amount = parseInt(args[0], 10);
+          }
+          if (!['cara', 'coroa'].includes(choice) || isNaN(amount) || amount <= 0) {
+            await message.reply('❌ Uso correto: `+coinflip <cara|coroa> <quantia> [moeda]`');
+            return true;
+          }
+          try {
+            const res = economyService.coinflip(guild.id, author.id, choice, amount, currencyCode);
+            const embed = new EmbedBuilder()
+              .setColor(res.success ? 0x57F287 : 0xED4245)
+              .setTitle(res.success ? '🪙 VITÓRIA NO CARA OU COROA!' : '🪙 DERROTA NO CARA OU COROA!')
+              .setDescription(res.message)
+              .setFooter({ text: `${aiName} • Cassino & Apostas` })
+              .setTimestamp();
+            await message.reply({ embeds: [embed] });
+          } catch (err) {
+            await message.reply(`❌ ${err.message}`);
+          }
+          return true;
+        }
+
+        case 'dado':
+        case 'dice': {
+          if (!args[0] || !args[1]) {
+            await message.reply('🎲 **Jogo do Dado (1 a 6):** Uso: `+dado <1-6> <quantia> [moeda]` (Paga 6x!)\nExemplo: `+dado 6 200` ou `+dado 6 1 ouro`');
+            return true;
+          }
+          const guess = parseInt(args[0], 10);
+          const amount = parseInt(args[1], 10);
+          const currencyCode = args[2] || null;
+          if (isNaN(guess) || guess < 1 || guess > 6 || isNaN(amount) || amount <= 0) {
+            await message.reply('❌ Uso correto: `+dado <número de 1 a 6> <quantia> [moeda]`');
+            return true;
+          }
+          try {
+            const res = economyService.dice(guild.id, author.id, guess, amount, currencyCode);
+            const embed = new EmbedBuilder()
+              .setColor(res.success ? 0x57F287 : 0xED4245)
+              .setTitle(res.success ? '🎲 VITÓRIA NO DADO (6x)!' : '🎲 DERROTA NO DADO!')
+              .setDescription(res.message)
+              .setFooter({ text: `${aiName} • Cassino & Apostas` })
+              .setTimestamp();
+            await message.reply({ embeds: [embed] });
+          } catch (err) {
+            await message.reply(`❌ ${err.message}`);
+          }
+          return true;
+        }
+
         case 'blackjack':
         case 'bj':
         case '21': {
           if (!args[0]) {
-            await message.reply('🃏 **Blackjack (21):** Informe a quantia que deseja apostar!\nExemplo: `+bj 500` ou `+blackjack 1000`\n\n*Regras:* O objetivo é chegar o mais próximo de 21 sem estourar. Blackjack natural paga 3:2!');
+            await message.reply('🃏 **Blackjack (21):** Informe a quantia que deseja apostar (e opcionalmente a moeda de câmbio)!\nExemplo: `+bj 500` ou `+bj 2 ouro`\n\n*Regras:* O objetivo é chegar o mais próximo de 21 sem estourar. Blackjack natural paga 3:2!');
             return true;
           }
+          const currencyCode = args[1] || null;
           let amount = 0;
           if (args[0].toLowerCase() === 'all' || args[0].toLowerCase() === 'tudo') {
-            const bal = economyService.getBalance(guild.id, author.id);
-            amount = bal.walletBalance;
+            if (currencyCode) {
+              const curr = economyService.economyRepo.getExchangeCurrencyByCode(guild.id, currencyCode);
+              amount = curr ? economyService.economyRepo.getUserCurrencyBalance(guild.id, author.id, curr.id) : 0;
+            } else {
+              const bal = economyService.getBalance(guild.id, author.id);
+              amount = bal.effectiveWalletBalance ?? bal.walletBalance;
+            }
           } else {
             amount = parseInt(args[0], 10);
           }
@@ -1196,7 +1339,7 @@ class PrefixCommandHandler {
             return true;
           }
           try {
-            const game = blackjackService.startGame(guild.id, author.id, amount);
+            const game = blackjackService.startGame(guild.id, author.id, amount, currencyCode);
             const { buildBlackjackResponse } = require('../utils/blackjackHelper');
             const payload = buildBlackjackResponse({ game, aiName, user: author });
             await message.reply(payload);
@@ -1210,13 +1353,19 @@ class PrefixCommandHandler {
         case 'cacaniqueis':
         case 'slot': {
           if (!args[0]) {
-            await message.reply('🎰 **Caça-Níqueis:** Informe a quantia que deseja apostar!\nExemplo: `+slots 100` ou `+slots 500`\n\n*Tabela de Prêmios:*\n• Três 7s / Diamantes: 5x\n• Trinca igual: 5x\n• Dupla igual: 1.5x');
+            await message.reply('🎰 **Caça-Níqueis:** Informe a quantia que deseja apostar (e opcionalmente a moeda de câmbio)!\nExemplo: `+slots 100` ou `+slots 2 ouro`\n\n*Tabela de Prêmios:*\n• Três 7s / Diamantes: 5x\n• Trinca igual: 5x\n• Dupla igual: 1.5x');
             return true;
           }
+          const currencyCode = args[1] || null;
           let amount = 0;
           if (args[0].toLowerCase() === 'all' || args[0].toLowerCase() === 'tudo') {
-            const bal = economyService.getBalance(guild.id, author.id);
-            amount = bal.walletBalance;
+            if (currencyCode) {
+              const curr = economyService.economyRepo.getExchangeCurrencyByCode(guild.id, currencyCode);
+              amount = curr ? economyService.economyRepo.getUserCurrencyBalance(guild.id, author.id, curr.id) : 0;
+            } else {
+              const bal = economyService.getBalance(guild.id, author.id);
+              amount = bal.effectiveWalletBalance ?? bal.walletBalance;
+            }
           } else {
             amount = parseInt(args[0], 10);
           }
@@ -1225,13 +1374,15 @@ class PrefixCommandHandler {
             return true;
           }
           try {
-            const res = economyService.slots(guild.id, author.id, amount);
+            const res = economyService.slots(guild.id, author.id, amount, currencyCode);
             const embed = new EmbedBuilder()
               .setColor(res.success ? 0x57F287 : 0xED4245)
               .setTitle(res.multiplier >= 5 ? '🎰 JACKPOT NO CASSINO!' : (res.success ? '🎰 VITÓRIA NO CAÇA-NÍQUEIS!' : '🎰 DERROTA NO CAÇA-NÍQUEIS'))
               .setDescription(res.message)
               .addFields(
-                { name: '💰 Saldo em Carteira', value: `${res.walletBalance.toLocaleString('pt-BR')} moedas`, inline: true }
+                res.currency
+                  ? { name: `💱 Saldo de ${res.currency.name}`, value: `${res.currency.symbol} **${formatCompactNumber(res.currencyBalance)}**`, inline: true }
+                  : { name: '💰 Saldo em Carteira', value: `${(res.walletBalance || 0).toLocaleString('pt-BR')} moedas`, inline: true }
               )
               .setFooter({ text: `${aiName} • Cassino & Caça-Níqueis` })
               .setTimestamp();
@@ -1245,12 +1396,13 @@ class PrefixCommandHandler {
         case 'roleta':
         case 'roulette': {
           if (!args[0] || !args[1]) {
-            await message.reply('🎡 **Roleta Europeia (0 a 36):**\nComo jogar: `+roleta <quantia> <aposta>`\n\n*Opções de Aposta:*\n• `+roleta 200 vermelho` (Paga 2x)\n• `+roleta 200 preto` (Paga 2x)\n• `+roleta 200 par` ou `impar` (Paga 2x)\n• `+roleta 50 <0-36>` (Número exato, paga incríveis 36x!)');
+            await message.reply('🎡 **Roleta Europeia (0 a 36):**\nComo jogar: `+roleta <quantia> <aposta> [moeda]`\n\n*Opções de Aposta:*\n• `+roleta 200 vermelho` ou `+roleta 2 vermelho ouro` (Paga 2x)\n• `+roleta 200 preto` (Paga 2x)\n• `+roleta 200 par` ou `impar` (Paga 2x)\n• `+roleta 50 <0-36>` (Número exato, paga incríveis 36x!)');
             return true;
           }
           let amount = parseInt(args[0], 10);
           let choice = args[1];
-          // Handle reversed args: +roleta vermelho 200
+          let currencyCode = args[2] || null;
+          // Handle reversed args: +roleta vermelho 200 [moeda]
           if (isNaN(amount) && !isNaN(parseInt(args[1], 10))) {
             amount = parseInt(args[1], 10);
             choice = args[0];
@@ -1260,14 +1412,16 @@ class PrefixCommandHandler {
             return true;
           }
           try {
-            const res = economyService.roulette(guild.id, author.id, amount, choice);
+            const res = economyService.roulette(guild.id, author.id, amount, choice, currencyCode);
             const embed = new EmbedBuilder()
               .setColor(res.success ? 0x57F287 : 0xED4245)
               .setTitle(res.success ? '🎡 VITÓRIA NA ROLETA!' : '🎡 A BANCA GANHOU!')
               .setDescription(res.message)
               .addFields(
                 { name: '🎯 Resultado da Mesa', value: `${res.landedNumber} ${res.landedColor} (${res.landedColorName})`, inline: true },
-                { name: '💰 Saldo em Carteira', value: `${res.walletBalance.toLocaleString('pt-BR')} moedas`, inline: true }
+                res.currency
+                  ? { name: `💱 Saldo de ${res.currency.name}`, value: `${res.currency.symbol} **${formatCompactNumber(res.currencyBalance)}**`, inline: true }
+                  : { name: '💰 Saldo em Carteira', value: `${(res.walletBalance || 0).toLocaleString('pt-BR')} moedas`, inline: true }
               )
               .setFooter({ text: `${aiName} • Roleta Europeia` })
               .setTimestamp();
@@ -1283,9 +1437,10 @@ class PrefixCommandHandler {
         case 'transfer':
         case 'pix': {
           const target = await resolveUser(message, args[0]);
-          const amount = parseInt(args[1], 10);
-          if (!target || isNaN(amount) || amount <= 0) {
-            await message.reply('❌ Uso correto: `+pay @usuario <quantia>`');
+          const amount = args[1] && ['all', 'tudo', 'max'].includes(args[1].toLowerCase()) ? args[1] : parseInt(args[1], 10);
+          const currencyCode = args[2] || null;
+          if (!target || (!amount || (typeof amount === 'number' && (isNaN(amount) || amount <= 0)))) {
+            await message.reply('❌ Uso correto: `+pay @usuario <quantia> [moeda_de_cambio]`\nExemplo: `+pay @usuario 500` ou `+pay @usuario 2 ouro`');
             return true;
           }
           if (target.bot) {
@@ -1303,7 +1458,7 @@ class PrefixCommandHandler {
             } catch {}
           }
           try {
-            const res = economyService.transfer(guild.id, author.id, target.id, amount);
+            const res = economyService.transfer(guild.id, author.id, target.id, amount, currencyCode);
             await message.reply(res.success ? `💸 ${res.message}` : `❌ ${res.message}`);
           } catch (err) {
             await message.reply(`❌ ${err.message}`);
@@ -1384,26 +1539,57 @@ class PrefixCommandHandler {
 
           if (sub === 'comprar' || sub === 'buy') {
             const code = args[1];
-            const qty = parseInt(args[2], 10) || 1;
+            const qtyInput = args[2] || '1';
             if (!code) {
-              await message.reply('❓ Uso correto: `+cambio comprar <codigo_moeda> [quantidade]`\nExemplo: `+cambio comprar ouro 2`');
+              await message.reply('❓ Uso correto: `+cambio comprar <codigo_moeda> [quantidade|tudo]`\nExemplo: `+cambio comprar ouro 2` ou `+cambio comprar ouro tudo`');
               return true;
             }
             try {
-              const res = economyService.buyExchangeCurrency(guild.id, author.id, code, qty);
+              const res = economyService.buyExchangeCurrency(guild.id, author.id, code, qtyInput);
               const embed = new EmbedBuilder()
                 .setColor(0x57F287)
                 .setTitle('✅ Operação de Câmbio Concluída!')
                 .setDescription(
-                  `Você converteu **${economyService.formatCompactCurrency(res.totalCost, config)}** e adquiriu **${formatCompactNumber(res.quantity)}x ${res.currency.symbol} ${res.currency.name}**!\n\n` +
+                  `Você utilizou **${economyService.formatCompactCurrency(res.totalCost, config)}** e adquiriu **${formatCompactNumber(res.quantity)}x ${res.currency.symbol} ${res.currency.name}**!\n\n` +
                   `• **Novo saldo de ${res.currency.name}:** **${formatCompactNumber(res.newCurrencyBalance)}**\n` +
-                  `• **Restante na Carteira:** ${economyService.formatCompactCurrency(res.remainingWallet, config)}`
+                  `• **Moedas comuns restantes:** ${economyService.formatCompactCurrency(res.remainingWallet, config)}`
                 )
                 .setFooter({ text: `${aiName} • Câmbio Executado` })
                 .setTimestamp();
               await message.reply({ embeds: [embed] });
             } catch (err) {
               await message.reply(`❌ **Erro no câmbio:** ${err.message}`);
+            }
+            return true;
+          }
+
+          if (sub === 'enviar' || sub === 'transferir' || sub === 'send') {
+            let target = await resolveUser(message, args[1]);
+            let code = args[2];
+            let qtyInput = args[3] || '1';
+            if (!target && args[3]) {
+              target = await resolveUser(message, args[3]);
+              code = args[1];
+              qtyInput = args[2] || '1';
+            }
+            if (!target || !code) {
+              await message.reply('❓ Uso correto: `+cambio enviar @membro <codigo_moeda> [quantidade|tudo]`\nExemplo: `+cambio enviar @usuario ouro 2`');
+              return true;
+            }
+            try {
+              const res = economyService.transferExchangeCurrency(guild.id, author.id, target.id, code, qtyInput);
+              const embed = new EmbedBuilder()
+                .setColor(0x57F287)
+                .setTitle('💸 Envio de Moeda de Câmbio Concluído!')
+                .setDescription(
+                  `Você enviou **${res.formattedAmount}** *(equivalente a ${res.formattedEquivalentCoins})* para a carteira de <@${target.id}>!\n\n` +
+                  `• **Seu saldo restante de ${res.currency.name}:** **${formatCompactNumber(res.senderCurrencyBalance)}**`
+                )
+                .setFooter({ text: `${aiName} • Sistema de Câmbio` })
+                .setTimestamp();
+              await message.reply({ embeds: [embed] });
+            } catch (err) {
+              await message.reply(`❌ **Erro ao enviar moeda de câmbio:** ${err.message}`);
             }
             return true;
           }
@@ -1471,10 +1657,11 @@ class PrefixCommandHandler {
           });
 
           embed.setDescription(
-            `Converta seu volume de moedas em ativos de prestígio para evitar quebras de colunas e proteger seu patrimônio!\n\n` +
-            `👛 **Sua Carteira:** ${balance.formattedCompactWallet} *(${balance.walletBalance.toLocaleString('pt-BR')})*\n\n` +
+            `As moedas de câmbio mantêm o mesmo valor total na sua carteira e no ranking, podendo ser enviadas, apostadas no cassino ou usadas automaticamente nas suas compras!\n\n` +
+            `👛 **Valor Total na Carteira:** ${balance.formattedCompactEffectiveWallet || balance.formattedCompactWallet} *(${(balance.effectiveWalletBalance ?? balance.walletBalance).toLocaleString('pt-BR')})*\n` +
+            `🪙 **Moedas Comuns:** ${balance.formattedCompactWallet}\n\n` +
             lines.join('\n\n') +
-            `\n\n💡 **Como operar:**\n• \`+cambio comprar <código> [qtd]\`\n• \`+cambio vender <código> [qtd|tudo]\``
+            `\n\n💡 **Como operar:**\n• \`+cambio comprar <código> [qtd|tudo]\`\n• \`+cambio vender <código> [qtd|tudo]\`\n• \`+cambio enviar @membro <código> [qtd|tudo]\``
           );
 
           await message.reply({ embeds: [embed] });
