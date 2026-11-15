@@ -1262,6 +1262,8 @@ function renderDashboardHtml({
     /* Danger / Delete Buttons */
     .btn-danger,
     button.btn-danger,
+    .danger-btn,
+    button.danger-btn,
     .btn-delete-memory,
     .btn-del-user-memory,
     .btn-cc-del,
@@ -1273,15 +1275,20 @@ function renderDashboardHtml({
       border-radius: var(--radius);
       font-size: 0.82rem;
       font-weight: 600;
+      height: 32px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 5px;
       cursor: pointer;
+      transition: all 0.15s ease;
+      user-select: none;
     }
 
     .btn-danger:hover,
     button.btn-danger:hover,
+    .danger-btn:hover,
+    button.danger-btn:hover,
     .btn-delete-memory:hover,
     .btn-del-user-memory:hover,
     .btn-cc-del:hover,
@@ -1291,6 +1298,13 @@ function renderDashboardHtml({
       color: #FFFFFF !important;
       box-shadow: 0 0 12px rgba(239, 68, 68, 0.35);
       transform: translateY(-1px);
+    }
+
+    .btn-danger:active,
+    button.btn-danger:active,
+    .danger-btn:active,
+    button.danger-btn:active {
+      transform: scale(0.98);
     }
 
     /* Edit / Action Buttons */
@@ -7922,13 +7936,13 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         }).join('');
 
         const actionsHtml = q.isCustom
-          ? ('<div style="display: flex; gap: 0.4rem; align-items: center; flex-shrink: 0;">' +
-              '<button class="secondary-btn edit-quiz-q-btn" data-id="' + q.id + '" style="padding: 0.35rem 0.7rem; font-size: 0.78rem; cursor: pointer;">✏️ Editar</button>' +
-              '<button class="danger-btn delete-quiz-q-btn" data-id="' + q.id + '" style="padding: 0.35rem 0.7rem; font-size: 0.78rem; cursor: pointer;">🗑️ Excluir</button>' +
+          ? ('<div style="display: flex; gap: 0.5rem; align-items: center; flex-shrink: 0;">' +
+              '<button class="secondary-btn edit-quiz-q-btn" data-id="' + q.id + '" style="height: 28px; padding: 0 0.7rem; font-size: 0.76rem; border-radius: 6px;">✏️ Editar</button>' +
+              '<button class="danger-btn delete-quiz-q-btn" data-id="' + q.id + '" style="height: 28px; padding: 0 0.7rem; font-size: 0.76rem; border-radius: 6px;">🗑️ Excluir</button>' +
              '</div>')
-          : ('<div style="display: flex; gap: 0.4rem; align-items: center; flex-shrink: 0;">' +
-              '<button class="secondary-btn edit-quiz-q-btn" data-id="' + q.id + '" style="padding: 0.35rem 0.7rem; font-size: 0.78rem; cursor: pointer;" title="Editar e personalizar esta pergunta oficial">✏️ Editar</button>' +
-              '<span style="font-size: 0.74rem; color: var(--text-muted); background: rgba(255,255,255,0.03); padding: 0.2rem 0.5rem; border-radius: 4px; flex-shrink: 0;">🔒 Padrão Jarvis</span>' +
+          : ('<div style="display: flex; gap: 0.5rem; align-items: center; flex-shrink: 0;">' +
+              '<button class="secondary-btn edit-quiz-q-btn" data-id="' + q.id + '" style="height: 28px; padding: 0 0.7rem; font-size: 0.76rem; border-radius: 6px;" title="Editar e personalizar esta pergunta oficial">✏️ Editar</button>' +
+              '<span style="font-size: 0.72rem; color: var(--text-muted); background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 0.25rem 0.55rem; border-radius: 6px; flex-shrink: 0;">🔒 Padrão Jarvis</span>' +
              '</div>');
 
         return (
