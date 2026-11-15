@@ -76,9 +76,23 @@ class MessageCache {
       this.cache.delete(firstKey);
     }
 
-    const attachments = message.attachments
-      ? Array.from(message.attachments.values()).map(a => a.name || a.url)
+    const rawAttachments = message.attachments
+      ? (typeof message.attachments.values === 'function' ? Array.from(message.attachments.values()) : (Array.isArray(message.attachments) ? message.attachments : []))
       : [];
+
+    const attachments = rawAttachments.map(a => {
+      if (typeof a === 'string') return { name: a, url: a.startsWith('http') ? a : null };
+      return {
+        id: a?.id || null,
+        name: a?.name || 'anexo',
+        url: a?.url || a?.proxyURL || null,
+        proxyURL: a?.proxyURL || a?.url || null,
+        contentType: a?.contentType || null,
+        size: a?.size || 0,
+        width: a?.width || null,
+        height: a?.height || null
+      };
+    });
 
     const embeds = Array.isArray(message.embeds)
       ? message.embeds.map(e => {

@@ -52,9 +52,23 @@ module.exports = {
         : cached?.guildIconUrl || null;
 
       const content = message.content || cached?.content || '';
-      const attachments = message.attachments && message.attachments.size > 0
-        ? Array.from(message.attachments.values()).map(a => a.name || a.url)
+      const rawAttachments = message.attachments && (typeof message.attachments.values === 'function' ? message.attachments.size > 0 : message.attachments.length > 0)
+        ? (typeof message.attachments.values === 'function' ? Array.from(message.attachments.values()) : message.attachments)
         : (cached?.attachments || []);
+
+      const attachments = rawAttachments.map(a => {
+        if (typeof a === 'string') return { name: a, url: a.startsWith('http') ? a : null };
+        return {
+          id: a?.id || null,
+          name: a?.name || 'anexo',
+          url: a?.url || a?.proxyURL || null,
+          proxyURL: a?.proxyURL || a?.url || null,
+          contentType: a?.contentType || null,
+          size: a?.size || 0,
+          width: a?.width || null,
+          height: a?.height || null
+        };
+      });
 
       const embeds = (message.embeds && message.embeds.length > 0)
         ? message.embeds.map(e => (typeof e.toJSON === 'function' ? e.toJSON() : e))

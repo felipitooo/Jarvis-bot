@@ -264,14 +264,48 @@ async function generateMessageProof(options = {}) {
       } catch {}
     }
 
+    // Parse and normalize attachments
+    const parsedAttachments = (Array.isArray(attachments) ? attachments : []).map(a => {
+      if (typeof a === 'string') {
+        const isUrl = a.startsWith('http://') || a.startsWith('https://');
+        const name = isUrl ? a.split('?')[0].split('/').pop() || 'anexo' : a;
+        const isImage = /\.(png|jpe?g|webp|gif)($|\?)/i.test(a);
+        return { name, url: isUrl ? a : null, isImage };
+      }
+      const url = a?.proxyURL || a?.url || null;
+      const name = a?.name || 'anexo';
+      const isImage = (a?.contentType && a.contentType.startsWith('image/')) ||
+                      /\.(png|jpe?g|webp|gif)($|\?)/i.test(name) ||
+                      (url && /\.(png|jpe?g|webp|gif)($|\?)/i.test(url));
+      return {
+        ...a,
+        name,
+        url,
+        isImage: !!isImage
+      };
+    });
+
+    const primaryImageAttachment = parsedAttachments.find(a => a.isImage && a.url);
+
+    // Concurrently load images with browser User-Agent
+    const hasThumbnail = !!(primaryEmbed?.thumbnail && (primaryEmbed.thumbnail.url || primaryEmbed.thumbnail.proxy_url));
+    const thumbUrl = primaryEmbed?.thumbnail?.url || primaryEmbed?.thumbnail?.proxy_url || null;
+    const [authorAvatarImg, serverIconImg, botAvatarImg, embedThumbnailImg, attachmentImg] = await Promise.all([
+      safeLoadImage(authorAvatarUrl),
+      safeLoadImage(serverIconUrl),
+      safeLoadImage(botAvatarUrl),
+      hasThumbnail ? safeLoadImage(thumbUrl) : Promise.resolve(null),
+      primaryImageAttachment ? safeLoadImage(primaryImageAttachment.url) : Promise.resolve(null)
+    ]);
+
     // User text lines (if any text was sent along with message)
     let textLines = [];
     if (content) {
       textLines = wrapText(measureCtx, cleanDiscordText(content, guild), maxContentWidth, 12);
     } else if (!hasEmbed && embedText) {
       textLines = wrapText(measureCtx, cleanDiscordText(embedText, guild), maxContentWidth, 14);
-    } else if (!hasEmbed) {
-      textLines = ['[Mensagem sem texto ou anexo único]'];
+    } else if (!hasEmbed && parsedAttachments.length === 0) {
+      textLines = ['*[Mensagem sem texto]*'];
     }
 
     const contentLineHeight = 22;
@@ -285,10 +319,8 @@ async function generateMessageProof(options = {}) {
     let embedTitleLines = [];
     let embedDescLines = [];
     let embedFieldRows = [];
-    let hasThumbnail = false;
 
     if (primaryEmbed) {
-      hasThumbnail = !!(primaryEmbed.thumbnail && (primaryEmbed.thumbnail.url || primaryEmbed.thumbnail.proxy_url));
       const embedInnerWidth = maxContentWidth - 32;
       const textWidth = hasThumbnail ? Math.max(embedInnerWidth - 92, 280) : embedInnerWidth;
 
@@ -378,8 +410,22 @@ async function generateMessageProof(options = {}) {
       lineCalcY += embedCardHeight + 14;
     }
 
-    if (attachments && attachments.length > 0) {
-      lineCalcY += 28;
+    // Measure attached image or attachment pill
+    let imgRenderW = 0;
+    let imgRenderH = 0;
+    if (attachmentImg) {
+      const naturalW = attachmentImg.width || 400;
+      const naturalH = attachmentImg.height || 300;
+      const maxImgW = Math.min(maxContentWidth, 460);
+      const maxImgH = 260;
+      const scale = Math.min(maxImgW / naturalW, maxImgH / naturalH, 1);
+      imgRenderW = Math.round(naturalW * scale);
+      imgRenderH = Math.round(naturalH * scale);
+      lineCalcY += imgRenderH + 14;
+    }
+
+    if (parsedAttachments.length > 0 && (!attachmentImg || parsedAttachments.length > 1)) {
+      lineCalcY += 32;
     }
 
     const dividerY = Math.max(lineCalcY + 14, 132);
@@ -388,15 +434,6 @@ async function generateMessageProof(options = {}) {
 
     const canvas = createCanvas(width, dynamicHeight);
     const ctx = canvas.getContext('2d');
-
-    // Concurrently load images with browser User-Agent
-    const thumbUrl = primaryEmbed?.thumbnail?.url || primaryEmbed?.thumbnail?.proxy_url || null;
-    const [authorAvatarImg, serverIconImg, botAvatarImg, embedThumbnailImg] = await Promise.all([
-      safeLoadImage(authorAvatarUrl),
-      safeLoadImage(serverIconUrl),
-      safeLoadImage(botAvatarUrl),
-      hasThumbnail ? safeLoadImage(thumbUrl) : Promise.resolve(null)
-    ]);
 
     // 1. Background (Discord Dark #2b2d31 with subtle border #1e1f22)
     ctx.fillStyle = '#2b2d31';
@@ -634,20 +671,44 @@ async function generateMessageProof(options = {}) {
       currentLineY = embedBoxY + embedCardHeight + 14;
     }
 
-    // Attachments indicator if present
-    if (attachments && attachments.length > 0) {
+    // Render attached image if loaded
+    if (attachmentImg && imgRenderH > 0) {
       currentLineY += 6;
-      ctx.fillStyle = '#202225';
+      const imgX = userTextX;
+      const imgY = currentLineY;
+
+      ctx.save();
       ctx.beginPath();
-      const attText = `📎 ${attachments.length} anexo(s): ${attachments.slice(0, 2).join(', ')}`;
+      ctx.roundRect(imgX, imgY, imgRenderW, imgRenderH, 8);
+      ctx.clip();
+      ctx.drawImage(attachmentImg, imgX, imgY, imgRenderW, imgRenderH);
+      ctx.restore();
+
+      ctx.strokeStyle = '#3e4046';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(imgX, imgY, imgRenderW, imgRenderH, 8);
+      ctx.stroke();
+
+      currentLineY += imgRenderH + 12;
+    }
+
+    // Attachments indicator if present (or fallback pill when image cannot be loaded / extra attachments)
+    if (parsedAttachments.length > 0 && (!attachmentImg || parsedAttachments.length > 1)) {
+      currentLineY += 6;
+      ctx.fillStyle = '#1e1f22';
+      ctx.beginPath();
+      const remaining = attachmentImg ? parsedAttachments.filter(a => a !== primaryImageAttachment) : parsedAttachments;
+      const attNames = remaining.map(a => a.name).filter(Boolean);
+      const attText = `📎 ${remaining.length} anexo(s): ${attNames.slice(0, 2).join(', ')}`;
       const attWidth = Math.min(ctx.measureText(attText).width + 24, maxContentWidth);
-      ctx.roundRect(userTextX, currentLineY - 14, attWidth, 24, 6);
+      ctx.roundRect(userTextX, currentLineY - 14, attWidth, 26, 6);
       ctx.fill();
 
       ctx.fillStyle = '#00a8fc';
       ctx.font = '12px "Segoe UI", Arial, sans-serif';
-      ctx.fillText(attText, userTextX + 10, currentLineY + 2);
-      currentLineY += 22;
+      ctx.fillText(attText, userTextX + 10, currentLineY + 3);
+      currentLineY += 24;
     }
 
     // Divider Line

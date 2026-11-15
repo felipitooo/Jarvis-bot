@@ -138,9 +138,18 @@ class AuditService {
       case 'MESSAGE_DELETE': {
         const authorName = d.authorDisplayName || d.authorTag || 'Usuário';
         const hasEmbeds = Array.isArray(d.embeds) && d.embeds.length > 0;
-        const actionDesc = hasEmbeds
-          ? `🗑️ **@${authorName}** apagou uma mensagem contendo embed.\n\n**Canal de texto:** <#${d.channelId || targetId}>`
-          : `🗑️ **@${authorName}** apagou uma mensagem de texto.\n\n**Canal de texto:** <#${d.channelId || targetId}>`;
+        const attList = Array.isArray(d.attachments) ? d.attachments : [];
+        const hasAttachments = attList.length > 0;
+        const attNames = attList.map(a => typeof a === 'string' ? a : (a.name || 'anexo'));
+
+        let actionDesc;
+        if (hasEmbeds) {
+          actionDesc = `🗑️ **@${authorName}** apagou uma mensagem contendo embed.\n\n**Canal de texto:** <#${d.channelId || targetId}>`;
+        } else if (hasAttachments && !d.content) {
+          actionDesc = `🗑️ **@${authorName}** apagou uma mensagem contendo imagem/anexo.\n\n**Canal de texto:** <#${d.channelId || targetId}>`;
+        } else {
+          actionDesc = `🗑️ **@${authorName}** apagou uma mensagem de texto.\n\n**Canal de texto:** <#${d.channelId || targetId}>`;
+        }
 
         embed
           .setColor(0xED4245)
@@ -164,17 +173,22 @@ class AuditService {
             name: 'Mensagem apagada:',
             value: '*[Embed visual reconstituído no print abaixo]*'
           });
+        } else if (hasAttachments) {
+          embed.addFields({
+            name: 'Mensagem apagada:',
+            value: '*[Imagem / anexo reconstituído no print abaixo]*'
+          });
         } else {
           embed.addFields({
             name: 'Mensagem apagada:',
-            value: '*[Mensagem sem texto ou apenas anexo]*'
+            value: '*[Mensagem sem texto]*'
           });
         }
 
-        if (d.attachments && d.attachments.length > 0) {
+        if (attNames.length > 0) {
           embed.addFields({
             name: '📎 Anexos Removidos',
-            value: d.attachments.join('\n').slice(0, 500)
+            value: attNames.join('\n').slice(0, 500)
           });
         }
         embed.setFooter({ text: `ID do usuário: ${actorId || 'N/A'}` });
