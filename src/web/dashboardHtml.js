@@ -4177,8 +4177,8 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
                 <span>🖼️ Foto Ilustrativa da Resposta (Opcional)</span>
                 <span style="font-size: 0.72rem; color: #38bdf8; font-weight: normal;">Aparece apenas na explicação pós-resposta</span>
               </label>
-              <input type="url" id="customQuizImageUrl" placeholder="Ex: https://i.imgur.com/... ou https://...">
-              <span style="font-size: 0.74rem; color: var(--text-muted); display: block; margin-top: 0.25rem;">💡 <strong>Regra:</strong> A imagem deve retratar diretamente a resposta correta e só é revelada junto com o texto de explicação (nunca no enunciado, para não dar spoiler).</span>
+              <input type="url" id="customQuizImageUrl" placeholder="Ex: https://media.tenor.com/...gif ou https://i.imgur.com/...">
+              <span style="font-size: 0.74rem; color: var(--text-muted); display: block; margin-top: 0.25rem;">💡 <strong>Dica:</strong> Insira links diretos de imagem ou GIF (Tenor, Imgur, Giphy ou terminados em <code>.gif</code>/<code>.png</code>/<code>.jpg</code>). A animação é revelada exclusivamente na explicação pós-resposta (nunca no enunciado, para não dar spoiler).</span>
             </div>
 
             <div style="margin-top: 1rem; display: flex; gap: 0.75rem; flex-wrap: wrap;">
@@ -7896,9 +7896,9 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           : '<span style="font-size: 0.72rem; background: rgba(88,101,242,0.15); color: #5865F2; border: 1px solid rgba(88,101,242,0.3); padding: 0.15rem 0.45rem; border-radius: 4px; font-weight: 600;">🤖 Oficial</span>';
 
         const imgInsideExplanation = q.imageUrl
-          ? ('<div style="margin-top: 0.65rem; max-width: 460px;">' +
-              '<div style="border-radius: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,0.14); background: rgba(0,0,0,0.35); box-shadow: 0 4px 14px rgba(0,0,0,0.4);">' +
-                '<img src="' + q.imageUrl + '" style="width: 100%; height: auto; max-height: 260px; object-fit: contain; display: block;" alt="GIF da Resposta" loading="lazy">' +
+          ? ('<div class="quiz-img-container" style="margin-top: 0.65rem; max-width: 460px;">' +
+              '<div class="quiz-img-box" style="border-radius: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,0.14); background: rgba(0,0,0,0.35); box-shadow: 0 4px 14px rgba(0,0,0,0.4);">' +
+                '<img src="' + q.imageUrl + '" style="width: 100%; height: auto; max-height: 260px; object-fit: contain; display: block;" alt="GIF da Resposta" loading="lazy" onerror="this.onerror=null; this.parentElement.innerHTML=\'<div style=\\\'padding:0.75rem; text-align:center; color:var(--text-muted); font-size:0.76rem;\\\'>⚠️ Não foi possível carregar a imagem externa</div>\';">' +
               '</div>' +
               '<div style="margin-top: 0.35rem; display: flex; align-items: center; justify-content: space-between;">' +
                 '<span style="font-size: 0.72rem; color: #38bdf8;">🎬 Animação Oficial da Resposta</span>' +
