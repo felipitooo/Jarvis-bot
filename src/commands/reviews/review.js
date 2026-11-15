@@ -20,8 +20,8 @@ module.exports = {
     )
     .addUserOption(opt =>
       opt.setName('atendente')
-        .setDescription('Membro da equipe que te atendeu (opcional)')
-        .setRequired(false)
+        .setDescription('Administrador(a) da equipe que você deseja avaliar')
+        .setRequired(true)
     ),
 
   async execute(interaction, context) {
@@ -31,6 +31,36 @@ module.exports = {
     let comment = interaction.options.getString('comentario');
     const targetStaff = interaction.options.getUser('atendente');
     const aiName = identityService ? identityService.getDisplayName(guild.id) : 'J.A.R.V.I.S';
+
+    if (!targetStaff) {
+      const errEmbed = new EmbedBuilder()
+        .setColor(0xED4245)
+        .setTitle('⚠️ Administrador Obrigatório')
+        .setDescription('Você deve selecionar um membro com cargo de Administrador para avaliar.')
+        .setFooter({ text: `${aiName} • Central de Avaliações` })
+        .setTimestamp();
+      return interaction.reply({ embeds: [errEmbed], ephemeral: true });
+    }
+
+    if (targetStaff.id === interaction.user.id) {
+      const errEmbed = new EmbedBuilder()
+        .setColor(0xED4245)
+        .setTitle('⚠️ Autoavaliação Não Permitida')
+        .setDescription('Você não pode avaliar a si mesmo!')
+        .setFooter({ text: `${aiName} • Central de Avaliações` })
+        .setTimestamp();
+      return interaction.reply({ embeds: [errEmbed], ephemeral: true });
+    }
+
+    if (targetStaff.bot) {
+      const errEmbed = new EmbedBuilder()
+        .setColor(0xED4245)
+        .setTitle('⚠️ Usuário Inválido')
+        .setDescription('Bots não podem receber avaliações de atendimento.')
+        .setFooter({ text: `${aiName} • Central de Avaliações` })
+        .setTimestamp();
+      return interaction.reply({ embeds: [errEmbed], ephemeral: true });
+    }
 
     if (!comment || comment.trim().length === 0) {
       const descRating = rating === 5 ? 'Excelente (5/5 ⭐)' : rating === 4 ? 'Muito Bom (4/5 ⭐)' : rating === 3 ? 'Bom (3/5 ⭐)' : 'Atendimento regular';

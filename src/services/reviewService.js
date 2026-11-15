@@ -1,5 +1,6 @@
 const { EmbedBuilder } = require('discord.js');
 const { logger } = require('../utils/logger');
+const { permissionService } = require('./permissionService');
 
 const reviewLogger = logger.forContext('ReviewService');
 
@@ -21,6 +22,29 @@ class ReviewService {
   // ==========================================
 
   async submitReview(guild, { authorUser, targetStaffUser = null, ticketId = null, rating, comment }) {
+    if (!targetStaffUser) {
+      throw new Error('Você deve especificar um membro com cargo de Administrador para avaliar.');
+    }
+
+    if (targetStaffUser.id === authorUser.id) {
+      throw new Error('Você não pode avaliar a si mesmo.');
+    }
+
+    if (targetStaffUser.bot) {
+      throw new Error('Bots não podem ser avaliados.');
+    }
+
+    let targetMember = guild.members?.cache?.get(targetStaffUser.id);
+    if (!targetMember && guild.members?.fetch) {
+      try {
+        targetMember = await guild.members.fetch(targetStaffUser.id);
+      } catch (e) {}
+    }
+
+    if (!permissionService.isAdmin(targetMember)) {
+      throw new Error('Apenas membros com cargo de Administrador podem ser avaliados.');
+    }
+
     const config = this.reviewRepo.getReviewConfig(guild.id);
     const numRating = Math.max(1, Math.min(5, parseInt(rating, 10) || 5));
 

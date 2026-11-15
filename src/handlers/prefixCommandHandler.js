@@ -11,6 +11,7 @@ const { logger } = require('../utils/logger');
 const { formatCompactNumber } = require('../utils/numberFormatter');
 const { buildProfilePayload } = require('../utils/profileBuilder');
 const { confirmModerationAction } = require('../utils/moderationConfirmation');
+const { permissionService } = require('../services/permissionService');
 
 const log = logger.forContext('PrefixCommandHandler');
 
@@ -738,15 +739,14 @@ class PrefixCommandHandler {
               .setColor(0x00E5FF)
               .setTitle('⭐ Como Avaliar a Equipe de Atendimento')
               .setDescription(
-                'Avalie o suporte, um atendente da equipe ou a sua experiência geral no servidor!\n\n' +
-                '**📌 Formatos Aceitos:**\n' +
-                '• `+avaliar @atendente <1 a 5> [comentário opcional]`\n' +
-                '• `+avaliar <1 a 5> [comentário opcional]` *(avaliação geral)*\n\n' +
+                'Membros podem avaliar o atendimento de membros da administração!\n\n' +
+                '**📌 Formato Obrigatório:**\n' +
+                '• `+avaliar @administrador <1 a 5> [comentário opcional]`\n\n' +
                 '**💡 Exemplos Práticos:**\n' +
                 '• `+avaliar @Syll 5` *(avaliação rápida de 5 estrelas)*\n' +
-                '• `+avaliar @Syll 5 Atendimento nota 10, tirou todas as dúvidas super rápido!`\n' +
-                '• `+avaliar 5 Fui muito bem recebido pela equipe!`\n\n' +
-                '*Você também pode usar o comando slash `/avaliar` com menu interativo.*'
+                '• `+avaliar @Syll 5 Atendimento nota 10, muito prestativo!`\n\n' +
+                '*(Nota: Apenas membros com cargo de Administrador podem receber avaliações.)*\n' +
+                '*Você também pode usar o comando slash `/avaliar`.*'
               )
               .setFooter({ text: aiName + ' • Central de Avaliações' })
               .setTimestamp();
@@ -754,40 +754,92 @@ class PrefixCommandHandler {
             return true;
           }
 
-          let targetStaff = null;
-          let ratingArgIndex = 0;
-
           const firstCandidate = await resolveUser(message, args[0]);
-          if (firstCandidate && firstCandidate.id !== message.author.id) {
-            targetStaff = firstCandidate;
-            ratingArgIndex = 1;
+
+          if (!firstCandidate) {
+            const errEmbed = new EmbedBuilder()
+              .setColor(0xED4245)
+              .setTitle('⚠️ Administrador Não Informado')
+              .setDescription(
+                'Olá, <@' + author.id + '>! Para registrar uma avaliação, você deve mencionar o **membro da administração** que realizou seu atendimento.\n\n' +
+                '📌 **Uso correto:**\n' +
+                '• `+avaliar @administrador <1 a 5> [comentário opcional]`\n\n' +
+                '💡 **Exemplo:**\n' +
+                '• `+avaliar @Syll 5 Atendimento nota 10!`'
+              )
+              .setFooter({ text: aiName + ' • Central de Qualidade & Atendimento' })
+              .setTimestamp();
+            await message.reply({ embeds: [errEmbed] });
+            return true;
           }
+
+          if (firstCandidate.id === author.id) {
+            const errEmbed = new EmbedBuilder()
+              .setColor(0xED4245)
+              .setTitle('⚠️ Autoavaliação Não Permitida')
+              .setDescription('Você não pode avaliar a si mesmo!')
+              .setFooter({ text: aiName + ' • Central de Qualidade & Atendimento' })
+              .setTimestamp();
+            await message.reply({ embeds: [errEmbed] });
+            return true;
+          }
+
+          if (firstCandidate.bot) {
+            const errEmbed = new EmbedBuilder()
+              .setColor(0xED4245)
+              .setTitle('⚠️ Usuário Inválido')
+              .setDescription('Bots não podem receber avaliações de atendimento.')
+              .setFooter({ text: aiName + ' • Central de Qualidade & Atendimento' })
+              .setTimestamp();
+            await message.reply({ embeds: [errEmbed] });
+            return true;
+          }
+
+          let targetMember = guild.members?.cache?.get(firstCandidate.id);
+          if (!targetMember && guild.members?.fetch) {
+            try {
+              targetMember = await guild.members.fetch(firstCandidate.id);
+            } catch (e) {}
+          }
+
+          if (!permissionService.isAdmin(targetMember)) {
+            const errEmbed = new EmbedBuilder()
+              .setColor(0xED4245)
+              .setTitle('⚠️ Apenas Administradores Podem Ser Avaliados')
+              .setDescription(
+                'O membro <@' + firstCandidate.id + '> não possui cargo de Administrador no servidor.\n\n' +
+                'O sistema de avaliações é exclusivo para os membros avaliarem a **equipe administrativa**.'
+              )
+              .setFooter({ text: aiName + ' • Central de Qualidade & Atendimento' })
+              .setTimestamp();
+            await message.reply({ embeds: [errEmbed] });
+            return true;
+          }
+
+          const targetStaff = firstCandidate;
+          const ratingArgIndex = 1;
 
           const rawRating = args[ratingArgIndex];
           const ratingNum = parseInt(rawRating, 10);
           if (isNaN(ratingNum) || ratingNum < 1 || ratingNum > 5) {
-            const staffName = targetStaff ? (targetStaff.username || 'staff') : 'staff';
+            const staffName = targetStaff.username || 'staff';
             const errEmbed = new EmbedBuilder()
               .setColor(0xED4245)
               .setTitle('⚠️ Nota de Avaliação Inválida')
               .setDescription(
                 'A nota atribuída deve ser um número inteiro de **1 a 5 estrelas** ⭐.\n\n' +
-                (targetStaff ? '• **Atendente informado:** <@' + targetStaff.id + '>\n' : '• **Tipo:** Avaliação Geral do Servidor\n') +
+                '• **Administrador avaliado:** <@' + targetStaff.id + '>\n' +
                 '• **Valor recebido:** `' + (rawRating || 'Nenhum') + '`'
               )
               .addFields(
                 {
                   name: '📖 Sintaxe Correta',
-                  value: targetStaff
-                    ? '`+avaliar @' + staffName + ' <1 a 5> [comentário opcional]`'
-                    : '`+avaliar <1 a 5> [comentário opcional]`',
+                  value: '`+avaliar @' + staffName + ' <1 a 5> [comentário opcional]`',
                   inline: false
                 },
                 {
                   name: '💡 Exemplos de Uso',
-                  value: targetStaff
-                    ? '• `+avaliar @' + staffName + ' 5` *(avaliação rápida de 5 estrelas)*\n• `+avaliar @' + staffName + ' 5 Suporte excelente e muito ágil!`'
-                    : '• `+avaliar 5`\n• `+avaliar 5 Comunidade fantástica e suporte atencioso!`',
+                  value: '• `+avaliar @' + staffName + ' 5` *(avaliação rápida de 5 estrelas)*\n• `+avaliar @' + staffName + ' 5 Suporte excelente e muito ágil!`',
                   inline: false
                 }
               )
@@ -804,21 +856,19 @@ class PrefixCommandHandler {
             comment = 'Atendimento avaliado como ' + descRating;
           } else if (comment.length < 5) {
             // Se o usuário tentou digitar um comentário mas ele tem menos de 5 caracteres (ex: "oi", "bom", "top")
-            const staffName = targetStaff ? (targetStaff.username || 'staff') : 'staff';
+            const staffName = targetStaff.username || 'staff';
             const errEmbed = new EmbedBuilder()
               .setColor(0xED4245)
               .setTitle('⚠️ Comentário Muito Curto')
               .setDescription(
                 'Olá, <@' + author.id + '>! O comentário informado (`"' + comment + '"`) é muito breve.\n\n' +
                 'Para que a avaliação ajude no aprimoramento da equipe, pedimos que descreva sua experiência com **pelo menos 5 caracteres** (ou envie sem comentário para registrar apenas a nota ⭐).\n\n' +
-                (targetStaff ? 'Você está avaliando o atendimento de **' + staffName + '** com **' + ratingNum + ' estrela(s)**.' : 'Você está avaliando o servidor com **' + ratingNum + ' estrela(s)**.')
+                'Você está avaliando o atendimento de **' + staffName + '** com **' + ratingNum + ' estrela(s)**.'
               )
               .addFields(
                 {
                   name: '📖 Como Concluir sua Avaliação',
-                  value: targetStaff
-                    ? '• Enviar com comentário: `+avaliar @' + staffName + ' ' + ratingNum + ' Atendimento nota 10, tirou minhas dúvidas!`\n• Enviar direto sem comentário: `+avaliar @' + staffName + ' ' + ratingNum + '`'
-                    : '• Enviar com comentário: `+avaliar ' + ratingNum + ' Ótimo servidor e moderação prestativa!`\n• Enviar direto sem comentário: `+avaliar ' + ratingNum + '`',
+                  value: '• Enviar com comentário: `+avaliar @' + staffName + ' ' + ratingNum + ' Atendimento nota 10, tirou minhas dúvidas!`\n• Enviar direto sem comentário: `+avaliar @' + staffName + ' ' + ratingNum + '`',
                   inline: false
                 }
               )

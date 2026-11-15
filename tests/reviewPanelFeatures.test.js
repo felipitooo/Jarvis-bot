@@ -7,6 +7,11 @@ const { GuildRepository } = require('../src/database/repositories/guildRepositor
 const { UserRepository } = require('../src/database/repositories/userRepository');
 const { ReviewRepository } = require('../src/database/repositories/reviewRepository');
 const { WebPanelService } = require('../src/services/webPanelService');
+const { ReviewService } = require('../src/services/reviewService');
+const { IdentityService } = require('../src/services/identityService');
+const { SettingsRepository } = require('../src/database/repositories/settingsRepository');
+const { SettingsService } = require('../src/services/settingsService');
+const { PermissionFlagsBits } = require('discord.js');
 
 describe('Web Panel Reviews & Staff Ratings', () => {
   let db;
@@ -146,5 +151,113 @@ describe('Web Panel Reviews & Staff Ratings', () => {
     webPanelService.moderateReview(session, guildId, rev.id, 'DELETE');
     fetched = reviewRepo.getReview(guildId, rev.id);
     assert.equal(fetched, null);
+  });
+
+  test('submitReview only permits evaluating members with Administrator role/permissions', async () => {
+    const settingsRepo = new SettingsRepository(db);
+    const settingsService = new SettingsService(settingsRepo);
+    const identityService = new IdentityService(settingsService);
+    const reviewService = new ReviewService({ reviewRepo, identityService });
+
+    const mockAdminMember = {
+      id: 'staff_1',
+      guild: { ownerId: adminUserId },
+      permissions: {
+        has: (bit) => bit === PermissionFlagsBits.Administrator
+      },
+      roles: {
+        cache: new Map([['role_admin', { name: 'Administrador', permissions: { has: () => true } }]])
+      }
+    };
+
+    const mockRegularMember = {
+      id: 'user_2',
+      guild: { ownerId: adminUserId },
+      permissions: {
+        has: () => false
+      },
+      roles: {
+        cache: new Map([['role_membro', { name: 'Membro', permissions: { has: () => false } }]])
+      }
+    };
+
+    const mockGuild = {
+      id: guildId,
+      ownerId: adminUserId,
+      members: {
+        cache: new Map([
+          ['staff_1', mockAdminMember],
+          ['user_2', mockRegularMember]
+        ])
+      }
+    };
+
+    const authorUser = { id: 'user_1', bot: false };
+    const adminUser = { id: 'staff_1', bot: false };
+    const regularUser = { id: 'user_2', bot: false };
+    const botUser = { id: 'bot_99', bot: true };
+
+    // 1. Should fail if target user is not specified
+    await assert.rejects(
+      async () => {
+        await reviewService.submitReview(mockGuild, {
+          authorUser,
+          targetStaffUser: null,
+          rating: 5,
+          comment: 'Atendimento muito bom'
+        });
+      },
+      /Você deve especificar um membro com cargo de Administrador para avaliar/
+    );
+
+    // 2. Should fail if user evaluates themselves
+    await assert.rejects(
+      async () => {
+        await reviewService.submitReview(mockGuild, {
+          authorUser,
+          targetStaffUser: authorUser,
+          rating: 5,
+          comment: 'Eu sou muito bom'
+        });
+      },
+      /Você não pode avaliar a si mesmo/
+    );
+
+    // 3. Should fail if target is a bot
+    await assert.rejects(
+      async () => {
+        await reviewService.submitReview(mockGuild, {
+          authorUser,
+          targetStaffUser: botUser,
+          rating: 5,
+          comment: 'Bot muito legal'
+        });
+      },
+      /Bots não podem ser avaliados/
+    );
+
+    // 4. Should fail if target is a regular member without Administrator role/perms
+    await assert.rejects(
+      async () => {
+        await reviewService.submitReview(mockGuild, {
+          authorUser,
+          targetStaffUser: regularUser,
+          rating: 5,
+          comment: 'Meu amigo membro comum'
+        });
+      },
+      /Apenas membros com cargo de Administrador podem ser avaliados/
+    );
+
+    // 5. Should succeed when target is an Administrator
+    const result = await reviewService.submitReview(mockGuild, {
+      authorUser,
+      targetStaffUser: adminUser,
+      rating: 5,
+      comment: 'Atendimento nota 10 do administrador!'
+    });
+
+    assert.equal(result.review.targetStaffId, 'staff_1');
+    assert.equal(result.review.rating, 5);
   });
 });

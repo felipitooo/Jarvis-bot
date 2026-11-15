@@ -5586,11 +5586,12 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
             </p>
             <div style="background: rgba(0,0,0,0.25); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 1rem; font-size: 0.85rem; line-height: 1.6; color: #dbdee1;">
               <div style="font-weight: 700; color: #00E5FF; margin-bottom: 0.4rem;">💬 Como os membros avaliam:</div>
-              <div>• <code>+avaliar @staff 5 Atendimento excelente!</code></div>
-              <div>• <code>/avaliar estrelas:5 comentario:Muito prestativo!</code></div>
+              <div>• <code>+avaliar @administrador 5 Atendimento excelente!</code></div>
+              <div>• <code>/avaliar atendente:@administrador estrelas:5</code></div>
+              <div style="margin-top: 0.5rem; font-size: 0.76rem; color: #94a3b8;">⚠️ <em>Apenas membros com cargo de Administrador podem receber avaliações.</em></div>
               <div style="margin-top: 0.75rem; font-weight: 700; color: #57F287;">📊 Consulta de Reputação:</div>
               <div>• <code>+perfil @staff</code> — Exibe a média ⭐ e total de avaliações recebidas!</div>
-              <div>• <code>+topstaff</code> — Ranking dos moderadores mais bem avaliados.</div>
+              <div>• <code>+topstaff</code> — Ranking dos administradores mais bem avaliados.</div>
             </div>
           </div>
         </div>

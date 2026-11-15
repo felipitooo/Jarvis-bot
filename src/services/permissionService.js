@@ -8,7 +8,7 @@ class PermissionService {
    * @returns {boolean}
    */
   isAdmin(member) {
-    if (!member || !member.permissions) {
+    if (!member) {
       return false;
     }
 
@@ -16,7 +16,39 @@ class PermissionService {
       return true;
     }
 
-    return member.permissions.has(PermissionFlagsBits.Administrator);
+    if (member.permissions && typeof member.permissions.has === 'function') {
+      if (member.permissions.has(PermissionFlagsBits.Administrator)) {
+        return true;
+      }
+    }
+
+    if (member.roles && member.roles.cache) {
+      const rolesList = typeof member.roles.cache.some === 'function'
+        ? null
+        : (member.roles.cache.values ? Array.from(member.roles.cache.values()) : Array.from(member.roles.cache));
+
+      if (rolesList) {
+        return rolesList.some(r => {
+          const name = (r.name || '').toLowerCase();
+          return (
+            name.includes('admin') ||
+            name.includes('administrador') ||
+            (r.permissions && typeof r.permissions.has === 'function' && r.permissions.has(PermissionFlagsBits.Administrator))
+          );
+        });
+      }
+
+      return member.roles.cache.some(r => {
+        const name = (r.name || '').toLowerCase();
+        return (
+          name.includes('admin') ||
+          name.includes('administrador') ||
+          (r.permissions && typeof r.permissions.has === 'function' && r.permissions.has(PermissionFlagsBits.Administrator))
+        );
+      });
+    }
+
+    return false;
   }
 
   /**
