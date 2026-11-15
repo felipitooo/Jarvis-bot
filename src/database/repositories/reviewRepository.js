@@ -161,7 +161,7 @@ class ReviewRepository {
     let sql = 'SELECT * FROM community_reviews WHERE guild_id = ?';
     const params = [guildId];
 
-    if (status) {
+    if (status && status !== 'ALL') {
       sql += ' AND status = ?';
       params.push(status);
     }
@@ -175,6 +175,34 @@ class ReviewRepository {
 
     const rows = this.db.all(sql, params);
     return rows.map(r => this.mapReview(r));
+  }
+
+  deleteReview(guildId, reviewId) {
+    this.db.run('DELETE FROM community_reviews WHERE guild_id = ? AND id = ?', [guildId, reviewId]);
+    return true;
+  }
+
+  getStaffReviewLeaderboard(guildId) {
+    const rows = this.db.all(
+      `SELECT target_staff_id,
+              COUNT(*) as total,
+              AVG(rating) as average,
+              SUM(CASE WHEN rating = 5 THEN 1 ELSE 0 END) as stars_5,
+              SUM(CASE WHEN rating >= 4 THEN 1 ELSE 0 END) as positive
+       FROM community_reviews
+       WHERE guild_id = ? AND status = 'APPROVED' AND target_staff_id IS NOT NULL
+       GROUP BY target_staff_id
+       ORDER BY average DESC, total DESC
+       LIMIT 20`,
+      [guildId]
+    );
+    return rows.map(r => ({
+      staffId: r.target_staff_id,
+      total: r.total,
+      average: r.average ? Number(Number(r.average).toFixed(2)) : 0,
+      stars5: r.stars_5 || 0,
+      positivePercent: r.total > 0 ? Math.round((r.positive / r.total) * 100) : 0
+    }));
   }
 
   respondReview(guildId, reviewId, { response, respondedBy }) {

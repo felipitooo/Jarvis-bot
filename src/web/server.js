@@ -706,6 +706,20 @@ class WebServer {
           return this._sendJson(res, 200, { success: true, deletedId: questionId });
         }
 
+        // Reviews & Staff Rating API
+        if (subPath === '/reviews' && method === 'GET') {
+          const data = this.webPanelService.getReviewData(session, guildId);
+          return this._sendJson(res, 200, data);
+        }
+
+        const reviewModMatch = subPath.match(/^\/reviews\/(\d+)\/moderate$/);
+        if (reviewModMatch && method === 'POST') {
+          const reviewId = parseInt(reviewModMatch[1], 10);
+          const body = await this._parseBody(req);
+          const result = this.webPanelService.moderateReview(session, guildId, reviewId, body.action);
+          return this._sendJson(res, 200, { success: true, result });
+        }
+
         // GET /api/guilds/:guildId/audit/:auditId/proof (Loritta-style Print Card Preview)
         if (subPath.startsWith('/audit/') && subPath.endsWith('/proof') && method === 'GET') {
           const auditId = subPath.replace('/audit/', '').replace('/proof', '');

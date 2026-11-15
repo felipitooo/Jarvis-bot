@@ -1802,6 +1802,90 @@ class WebPanelService {
     if (!this.services.quizRepo) throw new Error('Serviço de Quiz indisponível.');
     return this.services.quizRepo.deleteCustomCategory(categoryId, guildId);
   }
+
+  /**
+   * Retrieves comprehensive review and rating metrics for the guild.
+   */
+  getReviewData(session, guildId) {
+    this.verifyGuildAccess(session, guildId);
+    const reviewRepo = this.services.reviewRepo;
+    if (!reviewRepo) {
+      return { config: null, stats: { total: 0, average: 0, breakdown: {}, positivePercent: 100 }, leaderboard: [], reviews: [] };
+    }
+
+    const config = reviewRepo.getReviewConfig(guildId) || { reviewChannelId: null, requireModeration: false };
+    const rawStats = reviewRepo.getReviewStats(guildId);
+    const positiveCount = ((rawStats.breakdown && rawStats.breakdown[5]) || 0) + ((rawStats.breakdown && rawStats.breakdown[4]) || 0);
+    const positivePercent = rawStats.total > 0 ? Math.round((positiveCount / rawStats.total) * 100) : 100;
+    const stats = {
+      ...rawStats,
+      positivePercent
+    };
+
+    const rawReviews = reviewRepo.getReviews(guildId, { limit: 100, status: null });
+    const rawLeaderboard = reviewRepo.getStaffReviewLeaderboard
+      ? reviewRepo.getStaffReviewLeaderboard(guildId)
+      : [];
+
+    const guild = this.botClient?.guilds?.cache?.get(guildId);
+    const resolveUser = (userId) => {
+      if (!userId) return null;
+      if (guild) {
+        const member = guild.members?.cache?.get(userId);
+        if (member) {
+          return {
+            id: userId,
+            displayName: member.displayName || member.user?.username || userId,
+            username: member.user?.username || userId,
+            avatarUrl: member.user?.displayAvatarURL?.({ size: 64 }) || member.displayAvatarURL?.({ size: 64 }) || 'https://cdn.discordapp.com/embed/avatars/0.png'
+          };
+        }
+      }
+      return {
+        id: userId,
+        displayName: 'Membro (' + userId.slice(-4) + ')',
+        username: userId,
+        avatarUrl: 'https://cdn.discordapp.com/embed/avatars/0.png'
+      };
+    };
+
+    const reviews = rawReviews.map(r => ({
+      ...r,
+      author: resolveUser(r.authorId),
+      targetStaff: resolveUser(r.targetStaffId)
+    }));
+
+    const leaderboard = rawLeaderboard.map(lb => ({
+      ...lb,
+      staff: resolveUser(lb.staffId)
+    }));
+
+    return {
+      config,
+      stats,
+      leaderboard,
+      reviews
+    };
+  }
+
+  /**
+   * Approves, rejects, or deletes a review.
+   */
+  moderateReview(session, guildId, reviewId, action) {
+    this.verifyGuildAccess(session, guildId);
+    const reviewRepo = this.services.reviewRepo;
+    if (!reviewRepo) throw new Error('Serviço de avaliações indisponível.');
+
+    const cleanAction = String(action || '').toUpperCase();
+    if (cleanAction === 'DELETE') {
+      return reviewRepo.deleteReview(guildId, reviewId);
+    } else if (cleanAction === 'APPROVE') {
+      return reviewRepo.updateReviewStatus(guildId, reviewId, 'APPROVED');
+    } else if (cleanAction === 'REJECT') {
+      return reviewRepo.updateReviewStatus(guildId, reviewId, 'REJECTED');
+    }
+    throw new Error('Ação inválida. Utilize APPROVE, REJECT ou DELETE.');
+  }
 }
 
 module.exports = { WebPanelService };

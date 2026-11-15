@@ -2548,7 +2548,7 @@ function renderDashboardHtml({
 
       <!-- HUB 5: SOCIAL & ENTRETENIMENTO -->
       <div class="menu-group-title">SOCIAL & ENTRETENIMENTO</div>
-      <button class="nav-item" data-tab="tab-social" data-scroll="quizQuestionsBrowserSection">
+      <button class="nav-item" data-tab="tab-quiz">
         <span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
         <span class="nav-label">Quiz Arena</span>
         <span class="nav-badge-pill">Arena</span>
@@ -4048,8 +4048,32 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
             <li><code>+raffle [prêmio]</code> — Sorteios rápidos em tempo real no chat.</li>
           </ul>
         </div>
+      </div>
 
-        <!-- CARD 5: QUIZ ARENA & DESAFIO NEURAL -->
+      <div style="margin-top: 1.25rem;">
+        <button class="primary-btn" id="saveSocialBtn" style="width: 100%; font-size: 1rem; padding: 0.85rem;">💾 Salvar Configurações de Romance & Social</button>
+      </div>
+
+      <!-- CARD EXPLICATIVO / DICAS SOCIAL -->
+      <div class="card" style="margin-top: 1.25rem;">
+        <h2>💡 Recursos de Socialização & Diversão Comunitária</h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin-top: 0.75rem;">
+          <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 0.85rem;">
+            <h4 style="margin: 0 0 0.4rem 0; color: #00E5FF; font-size: 0.92rem;">💍 Casamento & Fidelidade</h4>
+            <p style="margin: 0; font-size: 0.82rem; color: #949ba4;">Permita que membros peçam uns aos outros em casamento com custo configurável de anel e data de celebração.</p>
+          </div>
+          <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 0.85rem;">
+            <h4 style="margin: 0 0 0.4rem 0; color: #00E5FF; font-size: 0.92rem;">❤️ Interações de Afeto & Resenha</h4>
+            <p style="margin: 0; font-size: 0.82rem; color: #949ba4;">Comandos como +kiss, +hug, +slap e +ship geram gifs animados e estatísticas de compatibilidade entre os membros.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB QUIZ: QUIZ ARENA & DESAFIO NEURAL -->
+    <div id="tab-quiz" class="tab-content">
+      <div class="grid">
+        <!-- CARD 1: QUIZ ARENA & DESAFIO NEURAL -->
         <div class="card" style="grid-column: 1 / -1;">
           <h2>🎯 Protocolo M.A.R.K. — Desafio Neural & Quiz Arena (+quiz / /quiz)</h2>
           <p>Disputas dinâmicas de perguntas e respostas no chat com pontuação, dicas inteligentes, imagens e ranking permanente. Categorias: <strong>Jogos & Games</strong>, <strong>Animes & Mangás</strong>, <strong>Futebol & Esportes</strong>, <strong>Conhecimentos Gerais & Ciências</strong>, <strong>Computação & Tecnologia</strong>, <strong>Marvel & Stark</strong>, <strong>Cinema & Séries</strong>, <strong>Música & Hits</strong>, <strong>Mitologia & História</strong>, <strong>Desenhos & Nostalgia</strong>, <strong>Geografia & Países</strong> e <strong>Modo Misto</strong>.</p>
@@ -4247,27 +4271,27 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       </div>
 
       <div style="margin-top: 1.25rem;">
-        <button class="primary-btn" id="saveSocialBtn" style="width: 100%; font-size: 1rem; padding: 0.85rem;">💾 Salvar Todas as Configurações de Social, Romance & Quiz</button>
+        <button class="primary-btn" id="saveQuizBtn" style="width: 100%; font-size: 1rem; padding: 0.85rem;">💾 Salvar Configurações do Quiz Arena</button>
       </div>
 
-        <!-- CARD EXPLICATIVO / DICAS -->
-        <div class="card" style="margin-top: 1.25rem;">
-          <h2>💡 Recursos de Socialização & Diversão Comunitária</h2>
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin-top: 0.75rem;">
-            <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 0.85rem;">
-              <h4 style="margin: 0 0 0.4rem 0; color: #00E5FF; font-size: 0.92rem;">💍 Casamento & Fidelidade</h4>
-              <p style="margin: 0; font-size: 0.82rem; color: #949ba4;">Permita que membros peçam uns aos outros em casamento com custo configurável de anel e data de celebração.</p>
-            </div>
-            <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 0.85rem;">
-              <h4 style="margin: 0 0 0.4rem 0; color: #00E5FF; font-size: 0.92rem;">❤️ Interações de Afeto & Resenha</h4>
-              <p style="margin: 0; font-size: 0.82rem; color: #949ba4;">Comandos como +kiss, +hug, +slap e +ship geram gifs animados e estatísticas de compatibilidade entre os membros.</p>
-            </div>
-            <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 0.85rem;">
-              <h4 style="margin: 0 0 0.4rem 0; color: #00E5FF; font-size: 0.92rem;">🧠 Quiz Arena & Desafios</h4>
-              <p style="margin: 0; font-size: 0.82rem; color: #949ba4;">Dispute partidas de perguntas e respostas com ranking de sabedoria e recompensas em moedas para os mais rápidos.</p>
-            </div>
+      <!-- CARD EXPLICATIVO / DICAS QUIZ -->
+      <div class="card" style="margin-top: 1.25rem;">
+        <h2>💡 Recursos do Quiz Arena & Desafios</h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin-top: 0.75rem;">
+          <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 0.85rem;">
+            <h4 style="margin: 0 0 0.4rem 0; color: #00E5FF; font-size: 0.92rem;">🎯 Partidas Dinâmicas</h4>
+            <p style="margin: 0; font-size: 0.82rem; color: #949ba4;">Dispute partidas de perguntas e respostas com ranking de sabedoria e recompensas em moedas para os mais rápidos.</p>
+          </div>
+          <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 0.85rem;">
+            <h4 style="margin: 0 0 0.4rem 0; color: #00E5FF; font-size: 0.92rem;">📂 Categorias Customizadas</h4>
+            <p style="margin: 0; font-size: 0.82rem; color: #949ba4;">Crie novas categorias exclusivas para o seu servidor com cores e ícones personalizados.</p>
+          </div>
+          <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 0.85rem;">
+            <h4 style="margin: 0 0 0.4rem 0; color: #00E5FF; font-size: 0.92rem;">🎬 GIFs Animados HD</h4>
+            <p style="margin: 0; font-size: 0.82rem; color: #949ba4;">Perguntas possuem animações oficiais exibidas na explicação pós-resposta.</p>
           </div>
         </div>
+      </div>
     </div>
 
     <!-- TAB CASINO: CASSINO & APOSTAS -->
@@ -5380,61 +5404,193 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       </div>
     </div>
 
-    <!-- TAB REVIEWS: AVALIAÇÃO DA EQUIPE -->
+    <!-- TAB REVIEWS: AVALIAÇÃO DA EQUIPE & NOTAS -->
     <div id="tab-reviews" class="tab-content">
-      <div class="grid">
+      <!-- HEADER COM AÇÕES RÁPIDAS -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
+        <div>
+          <h2 style="margin: 0; font-size: 1.35rem; color: #FFFFFF; display: flex; align-items: center; gap: 8px;">
+            <img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/2b50.png" style="width: 26px; height: 26px; object-fit: contain;" alt="">
+            Painel de Reputação & Avaliações da Equipe
+          </h2>
+          <p style="margin: 4px 0 0; color: var(--text-muted); font-size: 0.88rem;">
+            Acompanhe o desempenho, média de satisfação dos membros e faça a moderação dos feedbacks em tempo real.
+          </p>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+          <button type="button" class="secondary-btn" id="refreshReviewsBtn" style="height: 38px; display: inline-flex; align-items: center; gap: 6px; font-weight: 600;">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+            Atualizar Feedbacks
+          </button>
+        </div>
+      </div>
+
+      <!-- ROW 1: CARDS DE MÉTRICAS / KPIS (Scorecards) -->
+      <div class="stat-grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-bottom: 1.5rem;">
+        <!-- KPI 1: MÉDIA GERAL -->
+        <div class="stat-card" style="border-left: 4px solid #F59E0B; background: linear-gradient(145deg, rgba(245, 158, 11, 0.04), var(--bg-surface));">
+          <div class="stat-title" style="display: flex; justify-content: space-between; align-items: center;">
+            <span>Média Geral da Staff</span>
+            <span style="color: #F59E0B; font-size: 1.1rem;">★</span>
+          </div>
+          <div style="display: flex; align-items: baseline; gap: 8px; margin: 4px 0 6px;">
+            <div class="stat-value" id="reviewStatAverage" style="color: #FBBF24; font-size: 2.2rem; font-weight: 800;">5.0</div>
+            <div style="color: var(--text-muted); font-size: 0.95rem; font-weight: 600;">/ 5.0</div>
+          </div>
+          <div id="reviewStatStarsVisual" style="color: #FBBF24; font-size: 1rem; margin-bottom: 6px; letter-spacing: 2px;">
+            ★★★★★
+          </div>
+          <div style="font-size: 0.78rem; color: var(--text-muted);" id="reviewStatTotalSub">
+            Baseado em 0 atendimentos
+          </div>
+        </div>
+
+        <!-- KPI 2: TOTAL DE FEEDBACKS -->
+        <div class="stat-card" style="border-left: 4px solid #38BDF8; background: linear-gradient(145deg, rgba(56, 189, 248, 0.04), var(--bg-surface));">
+          <div class="stat-title" style="display: flex; justify-content: space-between; align-items: center;">
+            <span>Atendimentos Avaliados</span>
+            <span style="color: #38BDF8; font-size: 1.1rem;">📋</span>
+          </div>
+          <div class="stat-value" id="reviewStatTotal" style="color: #38BDF8; font-size: 2.2rem; font-weight: 800; margin: 4px 0 6px;">
+            0
+          </div>
+          <div style="font-size: 0.8rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px;">
+            <span style="background: rgba(56, 189, 248, 0.15); color: #38BDF8; padding: 2px 8px; border-radius: 999px; font-weight: 600; font-size: 0.72rem;">Auditado</span>
+            <span>Feedbacks registrados</span>
+          </div>
+        </div>
+
+        <!-- KPI 3: ÍNDICE DE SATISFAÇÃO -->
+        <div class="stat-card" style="border-left: 4px solid #10B981; background: linear-gradient(145deg, rgba(16, 185, 129, 0.04), var(--bg-surface));">
+          <div class="stat-title" style="display: flex; justify-content: space-between; align-items: center;">
+            <span>Índice de Satisfação</span>
+            <span style="color: #10B981; font-size: 1.1rem;">💚</span>
+          </div>
+          <div class="stat-value" id="reviewStatPositive" style="color: #10B981; font-size: 2.2rem; font-weight: 800; margin: 4px 0 6px;">
+            100%
+          </div>
+          <div style="font-size: 0.78rem; color: var(--text-muted);">
+            Avaliações Positivas (4★ e 5★)
+          </div>
+        </div>
+      </div>
+
+      <!-- ROW 2: ANALYTICS (Distribuição de Estrelas + Destaques da Staff) -->
+      <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); margin-bottom: 1.5rem;">
+        <!-- CARD: DISTRIBUIÇÃO DAS ESTRELAS -->
+        <div class="card" style="display: flex; flex-direction: column;">
+          <h2 style="font-size: 1.1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 8px;">
+            <span>📊</span> Distribuição das Notas
+          </h2>
+          <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 1rem;">
+            Proporção de notas de 1 a 5 estrelas concedidas pelos usuários.
+          </p>
+          <div id="reviewBreakdownContainer" style="display: flex; flex-direction: column; gap: 10px; flex: 1; justify-content: center;">
+            <div style="color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 1.5rem;">Carregando métricas...</div>
+          </div>
+        </div>
+
+        <!-- CARD: DESTAQUES DA STAFF (Leaderboard) -->
+        <div class="card" style="display: flex; flex-direction: column;">
+          <h2 style="font-size: 1.1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 8px;">
+            <span>🏆</span> Top Atendentes da Staff
+          </h2>
+          <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 1rem;">
+            Moderadores e suportes com melhores médias e mais atendimentos.
+          </p>
+          <div id="reviewLeaderboardContainer" style="display: flex; flex-direction: column; gap: 8px; flex: 1;">
+            <div style="color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 1.5rem;">Carregando ranking...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ROW 3: MURAL DE FEEDBACKS & MODERAÇÃO -->
+      <div class="card" style="margin-bottom: 1.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 1rem;">
+          <div>
+            <h2 style="font-size: 1.15rem; margin: 0; display: flex; align-items: center; gap: 8px;">
+              <span>💬</span> Mural de Feedbacks & Moderação
+            </h2>
+            <p style="margin: 4px 0 0; font-size: 0.82rem; color: var(--text-muted);">
+              Visualize os relatos dos membros, aprove para exibir no servidor ou modere comentários indevidos.
+            </p>
+          </div>
+
+          <!-- Filtros de Feed -->
+          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+            <div style="position: relative; min-width: 220px;">
+              <input type="text" id="reviewSearchInput" placeholder="Buscar por membro ou texto..." style="width: 100%; height: 36px; padding: 0 10px 0 32px; font-size: 0.82rem; border-radius: var(--radius); background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main);">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="position: absolute; left: 10px; top: 11px; color: var(--text-muted);"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </div>
+            <select id="reviewFilterStars" style="height: 36px; padding: 0 10px; font-size: 0.82rem; border-radius: var(--radius); background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main);">
+              <option value="ALL">⭐ Todas as Estrelas</option>
+              <option value="5">⭐⭐⭐⭐⭐ (5 Estrelas)</option>
+              <option value="4">⭐⭐⭐⭐ (4 Estrelas)</option>
+              <option value="3">⭐⭐⭐ (3 Estrelas)</option>
+              <option value="2">⭐⭐ (2 Estrelas)</option>
+              <option value="1">⭐ (1 Estrela)</option>
+            </select>
+            <select id="reviewFilterStatus" style="height: 36px; padding: 0 10px; font-size: 0.82rem; border-radius: var(--radius); background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main);">
+              <option value="ALL">📋 Todos os Status</option>
+              <option value="APPROVED">✅ Aprovadas / Publicadas</option>
+              <option value="PENDING">⏳ Pendentes de Moderação</option>
+              <option value="REJECTED">❌ Rejeitadas / Ocultas</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Lista de Feedbacks Container -->
+        <div id="reviewsListContainer" style="display: flex; flex-direction: column; gap: 12px;">
+          <div style="text-align: center; padding: 2rem; color: var(--text-muted); font-size: 0.9rem;">
+            Carregando avaliações...
+          </div>
+        </div>
+      </div>
+
+      <!-- ROW 4: CONFIGURAÇÕES & GUIA (Mantendo canais e status para salvar) -->
+      <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));">
         <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
           <div>
-            <h2>⭐ Avaliações & Reputação da Equipe</h2>
-            <p>Membros podem avaliar o atendimento da equipe usando <code>+avaliar</code> ou <code>/avaliar</code> com notas de 1 a 5 estrelas.</p>
-            <div class="form-group">
-              <label>Canal Público para Postagem de Avaliações</label>
-              <select id="reviewChannelSelect" class="channel-select">
+            <h2 style="font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
+              <span>⚙️</span> Configurações do Módulo de Avaliações
+            </h2>
+            <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 1rem;">
+              Defina o canal de transparência e regras de publicação para a sua equipe.
+            </p>
+            <div class="form-group" style="margin-bottom: 1rem;">
+              <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-main); margin-bottom: 4px; display: block;">Canal Público para Postagem de Avaliações</label>
+              <select id="reviewChannelSelect" class="channel-select" style="width: 100%; height: 38px; border-radius: var(--radius); background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); padding: 0 10px;">
                 <option value="">Carregando canais...</option>
               </select>
               <small style="color: var(--text-muted); font-size: 0.75rem;">Canal onde as avaliações aprovadas serão exibidas.</small>
             </div>
-            <div class="form-group">
-              <label>Fila de Moderação Prévia</label>
-              <select id="modReviewsStatus">
+            <div class="form-group" style="margin-bottom: 1rem;">
+              <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-main); margin-bottom: 4px; display: block;">Fila de Moderação Prévia</label>
+              <select id="modReviewsStatus" style="width: 100%; height: 38px; border-radius: var(--radius); background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); padding: 0 10px;">
                 <option value="true" selected>Aprovação Prévia Ativada (Recomendado)</option>
                 <option value="false">Publicação Direta Imediata</option>
               </select>
               <small style="color: var(--text-muted); font-size: 0.75rem;">Evita spam ou mensagens ofensivas antes da publicação.</small>
             </div>
           </div>
-          <button class="primary-btn" id="saveReviewsBtn" style="width: 100%; margin-top: 1rem;">💾 Salvar Configurações de Avaliações</button>
+          <button class="primary-btn" id="saveReviewsBtn" style="width: 100%; margin-top: 1rem; height: 38px;">💾 Salvar Configurações de Avaliações</button>
         </div>
 
         <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
           <div>
-            <h2>📋 Comandos de Avaliação no Discord</h2>
-            <p>Exemplos práticos de como membros e equipe interagem com o sistema de reputação.</p>
-            <div style="background: rgba(0,0,0,0.25); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; font-size: 0.88rem; line-height: 1.5; color: #dbdee1;">
+            <h2 style="font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
+              <span>📋</span> Comandos de Avaliação no Discord
+            </h2>
+            <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 1rem;">
+              Instruções para seus membros e moderadores usarem no chat.
+            </p>
+            <div style="background: rgba(0,0,0,0.25); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 1rem; font-size: 0.85rem; line-height: 1.6; color: #dbdee1;">
               <div style="font-weight: 700; color: #00E5FF; margin-bottom: 0.4rem;">💬 Como os membros avaliam:</div>
               <div>• <code>+avaliar @staff 5 Atendimento excelente!</code></div>
               <div>• <code>/avaliar estrelas:5 comentario:Muito prestativo!</code></div>
               <div style="margin-top: 0.75rem; font-weight: 700; color: #57F287;">📊 Consulta de Reputação:</div>
               <div>• <code>+perfil @staff</code> — Exibe a média ⭐ e total de avaliações recebidas!</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- CARD EXPLICATIVO / DICAS -->
-        <div class="card" style="grid-column: 1 / -1;">
-          <h2>💡 Como Funciona a Avaliação da Equipe?</h2>
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin-top: 0.75rem;">
-            <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 0.85rem;">
-              <h4 style="margin: 0 0 0.4rem 0; color: #00E5FF; font-size: 0.92rem;">⭐ Notas de 1 a 5 Estrelas</h4>
-              <p style="margin: 0; font-size: 0.82rem; color: #949ba4;">Membros avaliam o suporte e atendimento recebido com feedback detalhado e menção ao atendente.</p>
-            </div>
-            <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 0.85rem;">
-              <h4 style="margin: 0 0 0.4rem 0; color: #00E5FF; font-size: 0.92rem;">🛡️ Fila de Moderação</h4>
-              <p style="margin: 0; font-size: 0.82rem; color: #949ba4;">Evite abusos ativando a aprovação prévia das avaliações antes do envio ao canal público.</p>
-            </div>
-            <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 0.85rem;">
-              <h4 style="margin: 0 0 0.4rem 0; color: #00E5FF; font-size: 0.92rem;">🎖️ Perfil & Reputação da Staff</h4>
-              <p style="margin: 0; font-size: 0.82rem; color: #949ba4;">As avaliações constroem a nota média e o prestígio de cada moderador, visíveis no comando de perfil.</p>
+              <div>• <code>+topstaff</code> — Ranking dos moderadores mais bem avaliados.</div>
             </div>
           </div>
         </div>
@@ -5729,9 +5885,9 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       { id: 'tab-customcommands', name: 'Comandos Personalizados & Triggers ({})', cat: 'Comunidade', icon: '⚡', keywords: 'comando comandos custom criar comando semprefixo contem exato tags triggers' },
 
       // Quiz Arena & Perguntas
-      { id: 'tab-social', scrollTarget: 'quizQuestionsBrowserSection', name: 'Quiz Arena (Banco de Perguntas & Pesquisa)', cat: 'Jogos & Quiz', icon: '🧠', keywords: 'quiz arena quiz perguntas respostas pesquisar quiz banco perguntas spoiler quiz categorias perguntas do quiz jogo' },
-      { id: 'tab-social', scrollTarget: 'quizQuestionEditorSection', name: 'Criar & Editar Perguntas do Quiz (+quiz criar)', cat: 'Jogos & Quiz', icon: '➕', keywords: 'criar quiz adicionar pergunta quiz nova pergunta quiz editar pergunta' },
-      { id: 'tab-social', scrollTarget: 'quizCategoriesSection', name: 'Criar & Gerenciar Categorias do Quiz (+quiz categorias)', cat: 'Jogos & Quiz', icon: '📂', keywords: 'categoria quiz criar categoria categorias temas quiz' },
+      { id: 'tab-quiz', scrollTarget: 'quizQuestionsBrowserSection', name: 'Quiz Arena (Banco de Perguntas & Pesquisa)', cat: 'Jogos & Quiz', icon: '🧠', keywords: 'quiz arena quiz perguntas respostas pesquisar quiz banco perguntas spoiler quiz categorias perguntas do quiz jogo' },
+      { id: 'tab-quiz', scrollTarget: 'quizQuestionEditorSection', name: 'Criar & Editar Perguntas do Quiz (+quiz criar)', cat: 'Jogos & Quiz', icon: '➕', keywords: 'criar quiz adicionar pergunta quiz nova pergunta quiz editar pergunta' },
+      { id: 'tab-quiz', scrollTarget: 'quizCategoriesSection', name: 'Criar & Gerenciar Categorias do Quiz (+quiz categorias)', cat: 'Jogos & Quiz', icon: '📂', keywords: 'categoria quiz criar categoria categorias temas quiz' },
 
       // Comunidade, Jogos & Outros
       { id: 'tab-reviews', name: 'Avaliações da Equipe (Reviews & Estrelas)', cat: 'Comunidade', icon: '⭐', keywords: 'avaliacao avaliacoes avaliar review reviews feedback estrelas notas' },
@@ -5928,7 +6084,8 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       'tab-botspeak': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f4e2.png" class="nav-photo-icon" alt=""> Falar pelo Bot (Transmissor)',
       'tab-customcommands': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/26a1.png" class="nav-photo-icon" alt=""> Comandos Personalizados ({})',
       'tab-welcome': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f44b.png" class="nav-photo-icon" alt=""> Boas-Vindas & Despedida',
-      'tab-social': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f495.png" class="nav-photo-icon" alt=""> Social, Romance & Quiz Arena',
+      'tab-social': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f495.png" class="nav-photo-icon" alt=""> Romance & Social',
+      'tab-quiz': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f3af.png" class="nav-photo-icon" alt=""> Quiz Arena & Desafio Neural',
       'tab-starboard': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f31f.png" class="nav-photo-icon" alt=""> Starboard (Destaques)',
       'tab-reviews': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/2b50.png" class="nav-photo-icon" alt=""> Avaliação da Equipe',
       'tab-community': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f4e2.png" class="nav-photo-icon" alt=""> Relatórios & Briefing',
@@ -6035,9 +6192,12 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       if (tabId === 'tab-health') fetchHealthMetrics();
       if (tabId === 'tab-audit') fetchAuditLogs();
       if (tabId === 'tab-members') fetchGuildMembers();
-      if (tabId === 'tab-social') {
+      if (tabId === 'tab-social' || tabId === 'tab-quiz') {
         if (typeof renderQuizCategoriesSection === 'function') renderQuizCategoriesSection();
         if (typeof renderAllQuizQuestions === 'function') renderAllQuizQuestions();
+      }
+      if (tabId === 'tab-reviews') {
+        if (typeof loadReviewsData === 'function') loadReviewsData();
       }
     }
 
@@ -7697,6 +7857,9 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         gifsEnabled: document.getElementById('socialGifsEnabledSelect')?.value === 'true',
         funCommandsEnabled: document.getElementById('socialFunCommandsEnabledSelect')?.value === 'true'
       });
+    });
+
+    document.getElementById('saveQuizBtn')?.addEventListener('click', async () => {
       await saveModule('quiz', {
         rewardCoins: parseInt(document.getElementById('quizRewardCoins')?.value, 10) || 200,
         rewardXp: parseInt(document.getElementById('quizRewardXp')?.value, 10) || 50,
@@ -8737,6 +8900,285 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         channelId: document.getElementById('reviewChannelSelect').value,
         moderationEnabled: document.getElementById('modReviewsStatus').value === 'true'
       });
+    });
+
+    // ==========================================
+    // REVIEWS & STAFF REPUTATION SYSTEM
+    // ==========================================
+    window.reviewsDataCache = null;
+
+    function handleAvatarImgError(img) {
+      if (!img) return;
+      img.onerror = null;
+      img.src = 'https://cdn.discordapp.com/embed/avatars/0.png';
+    }
+
+    async function loadReviewsData() {
+      if (!currentGuildId) return;
+      try {
+        const res = await fetch('/api/guilds/' + currentGuildId + '/reviews');
+        if (!res.ok) throw new Error('Falha ao carregar avaliações (' + res.status + ')');
+        const data = await res.json();
+        window.reviewsDataCache = data;
+
+        // 1. Atualizar KPIs / Métricas Hero
+        const stats = data.stats || { total: 0, average: 5, breakdown: {}, positivePercent: 100 };
+        const avgScore = stats.average !== undefined && stats.average !== null ? Number(stats.average).toFixed(1) : '5.0';
+        const statAvgEl = document.getElementById('reviewStatAverage');
+        if (statAvgEl) statAvgEl.textContent = avgScore;
+
+        const statStarsVisualEl = document.getElementById('reviewStatStarsVisual');
+        if (statStarsVisualEl) {
+          const numAvg = Math.round(Number(avgScore) || 5);
+          statStarsVisualEl.innerHTML = '★'.repeat(Math.max(1, Math.min(5, numAvg))) + '☆'.repeat(Math.max(0, 5 - numAvg));
+        }
+
+        const statTotalSubEl = document.getElementById('reviewStatTotalSub');
+        if (statTotalSubEl) {
+          statTotalSubEl.textContent = 'Baseado em ' + (stats.total || 0) + ' atendimento' + (stats.total === 1 ? '' : 's');
+        }
+
+        const statTotalEl = document.getElementById('reviewStatTotal');
+        if (statTotalEl) statTotalEl.textContent = String(stats.total || 0);
+
+        const statPositiveEl = document.getElementById('reviewStatPositive');
+        if (statPositiveEl) statPositiveEl.textContent = (stats.positivePercent !== undefined ? stats.positivePercent : 100) + '%';
+
+        // 2. Renderizar Distribuição das Estrelas (Breakdown 5 a 1)
+        renderReviewsBreakdown(stats);
+
+        // 3. Renderizar Destaques da Staff (Leaderboard)
+        renderReviewsLeaderboard(data.leaderboard || []);
+
+        // 4. Renderizar Feed / Mural de Avaliações
+        renderReviewsList();
+
+        // 5. Configs
+        if (data.config) {
+          if (data.config.reviewChannelId && document.getElementById('reviewChannelSelect')) {
+            document.getElementById('reviewChannelSelect').value = data.config.reviewChannelId;
+          }
+          if (data.config.requireModeration !== undefined && document.getElementById('modReviewsStatus')) {
+            document.getElementById('modReviewsStatus').value = String(Boolean(data.config.requireModeration));
+          }
+        }
+      } catch (err) {
+        console.error('Erro ao buscar avaliações:', err);
+      }
+    }
+
+    function renderReviewsBreakdown(stats) {
+      const container = document.getElementById('reviewBreakdownContainer');
+      if (!container) return;
+      const breakdown = stats.breakdown || {};
+      const total = stats.total || 0;
+
+      let html = '';
+      for (let star = 5; star >= 1; star--) {
+        const count = breakdown[star] || 0;
+        const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+
+        html += '<div style="display: flex; align-items: center; gap: 10px; font-size: 0.82rem;">' +
+          '<div style="min-width: 50px; font-weight: 700; color: #FBBF24; display: flex; align-items: center; gap: 4px;">' +
+            '<span>' + star + '</span> <span style="font-size: 0.95rem;">★</span>' +
+          '</div>' +
+          '<div style="flex: 1; height: 10px; background: rgba(255,255,255,0.06); border-radius: 999px; overflow: hidden; position: relative;">' +
+            '<div style="height: 100%; width: ' + pct + '%; background: linear-gradient(90deg, #F59E0B, #FBBF24); border-radius: 999px; transition: width 0.35s ease;"></div>' +
+          '</div>' +
+          '<div style="min-width: 65px; text-align: right; color: var(--text-muted); font-size: 0.78rem; font-weight: 600;">' +
+            count + ' <span style="opacity: 0.7;">(' + pct + '%)</span>' +
+          '</div>' +
+        '</div>';
+      }
+      container.innerHTML = html;
+    }
+
+    function renderReviewsLeaderboard(leaderboard) {
+      const container = document.getElementById('reviewLeaderboardContainer');
+      if (!container) return;
+
+      if (!leaderboard || leaderboard.length === 0) {
+        container.innerHTML = '<div style="text-align: center; padding: 1.5rem 0.5rem; color: var(--text-muted); font-size: 0.82rem;">Nenhum atendente com avaliações aprovadas ainda.</div>';
+        return;
+      }
+
+      const medals = ['🥇', '🥈', '🥉'];
+      let html = '';
+      leaderboard.slice(0, 5).forEach((item, idx) => {
+        const staff = item.staff || { displayName: 'Staff (' + item.staffId.slice(-4) + ')', username: item.staffId, avatarUrl: 'https://cdn.discordapp.com/embed/avatars/0.png' };
+        const medalOrPos = idx < 3 ? medals[idx] : '<span style="color: var(--text-muted); font-weight: 700;">#' + (idx + 1) + '</span>';
+
+        html += '<div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px;">' +
+          '<div style="display: flex; align-items: center; gap: 10px; min-width: 0;">' +
+            '<div style="font-size: 1.1rem; width: 24px; text-align: center; flex-shrink: 0;">' + medalOrPos + '</div>' +
+            '<img src="' + escapeHtml(staff.avatarUrl) + '" onerror="handleAvatarImgError(this);" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; flex-shrink: 0;">' +
+            '<div style="min-width: 0;">' +
+              '<div style="font-weight: 600; font-size: 0.86rem; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">' +
+                escapeHtml(staff.displayName) +
+              '</div>' +
+              '<div style="font-size: 0.72rem; color: var(--text-muted);">' +
+                item.total + ' atendimento' + (item.total === 1 ? '' : 's') + ' • ' + item.positivePercent + '% aprovação' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div style="display: flex; align-items: center; gap: 4px; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.25); color: #FBBF24; padding: 2px 8px; border-radius: 999px; font-weight: 700; font-size: 0.8rem; flex-shrink: 0;">' +
+            '<span>' + Number(item.average).toFixed(1) + '</span>' +
+            '<span>★</span>' +
+          '</div>' +
+        '</div>';
+      });
+      container.innerHTML = html;
+    }
+
+    function renderReviewsList() {
+      const container = document.getElementById('reviewsListContainer');
+      if (!container) return;
+
+      const all = (window.reviewsDataCache && window.reviewsDataCache.reviews) || [];
+      const term = (document.getElementById('reviewSearchInput')?.value || '').toLowerCase().trim();
+      const starFilter = document.getElementById('reviewFilterStars')?.value || 'ALL';
+      const statusFilter = document.getElementById('reviewFilterStatus')?.value || 'ALL';
+
+      const filtered = all.filter(r => {
+        if (starFilter !== 'ALL' && r.rating !== parseInt(starFilter, 10)) return false;
+        if (statusFilter !== 'ALL' && r.status !== statusFilter) return false;
+        if (term) {
+          const authName = (r.author?.displayName || '').toLowerCase();
+          const authUser = (r.author?.username || '').toLowerCase();
+          const authId = String(r.authorId || '');
+          const staffName = (r.targetStaff?.displayName || '').toLowerCase();
+          const staffUser = (r.targetStaff?.username || '').toLowerCase();
+          const staffId = String(r.targetStaffId || '');
+          const comment = (r.comment || '').toLowerCase();
+
+          const matches = authName.includes(term) || authUser.includes(term) || authId.includes(term)
+            || staffName.includes(term) || staffUser.includes(term) || staffId.includes(term)
+            || comment.includes(term);
+          if (!matches) return false;
+        }
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = '<div style="text-align: center; padding: 2.5rem 1rem; color: var(--text-muted); background: rgba(0,0,0,0.15); border-radius: 8px;">' +
+          '<div style="font-size: 2rem; margin-bottom: 0.4rem;">🔍</div>' +
+          '<div style="font-weight: 600; font-size: 0.95rem; color: var(--text-main);">Nenhum feedback encontrado</div>' +
+          '<div style="font-size: 0.8rem; margin-top: 4px; color: var(--text-muted);">' +
+            (all.length === 0 ? 'O servidor ainda não possui avaliações registradas via +avaliar ou tickets.' : 'Nenhuma avaliação corresponde aos filtros de busca ou estrelas selecionados.') +
+          '</div>' +
+        '</div>';
+        return;
+      }
+
+      let html = '';
+      filtered.forEach(r => {
+        const author = r.author || { displayName: 'Membro (' + (r.authorId ? r.authorId.slice(-4) : '—') + ')', username: r.authorId || '', avatarUrl: 'https://cdn.discordapp.com/embed/avatars/0.png' };
+        const staff = r.targetStaff || { displayName: 'Equipe Geral', username: '', avatarUrl: 'https://cdn.discordapp.com/embed/avatars/0.png' };
+
+        const starsStr = '★'.repeat(r.rating || 5) + '☆'.repeat(5 - (r.rating || 5));
+        const dateStr = r.createdAt ? new Date(r.createdAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Data desconhecida';
+
+        let statusBadge = '';
+        if (r.status === 'APPROVED') {
+          statusBadge = '<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3);">✅ Aprovada / Visível</span>';
+        } else if (r.status === 'PENDING') {
+          statusBadge = '<span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #F59E0B; border: 1px solid rgba(245, 158, 11, 0.3);">⏳ Aguardando Moderação</span>';
+        } else {
+          statusBadge = '<span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.3);">❌ Rejeitada / Oculta</span>';
+        }
+
+        let actionBtns = '';
+        if (r.status !== 'APPROVED') {
+          actionBtns += '<button type="button" class="btn-cc-edit" style="height: 28px; padding: 0 10px; font-size: 0.78rem;" data-mod-action="APPROVE" data-review-id="' + r.id + '">✅ Aprovar</button>';
+        }
+        if (r.status !== 'REJECTED') {
+          actionBtns += '<button type="button" class="secondary-btn" style="height: 28px; padding: 0 10px; font-size: 0.78rem;" data-mod-action="REJECT" data-review-id="' + r.id + '">❌ Rejeitar</button>';
+        }
+        actionBtns += '<button type="button" class="danger-btn" style="height: 28px; padding: 0 10px; font-size: 0.78rem;" data-mod-action="DELETE" data-review-id="' + r.id + '">🗑️ Excluir</button>';
+
+        let responseHtml = '';
+        if (r.response) {
+          responseHtml = '<div style="background: rgba(0, 229, 255, 0.05); border-left: 3px solid #00E5FF; border-radius: 4px; padding: 6px 12px; font-size: 0.8rem; color: #cbd5e1;">' +
+            '<span style="font-weight: 600; color: #00E5FF;">Resposta da Staff:</span> ' + escapeHtml(r.response) +
+          '</div>';
+        }
+
+        html += '<div style="background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; transition: border-color 0.15s ease;">' +
+          '<!-- Linha 1: Participantes, Estrelas e Status -->' +
+          '<div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">' +
+            '<div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">' +
+              '<div style="display: flex; align-items: center; gap: 6px;">' +
+                '<img src="' + escapeHtml(author.avatarUrl) + '" onerror="handleAvatarImgError(this);" style="width: 26px; height: 26px; border-radius: 50%; object-fit: cover;">' +
+                '<span style="font-weight: 600; font-size: 0.86rem; color: var(--text-main);">' + escapeHtml(author.displayName) + '</span>' +
+              '</div>' +
+              '<span style="color: var(--text-muted); font-size: 0.78rem;">avaliou</span>' +
+              '<div style="display: flex; align-items: center; gap: 6px;">' +
+                '<img src="' + escapeHtml(staff.avatarUrl) + '" onerror="handleAvatarImgError(this);" style="width: 26px; height: 26px; border-radius: 50%; object-fit: cover;">' +
+                '<span style="font-weight: 600; font-size: 0.86rem; color: #00E5FF;">' + escapeHtml(staff.displayName) + '</span>' +
+              '</div>' +
+              '<div style="margin-left: 6px; color: #FBBF24; font-size: 0.92rem; letter-spacing: 1px;" title="' + (r.rating || 5) + ' de 5 estrelas">' +
+                starsStr +
+              '</div>' +
+            '</div>' +
+            '<div style="display: flex; align-items: center; gap: 8px;">' +
+              statusBadge +
+              '<span style="font-size: 0.75rem; color: var(--text-muted);">' + dateStr + '</span>' +
+            '</div>' +
+          '</div>' +
+          '<!-- Linha 2: Comentário do Membro -->' +
+          '<div style="background: rgba(0,0,0,0.22); border-left: 3px solid #F59E0B; border-radius: 4px; padding: 8px 12px; font-size: 0.85rem; color: #e2e8f0; line-height: 1.45;">' +
+            '"' + escapeHtml(r.comment || 'Sem comentário por escrito.') + '"' +
+          '</div>' +
+          responseHtml +
+          '<!-- Linha 4: Botões de Moderação e Auditoria -->' +
+          '<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.04); flex-wrap: wrap; gap: 8px;">' +
+            '<span style="font-size: 0.72rem; color: var(--text-muted);">ID da Avaliação: #' + r.id + (r.ticketId ? ' • Ticket #' + r.ticketId : '') + '</span>' +
+            '<div style="display: flex; gap: 6px; align-items: center;">' +
+              actionBtns +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      });
+
+      container.innerHTML = html;
+    }
+
+    window.moderateReviewAction = async function(reviewId, action) {
+      if (!currentGuildId) return;
+      if (action === 'DELETE' && !confirm('Deseja realmente excluir permanentemente esta avaliação?')) {
+        return;
+      }
+      try {
+        const res = await fetch('/api/guilds/' + currentGuildId + '/reviews/' + reviewId + '/moderate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+          body: JSON.stringify({ action })
+        });
+        const json = await res.json();
+        if (res.ok && json.success) {
+          const actionLabels = { APPROVE: 'aprovada', REJECT: 'rejeitada', DELETE: 'excluída' };
+          showToast('Avaliação ' + (actionLabels[action] || 'atualizada') + ' com sucesso!');
+          loadReviewsData();
+        } else {
+          alert('Erro ao moderar avaliação: ' + (json.error || 'Falha desconhecida'));
+        }
+      } catch (err) {
+        alert('Erro ao comunicar com o servidor: ' + err.message);
+      }
+    };
+
+    document.getElementById('refreshReviewsBtn')?.addEventListener('click', loadReviewsData);
+    document.getElementById('reviewSearchInput')?.addEventListener('input', renderReviewsList);
+    document.getElementById('reviewFilterStars')?.addEventListener('change', renderReviewsList);
+    document.getElementById('reviewFilterStatus')?.addEventListener('change', renderReviewsList);
+    document.getElementById('reviewsListContainer')?.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-mod-action]');
+      if (!btn) return;
+      const action = btn.getAttribute('data-mod-action');
+      const reviewId = btn.getAttribute('data-review-id');
+      if (action && reviewId) {
+        moderateReviewAction(reviewId, action);
+      }
     });
 
     document.getElementById('saveBriefingBtn')?.addEventListener('click', () => {
