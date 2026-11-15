@@ -62,22 +62,21 @@ if ($hasForbidden) {
     Exit 1
 }
 
-if (-not $stagedFiles) {
-    Write-Host "[INFO] Nenhuma alteracao pendente para enviar." -ForegroundColor Green
-    Exit 0
+if ($stagedFiles) {
+    Write-Host "[OK] Auditoria de seguranca concluida com sucesso! Nenhum dado sensivel detectado." -ForegroundColor Green
+    Write-Host "[+] Arquivos que serao enviados:" -ForegroundColor Gray
+    $stagedFiles | ForEach-Object { Write-Host "   - $_" -ForegroundColor DarkGray }
+
+    # 4. Commit
+    if (-not $Message) {
+        $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm"
+        $Message = "update: bot features & assets ($timestamp)"
+    }
+
+    git commit -m "$Message"
+} else {
+    Write-Host "[INFO] Sem novas alteracoes para commitar. Verificando envio ao GitHub..." -ForegroundColor Yellow
 }
-
-Write-Host "[OK] Auditoria de seguranca concluida com sucesso! Nenhum dado sensivel detectado." -ForegroundColor Green
-Write-Host "[+] Arquivos que serao enviados:" -ForegroundColor Gray
-$stagedFiles | ForEach-Object { Write-Host "   - $_" -ForegroundColor DarkGray }
-
-# 4. Commit
-if (-not $Message) {
-    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm"
-    $Message = "update: bot features & assets ($timestamp)"
-}
-
-git commit -m "$Message"
 
 # 5. Push para o GitHub
 $hasRemote = git remote
