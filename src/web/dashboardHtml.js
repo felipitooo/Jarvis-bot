@@ -7843,6 +7843,15 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       }
     }
 
+    function handleQuizImgError(img) {
+      if (!img) return;
+      img.onerror = null;
+      var box = img.parentElement;
+      if (box) {
+        box.innerHTML = '<div style="padding:0.75rem; text-align:center; color:var(--text-muted); font-size:0.76rem;">⚠️ Não foi possível carregar a animação externa</div>';
+      }
+    }
+
     function renderAllQuizQuestions() {
       const container = document.getElementById('allQuizQuestionsContainer');
       const visibleCountEl = document.getElementById('quizCountVisible');
@@ -7898,7 +7907,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         const imgInsideExplanation = q.imageUrl
           ? ('<div class="quiz-img-container" style="margin-top: 0.65rem; max-width: 460px;">' +
               '<div class="quiz-img-box" style="border-radius: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,0.14); background: rgba(0,0,0,0.35); box-shadow: 0 4px 14px rgba(0,0,0,0.4);">' +
-                '<img src="' + q.imageUrl + '" style="width: 100%; height: auto; max-height: 260px; object-fit: contain; display: block;" alt="GIF da Resposta" loading="lazy" onerror="this.onerror=null; this.parentElement.innerHTML=\'<div style=\\\'padding:0.75rem; text-align:center; color:var(--text-muted); font-size:0.76rem;\\\'>⚠️ Não foi possível carregar a imagem externa</div>\';">' +
+                '<img src="' + q.imageUrl + '" style="width: 100%; height: auto; max-height: 260px; object-fit: contain; display: block;" alt="GIF da Resposta" loading="lazy" onerror="handleQuizImgError(this);">' +
               '</div>' +
               '<div style="margin-top: 0.35rem; display: flex; align-items: center; justify-content: space-between;">' +
                 '<span style="font-size: 0.72rem; color: #38bdf8;">🎬 Animação Oficial da Resposta</span>' +
