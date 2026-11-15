@@ -116,703 +116,328 @@ function renderDashboardHtml({
       line-height: 1.45;
     }
 
+        /* ======================================================== */
+    /* MODERN SLIM TOPBAR (.app-topbar)                         */
     /* ======================================================== */
-    /* DUAL-TIER TOP HEADER SYSTEM (Inspired by ML structure)   */
-    /* ======================================================== */
-    .meli-header {
-      background-color: var(--bg-header);
-      border-bottom: 1px solid var(--border-subtle);
+    .app-topbar {
       position: sticky;
       top: 0;
       z-index: 1000;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-      backdrop-filter: blur(12px);
-    }
-
-    .meli-header-container {
-      max-width: 1260px;
-      margin: 0 auto;
-      padding: 0 18px;
-    }
-
-    /* Top Tier: Brand, Big Search, Guild & Status */
-    .meli-header-top {
-      padding: 12px 0 10px;
-    }
-
-    .meli-topbar-inner {
+      height: 60px;
+      background: rgba(15, 23, 42, 0.92);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border-subtle);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 1.5rem;
+      padding: 0 24px;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+      transition: margin-left 0.25s ease;
     }
 
-    .meli-brand-area {
+    @media (min-width: 1024px) {
+      .app-topbar {
+        margin-left: 260px;
+        width: calc(100% - 260px);
+      }
+    }
+
+    .topbar-left {
       display: flex;
       align-items: center;
-      gap: 0.85rem;
+      gap: 14px;
       flex-shrink: 0;
     }
 
-    .meli-mobile-toggle {
+    .topbar-mobile-toggle {
       display: none;
-      background: none;
-      border: none;
-      font-size: 1.5rem;
+      background: transparent;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius);
       color: var(--text-main);
+      padding: 6px 10px;
+      font-size: 1.15rem;
       cursor: pointer;
-      padding: 4px;
+      line-height: 1;
+      transition: background 0.15s, border-color 0.15s;
     }
 
-    .meli-logo-box {
+    .topbar-mobile-toggle:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: var(--cyan);
+    }
+
+    .topbar-breadcrumb {
       display: flex;
       align-items: center;
-      gap: 0.75rem;
-      text-decoration: none;
-      color: var(--text-main);
+      gap: 8px;
+      font-size: 0.88rem;
+      color: var(--text-muted);
     }
 
-    .meli-logo-avatar-wrap {
-      position: relative;
-      width: 44px;
-      height: 44px;
-      flex-shrink: 0;
-    }
-
-    .meli-logo-avatar {
-      width: 44px;
-      height: 44px;
-      border-radius: 50%;
-      object-fit: cover;
-      border: 2px solid var(--cyan);
-      box-shadow: var(--shadow-glow);
-      background-color: var(--bg-surface);
-      display: block;
-    }
-
-    .meli-logo-dot {
-      position: absolute;
-      bottom: 1px;
-      right: 1px;
-      width: 11px;
-      height: 11px;
-      background-color: var(--success);
-      border: 2px solid var(--bg-header);
-      border-radius: 50%;
-      box-shadow: 0 0 8px var(--success);
-    }
-
-    .meli-logo-text {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .meli-logo-name {
-      font-size: 1.25rem;
-      font-weight: 800;
-      color: #FFFFFF;
-      letter-spacing: -0.3px;
-      line-height: 1.1;
-    }
-
-    .meli-logo-badge {
-      font-size: 0.68rem;
+    .breadcrumb-root {
       font-weight: 700;
       color: var(--cyan);
-      letter-spacing: 0.6px;
+      letter-spacing: 0.5px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
     }
 
-    /* Central Universal Search Bar */
+    .breadcrumb-sep {
+      opacity: 0.45;
+      font-size: 0.78rem;
+    }
+
+    .breadcrumb-current {
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    /* Universal Search in Topbar */
     .meli-search-container {
-      flex: 1;
-      max-width: 620px;
-      min-width: 240px;
       position: relative;
+      flex: 1;
+      max-width: 440px;
+      margin: 0 16px;
     }
 
     .meli-search-box {
       display: flex;
       align-items: center;
-      background-color: var(--bg-input);
+      background: rgba(0, 0, 0, 0.35);
       border: 1px solid var(--border-subtle);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow-sm);
-      height: 42px;
-      overflow: hidden;
-      transition: border-color 0.2s, box-shadow 0.2s;
+      border-radius: var(--radius-pill);
+      padding: 4px 14px;
+      transition: border-color 0.18s, box-shadow 0.18s, background 0.18s;
     }
 
     .meli-search-box:focus-within {
       border-color: var(--cyan);
-      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.18);
+      box-shadow: 0 0 0 2px var(--cyan-light);
+      background: rgba(0, 0, 0, 0.55);
     }
 
     .meli-search-input {
       flex: 1;
-      height: 100%;
-      border: none;
-      outline: none;
-      padding: 0 16px;
-      font-size: 0.92rem;
-      color: var(--text-main);
-      background: transparent;
+      background: transparent !important;
+      border: none !important;
+      outline: none !important;
+      font-size: 0.84rem;
+      color: var(--text-main) !important;
+      padding: 5px 8px;
+      box-shadow: none !important;
     }
 
     .meli-search-input::placeholder {
       color: var(--text-muted);
-      font-size: 0.88rem;
+      font-size: 0.82rem;
     }
 
     .meli-search-submit {
-      width: 44px;
-      height: 100%;
-      border: none;
       background: none;
-      border-left: 1px solid var(--border-subtle);
+      border: none;
       color: var(--text-muted);
       cursor: pointer;
       display: flex;
       align-items: center;
-      justify-content: center;
-      transition: color 0.15s, background-color 0.15s;
+      padding: 4px;
+      transition: color 0.15s;
     }
 
     .meli-search-submit:hover {
       color: var(--cyan);
-      background-color: rgba(255, 255, 255, 0.04);
     }
 
-    /* Live Search Results Dropdown */
     .meli-search-dropdown {
       position: absolute;
-      top: 48px;
+      top: calc(100% + 8px);
       left: 0;
       right: 0;
       background: var(--bg-surface);
-      border-radius: var(--radius);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
       box-shadow: var(--shadow-lg);
-      border: 1px solid var(--border-hover);
-      z-index: 1100;
+      z-index: 1200;
       max-height: 380px;
       overflow-y: auto;
+      padding: 6px;
     }
 
     .meli-search-item {
-      padding: 10px 16px;
       display: flex;
       align-items: center;
-      gap: 12px;
+      justify-content: space-between;
+      padding: 9px 12px;
+      border-radius: var(--radius);
       cursor: pointer;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-      font-size: 0.88rem;
       color: var(--text-main);
-      transition: background 0.12s, color 0.12s;
+      font-size: 0.84rem;
+      transition: background 0.12s;
     }
 
     .meli-search-item:hover {
-      background-color: var(--bg-surface-hover);
+      background: var(--bg-surface-hover);
       color: var(--cyan);
     }
 
     .meli-search-item-cat {
-      margin-left: auto;
       font-size: 0.72rem;
       color: var(--text-muted);
-      background: rgba(255, 255, 255, 0.05);
-      padding: 2px 8px;
-      border-radius: var(--radius-sm);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
 
-    /* Right Header User Area */
-    .meli-user-area {
+    /* Topbar Right Area */
+    .topbar-actions {
       display: flex;
       align-items: center;
-      gap: 0.85rem;
+      gap: 8px;
       flex-shrink: 0;
     }
 
     .meli-guild-card {
       display: flex;
       align-items: center;
-      gap: 0.75rem;
-      background: rgba(255, 255, 255, 0.05);
-      padding: 6px 14px;
-      border-radius: var(--radius);
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.04);
       border: 1px solid var(--border-subtle);
-      min-width: 240px;
-      max-width: 360px;
-      flex-shrink: 0;
-      transition: border-color 0.15s, background-color 0.15s;
+      border-radius: var(--radius-pill);
+      padding: 4px 10px 4px 6px;
+      transition: border-color 0.15s;
     }
 
     .meli-guild-card:hover {
-      background: rgba(255, 255, 255, 0.08);
       border-color: var(--border-hover);
     }
 
     .meli-guild-icon {
-      width: 34px;
-      height: 34px;
+      width: 24px;
+      height: 24px;
       border-radius: 50%;
       object-fit: cover;
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      flex-shrink: 0;
     }
 
     .meli-guild-meta {
       display: flex;
       flex-direction: column;
-      min-width: 0;
-      flex: 1;
+      line-height: 1.1;
     }
 
     .meli-guild-label {
-      font-size: 0.64rem;
-      color: var(--cyan);
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.6px;
-      line-height: 1;
-      margin-bottom: 2px;
-    }
-
-    .meli-guild-select {
-      background: transparent;
-      border: none;
-      font-size: 0.88rem;
+      font-size: 0.62rem;
       font-weight: 700;
-      color: var(--text-main);
-      outline: none;
-      cursor: pointer;
-      width: 100%;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      overflow: hidden;
-      padding: 0;
-    }
-
-    .meli-guild-select option {
-      background: var(--bg-surface);
-      color: var(--text-main);
-    }
-
-    .meli-status-badge {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      background: var(--success-light);
-      padding: 6px 12px;
-      border-radius: var(--radius-pill);
-      font-size: 0.78rem;
-      font-weight: 700;
-      color: var(--success);
-      border: 1px solid rgba(16, 185, 129, 0.25);
-    }
-
-    .meli-status-dot {
-      width: 8px;
-      height: 8px;
-      background-color: var(--success);
-      border-radius: 50%;
-      box-shadow: 0 0 8px var(--success);
-    }
-
-    .meli-sync-btn {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      background: var(--primary-light);
-      border: 1px solid rgba(99, 102, 241, 0.3);
-      padding: 7px 14px;
-      border-radius: var(--radius);
-      font-size: 0.82rem;
-      font-weight: 600;
-      color: #FFFFFF;
-      cursor: pointer;
-      transition: background 0.15s, border-color 0.15s;
-    }
-
-    .meli-sync-btn:hover {
-      background: var(--primary);
-      border-color: var(--primary);
-    }
-
-    /* Sub-Tier: Address Pill + Category Nav Tabs */
-    .meli-header-nav {
-      background: var(--bg-header-nav);
-      padding: 0;
-      border-top: 1px solid var(--border-subtle);
-    }
-
-    .meli-subbar-inner {
-      display: flex;
-      align-items: center;
-      justify-content: flex-start;
-      gap: 0.75rem;
-      position: relative;
-    }
-
-    .meli-address-pill {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 10px;
-      color: var(--text-muted);
-      font-size: 0.78rem;
-      flex-shrink: 0;
-      border-right: 1px solid var(--border-subtle);
-    }
-
-    .meli-address-pill svg {
-      color: var(--cyan);
-    }
-
-    .meli-address-details {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .meli-address-sub {
-      font-size: 0.65rem;
       color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: 0.4px;
-      line-height: 1;
     }
 
-    .meli-address-server {
-      font-size: 0.84rem;
+    .meli-guild-select {
+      background: transparent !important;
+      border: none !important;
+      color: var(--text-main) !important;
+      font-size: 0.82rem;
       font-weight: 700;
-      color: var(--text-main);
-      max-width: 150px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      padding: 0 !important;
+      margin: 0 !important;
+      cursor: pointer;
+      outline: none;
+      box-shadow: none !important;
     }
 
-    /* Categories Dropdown in Header - Positioned directly below the toggle button */
-    .meli-cat-wrapper {
-      position: relative;
-      flex-shrink: 0;
-      display: flex;
-      align-items: center;
+    .meli-guild-select option {
+      background: #0F172A;
+      color: #F8FAFC;
     }
 
-    .meli-cat-toggle {
+    .meli-status-badge {
       display: inline-flex;
       align-items: center;
-      gap: 7px;
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.14);
-      color: var(--text-main);
-      font-size: 0.84rem;
+      gap: 6px;
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      border-radius: var(--radius-pill);
+      padding: 5px 10px;
+      font-size: 0.76rem;
       font-weight: 600;
-      padding: 6px 13px;
+      color: #34D399;
+    }
+
+    .meli-status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #10B981;
+      box-shadow: 0 0 8px rgba(16, 185, 129, 0.7);
+    }
+
+    .meli-sync-btn, .topbar-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius);
+      color: var(--text-muted);
+      padding: 6px 11px;
+      font-size: 0.8rem;
+      font-weight: 600;
       cursor: pointer;
-      border-radius: var(--radius-sm);
-      white-space: nowrap;
-      height: 32px;
       transition: all 0.15s ease;
     }
 
-    .meli-cat-toggle:hover,
-    .meli-cat-toggle.active {
-      background-color: rgba(56, 189, 248, 0.15);
+    .meli-sync-btn:hover, .topbar-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
       border-color: var(--cyan);
-      color: var(--cyan);
+      color: var(--text-main);
     }
 
-    .meli-cat-flyout {
-      display: none;
-      position: absolute;
-      top: calc(100% + 8px);
-      left: 0;
-      background: #181c24;
-      border-radius: var(--radius-lg);
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(56, 189, 248, 0.25);
-      padding: 1.25rem;
-      z-index: 99999;
-      min-width: 680px;
-      width: 720px;
-      max-width: 90vw;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 1.25rem;
-    }
-
-    .meli-cat-flyout.show {
-      display: grid;
-      animation: catFadeIn 0.15s ease-out;
-    }
-
-    @keyframes catFadeIn {
-      from { opacity: 0; transform: translateY(-6px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    /* Navigation Links across Header */
-    .meli-nav-bar {
-      display: flex;
-      align-items: center;
-      gap: 0.35rem;
-      overflow-x: auto;
-      scrollbar-width: none;
-      -ms-overflow-style: none;
-      flex: 1;
-      min-width: 0;
-      padding: 3px 0;
-      scroll-behavior: smooth;
-    }
-    .meli-nav-bar::-webkit-scrollbar {
-      display: none;
-      width: 0;
-      height: 0;
-    }
-
-    .meli-nav-tab,
-    button.meli-nav-tab,
-    .meli-nav-bar .nav-item {
-      background: none !important;
-      border: 1px solid transparent !important;
-      color: var(--text-muted) !important;
-      font-size: 0.83rem !important;
-      font-weight: 500 !important;
-      padding: 5px 12px !important;
-      border-radius: 6px !important;
-      cursor: pointer !important;
-      white-space: nowrap !important;
-      flex-shrink: 0 !important;
-      flex-grow: 0 !important;
-      width: auto !important;
-      max-width: none !important;
-      height: 32px !important;
-      display: inline-flex !important;
-      align-items: center !important;
-      gap: 6px !important;
-      box-shadow: none !important;
-      transform: none !important;
-      box-sizing: border-box !important;
-      transition: color 0.15s, background-color 0.15s, border-color 0.15s !important;
-    }
-
-    .meli-nav-tab:hover,
-    button.meli-nav-tab:hover,
-    .meli-nav-bar .nav-item:hover {
-      color: #FFFFFF !important;
-      background-color: rgba(255, 255, 255, 0.08) !important;
-      border-color: rgba(255, 255, 255, 0.12) !important;
-    }
-
-    .meli-nav-tab.active,
-    button.meli-nav-tab.active,
-    .meli-nav-bar .nav-item.active {
-      color: #38bdf8 !important;
-      font-weight: 700 !important;
-      background-color: rgba(56, 189, 248, 0.12) !important;
-      border: 1px solid rgba(56, 189, 248, 0.4) !important;
-      box-shadow: 0 0 10px rgba(56, 189, 248, 0.15) !important;
-    }
-
-    .meli-flyout-col {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .meli-flyout-title {
-      font-size: 0.72rem;
-      font-weight: 800;
-      color: var(--cyan);
-      letter-spacing: 0.8px;
-      margin-bottom: 8px;
-      padding-bottom: 4px;
-      border-bottom: 1px solid var(--border-subtle);
-    }
-
-    .meli-flyout-item {
-      background: none;
-      border: none;
-      text-align: left;
-      font-size: 0.84rem;
-      color: var(--text-muted);
-      padding: 7px 10px;
-      border-radius: var(--radius);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      transition: background 0.12s, color 0.12s;
-    }
-
-    .cat-photo-icon {
-      width: 19px;
-      height: 19px;
-      object-fit: contain;
-      vertical-align: middle;
-      display: inline-block;
+    .meli-sync-btn svg, .topbar-btn svg {
       flex-shrink: 0;
-      filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25));
-      transition: transform 0.15s ease-out;
-      image-rendering: -webkit-optimize-contrast;
     }
 
-    .meli-flyout-item:hover .cat-photo-icon {
-      transform: scale(1.18);
+    #lockPanelBtn {
+      background: rgba(239, 68, 68, 0.12) !important;
+      border-color: rgba(239, 68, 68, 0.3) !important;
+      color: #F87171 !important;
     }
 
-    .nav-photo-icon {
-      width: 17px;
-      height: 17px;
-      object-fit: contain;
-      vertical-align: -2.5px;
-      margin-right: 6px;
-      display: inline-block;
-      flex-shrink: 0;
-      filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
-      transition: transform 0.15s ease-out;
-      image-rendering: -webkit-optimize-contrast;
-    }
-
-    .meli-nav-tab:hover .nav-photo-icon,
-    .nav-item:hover .nav-photo-icon {
-      transform: scale(1.15);
-    }
-
-    .circle-photo-icon {
-      width: 28px;
-      height: 28px;
-      object-fit: contain;
-      vertical-align: middle;
-      display: inline-block;
-      flex-shrink: 0;
-      pointer-events: none;
-      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
-      transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .meli-circle-item:hover .circle-photo-icon {
-      transform: scale(1.22);
-    }
-
-    .benefit-photo-icon {
-      width: 26px;
-      height: 26px;
-      object-fit: contain;
-      vertical-align: middle;
-      display: inline-block;
-      flex-shrink: 0;
-      pointer-events: none;
-      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
-    }
-
-    img.emoji {
-      height: 1.18em;
-      width: 1.18em;
-      margin: 0 0.08em 0 0.08em;
-      vertical-align: -0.18em;
-      display: inline-block;
-      object-fit: contain;
-      pointer-events: none;
-    }
-
-    .discord-inline-emoji {
-      width: 22px;
-      height: 22px;
-      vertical-align: -4px;
-      object-fit: contain;
-      display: inline-block;
-      margin: 0 1px;
-    }
-
-    .emoji-picker-btn {
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.14);
-      border-radius: 8px;
-      padding: 6px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background 0.15s, transform 0.15s, border-color 0.15s;
-    }
-    .emoji-picker-btn:hover {
-      background: rgba(0, 229, 255, 0.15);
-      border-color: #00e5ff;
-      transform: scale(1.2);
-    }
-    .emoji-picker-btn img {
-      width: 28px;
-      height: 28px;
-      object-fit: contain;
-      pointer-events: none;
-    }
-
-    .sidebar .nav-photo-icon {
-      width: 19px;
-      height: 19px;
-      margin-right: 0;
-      vertical-align: middle;
-    }
-
-    .meli-flyout-item:hover {
-      background-color: var(--cyan-light);
-      color: var(--cyan);
-      font-weight: 600;
-    }
-
-    .meli-subbar-extra {
-      display: flex;
-      align-items: center;
-      gap: 0.85rem;
-      flex-shrink: 0;
-      padding-left: 12px;
-      margin-left: 6px;
-    }
-
-    .meli-extra-link {
-      color: var(--text-muted);
-      text-decoration: none;
-      font-size: 0.82rem;
-      font-weight: 500;
-      transition: color 0.15s;
-    }
-
-    .meli-extra-link:hover {
-      color: var(--cyan);
+    #lockPanelBtn:hover {
+      background: rgba(239, 68, 68, 0.2) !important;
+      border-color: #EF4444 !important;
+      color: #FECACA !important;
     }
 
     /* ======================================================== */
-    /* OFFCANVAS DRAWER (Preserves #sidebar compatibility) */
+    /* MODERN PERMANENT SIDEBAR SYSTEM                          */
     /* ======================================================== */
     .sidebar {
       position: fixed;
       top: 0;
       left: 0;
-      width: 290px;
+      bottom: 0;
+      width: 260px;
       height: 100vh;
       background-color: var(--bg-surface);
-      box-shadow: 2px 0 20px rgba(0,0,0,0.5);
-      z-index: 2000;
+      border-right: 1px solid var(--border-subtle);
       display: flex;
       flex-direction: column;
-      transform: translateX(-100%);
-      transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 1100;
       overflow-y: auto;
-      border-right: 1px solid var(--border-subtle);
-    }
-
-    .sidebar.open {
-      transform: translateX(0);
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+      transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .sidebar-header {
-      background-color: var(--bg-header);
-      padding: 1.25rem 1rem;
+      padding: 1.15rem 1.15rem 1rem;
       display: flex;
       align-items: center;
       justify-content: space-between;
       border-bottom: 1px solid var(--border-subtle);
+      background: rgba(0, 0, 0, 0.18);
     }
 
     .sidebar-brand {
@@ -823,16 +448,18 @@ function renderDashboardHtml({
 
     .brand-avatar-box {
       position: relative;
-      width: 40px;
-      height: 40px;
+      width: 38px;
+      height: 38px;
+      flex-shrink: 0;
     }
 
     .brand-avatar-img {
-      width: 40px;
-      height: 40px;
+      width: 38px;
+      height: 38px;
       border-radius: 50%;
       object-fit: cover;
       border: 2px solid var(--cyan);
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
       background: var(--bg-surface);
     }
 
@@ -840,32 +467,38 @@ function renderDashboardHtml({
       position: absolute;
       bottom: 0;
       right: 0;
-      width: 10px;
-      height: 10px;
+      width: 9px;
+      height: 9px;
       background: var(--success);
       border-radius: 50%;
-      border: 2px solid var(--bg-header);
+      border: 2px solid var(--bg-surface);
+      box-shadow: 0 0 6px rgba(16, 185, 129, 0.7);
     }
 
     .brand-title {
-      font-size: 1.05rem;
+      font-size: 0.98rem;
       font-weight: 800;
       color: #FFFFFF;
+      letter-spacing: -0.2px;
+      line-height: 1.15;
     }
 
     .brand-badge {
-      font-size: 0.68rem;
-      font-weight: 600;
+      font-size: 0.65rem;
+      font-weight: 700;
       color: var(--cyan);
+      letter-spacing: 0.4px;
     }
 
     .sidebar-close-btn {
+      display: none;
       background: none;
       border: none;
-      font-size: 1.4rem;
+      font-size: 1.3rem;
       color: var(--text-muted);
       cursor: pointer;
       padding: 4px;
+      line-height: 1;
     }
 
     .sidebar-close-btn:hover {
@@ -873,55 +506,68 @@ function renderDashboardHtml({
     }
 
     .sidebar-server-box {
-      padding: 0.85rem 1rem;
-      background: rgba(0,0,0,0.2);
+      padding: 0.75rem 1.15rem;
+      background: rgba(0, 0, 0, 0.12);
       border-bottom: 1px solid var(--border-subtle);
     }
 
     .sidebar-server-label {
-      font-size: 0.68rem;
+      font-size: 0.62rem;
       font-weight: 700;
       color: var(--text-muted);
       text-transform: uppercase;
-      margin-bottom: 4px;
+      letter-spacing: 0.6px;
+      margin-bottom: 5px;
     }
 
     .sidebar-server-avatar {
-      width: 28px;
-      height: 28px;
+      width: 24px;
+      height: 24px;
       border-radius: 50%;
       object-fit: cover;
     }
 
     .sidebar-nav {
-      padding: 0.75rem 0.65rem;
+      padding: 0.75rem 0.65rem 1.5rem;
       flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
     }
 
     .menu-group-title {
-      font-size: 0.72rem;
+      font-size: 0.68rem;
       font-weight: 800;
-      color: var(--cyan);
+      color: var(--text-muted);
       letter-spacing: 0.8px;
-      padding: 0.75rem 0.5rem 0.25rem;
+      padding: 0.9rem 0.65rem 0.3rem;
       text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      opacity: 0.85;
+    }
+
+    .menu-group-title:first-child {
+      padding-top: 0.25rem;
     }
 
     .nav-item {
       display: flex;
       align-items: center;
-      gap: 0.75rem;
+      gap: 0.7rem;
       width: 100%;
-      padding: 0.6rem 0.85rem;
+      padding: 0.52rem 0.75rem;
       border-radius: var(--radius);
       border: none;
-      background: none;
+      background: transparent;
       color: var(--text-muted);
-      font-size: 0.86rem;
+      font-size: 0.85rem;
       font-weight: 500;
       cursor: pointer;
       text-align: left;
-      transition: background 0.12s, color 0.12s;
+      transition: all 0.12s ease;
+      position: relative;
     }
 
     .nav-item:hover {
@@ -930,16 +576,61 @@ function renderDashboardHtml({
     }
 
     .nav-item.active {
-      background-color: var(--cyan-light);
+      background-color: rgba(56, 189, 248, 0.12);
       color: var(--cyan);
       font-weight: 700;
-      border-left: 3px solid var(--cyan);
+    }
+
+    .nav-item.active::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 6px;
+      bottom: 6px;
+      width: 3px;
+      background-color: var(--cyan);
+      border-radius: 0 2px 2px 0;
+      box-shadow: 0 0 8px var(--cyan);
+    }
+
+    .nav-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+      color: inherit;
+    }
+
+    .nav-label {
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .nav-badge-pill {
+      font-size: 0.62rem;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-muted);
+      border: 1px solid var(--border-subtle);
+      letter-spacing: 0.4px;
+    }
+
+    .nav-item.active .nav-badge-pill {
+      background: rgba(56, 189, 248, 0.2);
+      color: var(--cyan);
+      border-color: rgba(56, 189, 248, 0.35);
     }
 
     .sidebar-footer {
-      padding: 0.85rem 1rem;
+      padding: 0.85rem 1.15rem;
       border-top: 1px solid var(--border-subtle);
-      background: rgba(0,0,0,0.2);
+      background: rgba(0, 0, 0, 0.18);
     }
 
     .sidebar-backdrop {
@@ -950,7 +641,7 @@ function renderDashboardHtml({
       height: 100vh;
       background: rgba(0, 0, 0, 0.7);
       backdrop-filter: blur(4px);
-      z-index: 1990;
+      z-index: 1050;
       display: none;
     }
 
@@ -963,279 +654,107 @@ function renderDashboardHtml({
     /* ======================================================== */
     .main-wrapper {
       width: 100%;
-      min-height: calc(100vh - 100px);
+      min-height: calc(100vh - 60px);
+      transition: margin-left 0.25s ease;
+    }
+
+    @media (min-width: 1024px) {
+      .main-wrapper {
+        margin-left: 260px;
+        width: calc(100% - 260px);
+      }
     }
 
     .container {
       max-width: 1260px;
       margin: 0 auto;
-      padding: 24px 18px 48px;
+      padding: 24px 20px 48px;
     }
 
-    /* ======================================================== */
-    /* J.A.R.V.I.S. HERO PROMOTIONAL BANNER */
-    /* ======================================================== */
-    .meli-hero-section {
-      margin-bottom: 24px;
-    }
-
-    .meli-hero-banner {
-      background: linear-gradient(135deg, #0F172A 0%, #1E1B4B 50%, #032338 100%);
-      border-radius: var(--radius-lg);
-      padding: 32px 36px;
-      color: #FFFFFF;
+    /* Executive Server Header (Replaces cluttered hero) */
+    .server-hero-banner {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 2rem;
-      box-shadow: var(--shadow-lg);
-      border: 1px solid var(--border-hover);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .meli-hero-banner::after {
-      content: "";
-      position: absolute;
-      top: -80px;
-      right: -80px;
-      width: 320px;
-      height: 320px;
-      background: radial-gradient(circle, rgba(56, 189, 248, 0.18) 0%, transparent 70%);
-      pointer-events: none;
-    }
-
-    .meli-hero-copy {
-      max-width: 700px;
-      position: relative;
-      z-index: 2;
-    }
-
-    .meli-hero-badge {
-      display: inline-block;
-      background: var(--cyan-light);
-      color: var(--cyan);
-      font-size: 0.72rem;
-      font-weight: 800;
-      padding: 3px 10px;
-      border-radius: var(--radius-pill);
-      letter-spacing: 0.6px;
-      margin-bottom: 12px;
-      border: 1px solid rgba(56, 189, 248, 0.3);
-    }
-
-    .meli-hero-title {
-      font-size: 1.95rem;
-      font-weight: 800;
-      line-height: 1.2;
-      margin-bottom: 10px;
-      color: #FFFFFF;
-      letter-spacing: -0.4px;
-    }
-
-    .meli-hero-subtitle {
-      font-size: 0.95rem;
-      color: var(--text-muted);
-      margin-bottom: 20px;
-      line-height: 1.5;
-    }
-
-    .meli-hero-actions {
-      display: flex;
-      gap: 0.85rem;
+      gap: 1.5rem;
       flex-wrap: wrap;
+      margin-bottom: 24px;
+      padding: 24px 28px;
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(15, 23, 42, 0.85) 100%);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .server-hero-title {
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: #FFFFFF;
+      letter-spacing: -0.2px;
+    }
+
+    .server-hero-meta {
+      font-size: 0.84rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .server-hero-avatar {
+      width: 60px;
+      height: 60px;
+      border-radius: 16px;
+      border: 2px solid var(--cyan);
+      box-shadow: 0 0 14px rgba(56, 189, 248, 0.25);
+      object-fit: cover;
+      flex-shrink: 0;
     }
 
     .meli-btn-primary {
       background: linear-gradient(135deg, var(--cyan) 0%, var(--primary) 100%);
       color: #FFFFFF;
       border: none;
-      padding: 10px 22px;
+      padding: 9px 18px;
       border-radius: var(--radius);
-      font-size: 0.92rem;
+      font-size: 0.86rem;
       font-weight: 700;
       cursor: pointer;
-      box-shadow: 0 4px 14px rgba(56, 189, 248, 0.3);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 14px rgba(56, 189, 248, 0.25);
       transition: transform 0.1s, box-shadow 0.15s;
     }
 
     .meli-btn-primary:hover {
-      box-shadow: 0 6px 20px rgba(56, 189, 248, 0.45);
+      box-shadow: 0 6px 20px rgba(56, 189, 248, 0.4);
       transform: translateY(-1px);
     }
 
     .meli-btn-outline {
-      background: rgba(255,255,255,0.06);
+      background: rgba(255, 255, 255, 0.05);
       color: #FFFFFF;
       border: 1px solid var(--border-hover);
-      padding: 10px 20px;
+      padding: 9px 16px;
       border-radius: var(--radius);
-      font-size: 0.92rem;
+      font-size: 0.86rem;
       font-weight: 600;
       cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
       transition: background 0.15s, border-color 0.15s;
     }
 
     .meli-btn-outline:hover {
-      background: rgba(255,255,255,0.12);
+      background: rgba(255, 255, 255, 0.1);
       border-color: var(--cyan);
     }
 
-    .meli-hero-media {
-      position: relative;
-      z-index: 2;
-      flex-shrink: 0;
-    }
-
-    .meli-hero-img {
-      width: 110px;
-      height: 110px;
-      border-radius: 50%;
-      border: 3px solid var(--cyan);
-      box-shadow: var(--shadow-glow);
-      object-fit: cover;
-      background: var(--bg-surface);
-    }
-
-    /* 4-Pillar Capability Strip */
-    .meli-benefits-row {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      background: var(--bg-surface);
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow-sm);
-      margin-top: 14px;
-      overflow: hidden;
-      border: 1px solid var(--border-subtle);
-    }
-
-    .meli-benefit-card {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      padding: 18px 22px;
-      cursor: pointer;
-      border-right: 1px solid var(--border-subtle);
-      transition: background 0.15s;
-    }
-
-    .meli-benefit-card:last-child {
-      border-right: none;
-    }
-
-    .meli-benefit-card:hover {
-      background-color: var(--bg-surface-hover);
-    }
-
-    .meli-benefit-icon {
-      font-size: 1.6rem;
-      flex-shrink: 0;
-    }
-
-    .meli-benefit-text {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .meli-benefit-heading {
-      font-size: 0.88rem;
-      font-weight: 700;
-      color: var(--text-main);
-    }
-
-    .meli-benefit-sub {
-      font-size: 0.78rem;
-      color: var(--text-muted);
-    }
-
-    /* ======================================================== */
-    /* CIRCULAR QUICK ACCESS ROW (Andes/ML UI pattern) */
-    /* ======================================================== */
-    .meli-quick-row {
-      background: var(--bg-surface);
-      border-radius: var(--radius-lg);
-      padding: 22px 24px;
-      box-shadow: var(--shadow-sm);
-      margin-bottom: 24px;
-      border: 1px solid var(--border-subtle);
-    }
-
-    .meli-section-header {
-      margin-bottom: 16px;
-    }
-
-    .meli-section-title {
-      font-size: 1.15rem;
-      font-weight: 700;
-      color: var(--text-main);
-      margin-bottom: 2px;
-    }
-
-    .meli-section-desc {
-      font-size: 0.82rem;
-      color: var(--text-muted);
-    }
-
-    .meli-circles-container {
-      display: flex;
-      align-items: center;
-      gap: 1.25rem;
-      overflow-x: auto;
-      overflow-y: hidden;
-      padding: 22px 14px 18px 14px;
-      margin-top: -10px;
-      margin-bottom: -6px;
-      scrollbar-width: thin;
-      scrollbar-color: rgba(255,255,255,0.1) transparent;
-    }
-
-    .meli-circle-item {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8px;
-      cursor: pointer;
-      flex-shrink: 0;
-      width: 78px;
-      text-align: center;
-    }
-
-    .meli-circle-bubble {
-      width: 58px;
-      height: 58px;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid var(--border-subtle);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.5rem;
-      box-shadow: var(--shadow-sm);
-      transition: background 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .meli-circle-item:hover .meli-circle-bubble,
-    .meli-circle-item.active .meli-circle-bubble {
-      background: var(--cyan-light);
-      border-color: var(--cyan);
-      box-shadow: 0 0 16px rgba(56, 189, 248, 0.35);
-      transform: translateY(-2px);
-    }
-
-    .meli-circle-name {
-      font-size: 0.78rem;
-      color: var(--text-muted);
-      font-weight: 500;
-      line-height: 1.2;
-    }
-
-    .meli-circle-item:hover .meli-circle-name,
-    .meli-circle-item.active .meli-circle-name {
-      color: var(--cyan);
-      font-weight: 600;
-    }
-
-    /* ======================================================== */
+/* ======================================================== */
     /* STATS CARDS */
     /* ======================================================== */
     .stat-row {
@@ -2128,41 +1647,52 @@ function renderDashboardHtml({
     }
 
     /* Responsive Queries */
-    @media (max-width: 960px) {
-      .meli-mobile-toggle {
-        display: block;
+    @media (max-width: 1023px) {
+      .sidebar {
+        transform: translateX(-100%);
+        z-index: 2000;
       }
-      .meli-nav-bar {
-        display: none;
+      .sidebar.open {
+        transform: translateX(0);
       }
-      .meli-address-pill {
-        display: none;
+      .sidebar-close-btn {
+        display: block !important;
       }
-      .meli-subbar-extra {
-        display: none;
+      .app-topbar {
+        margin-left: 0 !important;
+        width: 100% !important;
+        padding: 0 16px !important;
       }
-      .meli-benefits-row {
-        grid-template-columns: repeat(2, 1fr);
+      .topbar-mobile-toggle {
+        display: inline-flex !important;
       }
-      .meli-hero-media {
-        display: none;
+      .main-wrapper {
+        margin-left: 0 !important;
+        width: 100% !important;
       }
       .meli-guild-card {
-        display: none;
+        display: none !important;
       }
     }
 
-    @media (max-width: 600px) {
-      .meli-benefits-row {
-        grid-template-columns: 1fr;
-      }
-      .meli-hero-title {
-        font-size: 1.45rem;
+    @media (max-width: 640px) {
+      .meli-search-container {
+        display: none;
       }
       .stat-row {
         grid-template-columns: 1fr;
       }
+      .topbar-actions {
+        gap: 6px;
+      }
+      .meli-sync-btn span, .topbar-btn span {
+        display: none;
+      }
+      .meli-sync-btn, .topbar-btn {
+        padding: 6px 8px;
+      }
     }
+
     /* ========================================================
        MODO CLARO / WHITE THEME (.theme-light)
        ======================================================== */
@@ -2636,174 +2166,7 @@ function renderDashboardHtml({
       </div>
     </div>
   </div>
-  <!-- J.A.R.V.I.S. Yellow Header -->
-  <header class="meli-header">
-    <!-- Top Bar: Brand Logo, Central Search Bar, Guild Selector & Status -->
-    <div class="meli-header-top">
-      <div class="meli-header-container">
-        <div class="meli-topbar-inner">
-          <!-- Left: Mobile Toggle + Bot Brand -->
-          <div class="meli-brand-area">
-            <button class="meli-mobile-toggle" id="mobileToggleBtn" aria-label="Abrir menu">☰</button>
-            <a href="#tab-overview" class="meli-logo-box" data-tab="tab-overview">
-              <div class="meli-logo-avatar-wrap">
-                <img src="${botAvatarUrl}" class="meli-logo-avatar" id="topHeaderBotAvatar" alt="${aiDisplayName}" onerror="if(this.src!=='/api/bot/avatar'){this.src='/api/bot/avatar';}">
-                <span class="meli-logo-dot"></span>
-              </div>
-              <div class="meli-logo-text">
-                <span class="meli-logo-name">${aiDisplayName}</span>
-                <span class="meli-logo-badge">PAINEL OFICIAL</span>
-              </div>
-            </a>
-          </div>
-
-          <!-- Center: Universal Search Input (J.A.R.V.I.S. Pill Style) -->
-          <div class="meli-search-container">
-            <div class="meli-search-box">
-              <input type="text" id="menuSearchInput" class="meli-search-input" placeholder="Buscar membros, comandos, módulos, economia ou configurações..." autocomplete="off" />
-              <button class="meli-search-submit" id="searchSubmitBtn" aria-label="Buscar">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="10.5" cy="10.5" r="7"/>
-                  <line x1="21" y1="21" x2="15.8" y2="15.8"/>
-                </svg>
-              </button>
-            </div>
-            <div class="meli-search-dropdown" id="searchDropdown" style="display: none;"></div>
-          </div>
-
-          <!-- Right: Guild Selector & Bot Status -->
-          <div class="meli-user-area">
-            <div class="meli-guild-card">
-              <img src="${initialServerIconUrl}" class="meli-guild-icon" id="topHeaderServerIcon" alt="Servidor" onerror="this.onerror=null; this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
-              <div class="meli-guild-meta">
-                <span class="meli-guild-label">Servidor Conectado</span>
-                <select id="guildSelector" class="meli-guild-select">
-                  ${renderedGuildOptions}
-                </select>
-              </div>
-            </div>
-
-            <div class="meli-status-badge">
-              <span class="meli-status-dot"></span>
-              <span class="meli-status-text">Online</span>
-            </div>
-
-            <button class="meli-sync-btn" id="refreshAllBtn" title="Sincronizar dados em tempo real">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.19"/>
-              </svg>
-              <span id="syncBtnText">Sincronizar</span>
-            </button>
-
-            <button class="meli-sync-btn" id="themeToggleBtn" title="Alternar Modo Claro / Escuro">
-              <span id="themeToggleIcon"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/2600.png" class="nav-photo-icon" style="margin-right:0;" alt=""></span>
-              <span id="themeToggleText">Claro</span>
-            </button>
-
-            <button class="meli-sync-btn" id="langToggleBtn" title="Switch Language / Alternar Idioma">
-              <span id="langToggleIcon"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f1fa-1f1f8.png" class="nav-photo-icon" style="margin-right:0;" alt=""></span>
-              <span id="langToggleText">EN</span>
-            </button>
-
-            <button class="meli-sync-btn" id="lockPanelBtn" title="Bloquear Painel (Requer Senha 1598)" style="background: rgba(239, 68, 68, 0.12); border-color: rgba(239, 68, 68, 0.35); color: #f87171;">
-              <img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f512.png" class="nav-photo-icon" style="margin-right:0;" alt="">
-              <span id="lockBtnText">Bloquear</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Sub-Header: Address Pill + Category Nav Tabs -->
-    <div class="meli-header-nav">
-      <div class="meli-header-container">
-        <div class="meli-subbar-inner">
-          <!-- Address Pill (J.A.R.V.I.S. 'Enviar para ...') -->
-          <div class="meli-address-pill">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z"/><circle cx="12" cy="10" r="3"/>
-            </svg>
-            <div class="meli-address-details">
-              <span class="meli-address-sub">Gerenciando agora</span>
-              <span class="meli-address-server" id="currentServerBadge">${initialServerName}</span>
-            </div>
-          </div>
-
-          <!-- Categories Dropdown Button (Outside overflow container, displays cleanly directly below) -->
-          <div class="meli-cat-wrapper" id="catMenuWrapper">
-            <button class="meli-cat-toggle" id="categoriesMenuBtn" type="button" aria-haspopup="true" aria-expanded="false">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="3" y1="12" x2="21" y2="12"></line>
-                <line x1="3" y1="6" x2="21" y2="6"></line>
-                <line x1="3" y1="18" x2="21" y2="18"></line>
-              </svg>
-              <span>Categorias</span>
-              <svg width="10" height="6" viewBox="0 0 10 6" fill="currentColor"><path d="M1 1l4 4 4-4"/></svg>
-            </button>
-            <div class="meli-cat-flyout" id="categoriesMenu">
-              <div class="meli-flyout-col">
-                <div class="meli-flyout-title">ADMINISTRAÇÃO & BASE</div>
-                <button class="meli-flyout-item nav-item" data-tab="tab-overview"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f3e0.png" class="cat-photo-icon" alt=""> Visão Geral</button>
-                <button class="meli-flyout-item nav-item" data-tab="tab-identity"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f916.png" class="cat-photo-icon" alt=""> Identidade & Presença</button>
-                <button class="meli-flyout-item nav-item" data-tab="tab-health"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f4ca.png" class="cat-photo-icon" alt=""> Métricas & Saúde</button>
-                <button class="meli-flyout-item nav-item" data-tab="tab-audit"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f4dc.png" class="cat-photo-icon" alt=""> Histórico de Auditoria</button>
-              </div>
-              <div class="meli-flyout-col">
-                <div class="meli-flyout-title">MEMBROS & MODERAÇÃO</div>
-                <button class="meli-flyout-item nav-item" data-tab="tab-members"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f465.png" class="cat-photo-icon" alt=""> Membros & Usuários</button>
-                <button class="meli-flyout-item nav-item" data-tab="tab-moderation"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f6e1.png" class="cat-photo-icon" alt=""> Moderação & Anti-Spam</button>
-                <button class="meli-flyout-item nav-item" data-tab="tab-xp"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f3c6.png" class="cat-photo-icon" alt=""> Níveis, XP & Cargos</button>
-                <button class="meli-flyout-item nav-item" data-tab="tab-welcome"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f44b.png" class="cat-photo-icon" alt=""> Boas-Vindas & AutoRole</button>
-              </div>
-              <div class="meli-flyout-col">
-                <div class="meli-flyout-title">IA, ECONOMIA & SOCIAL</div>
-                <button class="meli-flyout-item nav-item" data-tab="tab-aimemory"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f9e0.png" class="cat-photo-icon" alt=""> Memórias IA (Forçar)</button>
-                <button class="meli-flyout-item nav-item" data-tab="tab-economy"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f4b0.png" class="cat-photo-icon" alt=""> Economia, Loja & Banco</button>
-                <button class="meli-flyout-item nav-item" data-tab="tab-casino"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f3b0.png" class="cat-photo-icon" alt=""> Cassino & Apostas</button>
-                <button class="meli-flyout-item nav-item" data-tab="tab-botspeak"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f4e2.png" class="cat-photo-icon" alt=""> Falar pelo Bot</button>
-                <button class="meli-flyout-item nav-item" data-tab="tab-customcommands"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/26a1.png" class="cat-photo-icon" alt=""> Comandos Personalizados</button>
-                <button class="meli-flyout-item nav-item" data-tab="tab-reviews"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/2b50.png" class="cat-photo-icon" alt=""> Avaliações da Equipe</button>
-                <button class="meli-flyout-item nav-item" data-tab="tab-social"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f495.png" class="cat-photo-icon" alt=""> Romance & Social</button>
-                <button class="meli-flyout-item nav-item" data-tab="tab-social" data-scroll="quizQuestionsBrowserSection"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f9e0.png" class="cat-photo-icon" alt=""> Quiz Arena (Perguntas & Respostas)</button>
-                <button class="meli-flyout-item nav-item" data-tab="tab-music"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f3b5.png" class="cat-photo-icon" alt=""> Música & Voz</button>
-                <button class="meli-flyout-item nav-item" data-tab="tab-tickets"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f3ab.png" class="cat-photo-icon" alt=""> Central de Tickets</button>
-                <button class="meli-flyout-item nav-item" data-tab="tab-community"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f4e2.png" class="cat-photo-icon" alt=""> Relatórios & Briefing</button>
-                <button class="meli-flyout-item nav-item" data-tab="tab-starboard"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f31f.png" class="cat-photo-icon" alt=""> Starboard</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Primary Nav Tabs -->
-          <nav class="meli-nav-bar" id="topNavLinks">
-
-            <button class="meli-nav-tab nav-item active" data-tab="tab-overview"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f3e0.png" class="nav-photo-icon" alt="">Visão Geral</button>
-            <button class="meli-nav-tab nav-item" data-tab="tab-members"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f465.png" class="nav-photo-icon" alt="">Membros</button>
-            <button class="meli-nav-tab nav-item" data-tab="tab-economy"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f4b0.png" class="nav-photo-icon" alt="">Economia</button>
-            <button class="meli-nav-tab nav-item" data-tab="tab-moderation"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f6e1.png" class="nav-photo-icon" alt="">Moderação</button>
-            <button class="meli-nav-tab nav-item" data-tab="tab-aimemory"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f9e0.png" class="nav-photo-icon" alt="">Memórias IA</button>
-            <button class="meli-nav-tab nav-item" data-tab="tab-customcommands"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/26a1.png" class="nav-photo-icon" alt="">Comandos</button>
-            <button class="meli-nav-tab nav-item" data-tab="tab-social" data-scroll="quizQuestionsBrowserSection"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f9e0.png" class="nav-photo-icon" alt="">Quiz Arena</button>
-            <button class="meli-nav-tab nav-item" data-tab="tab-xp"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f3c6.png" class="nav-photo-icon" alt="">Níveis & XP</button>
-            <button class="meli-nav-tab nav-item" data-tab="tab-botspeak"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f4e2.png" class="nav-photo-icon" alt="">Falar</button>
-            <button class="meli-nav-tab nav-item" data-tab="tab-reviews"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/2b50.png" class="nav-photo-icon" alt="">Avaliações</button>
-            <button class="meli-nav-tab nav-item" data-tab="tab-casino"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f3b0.png" class="nav-photo-icon" alt="">Cassino</button>
-            <button class="meli-nav-tab nav-item" data-tab="tab-music"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f3b5.png" class="nav-photo-icon" alt="">Música</button>
-            <button class="meli-nav-tab nav-item" data-tab="tab-tickets"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f3ab.png" class="nav-photo-icon" alt="">Tickets</button>
-            <button class="meli-nav-tab nav-item" data-tab="tab-audit"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f4dc.png" class="nav-photo-icon" alt="">Auditoria</button>
-            <button class="meli-nav-tab nav-item" data-tab="tab-health"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f4ca.png" class="nav-photo-icon" alt="">Métricas</button>
-          </nav>
-
-          <div class="meli-subbar-extra">
-            <a href="#tab-community" data-tab="tab-community" class="meli-extra-link"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f4e2.png" class="nav-photo-icon" alt="">Relatórios</a>
-            <a href="#tab-social" data-tab="tab-social" class="meli-extra-link"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f495.png" class="nav-photo-icon" alt="">Social</a>
-            <a href="#tab-social" data-tab="tab-social" data-scroll="quizQuestionsBrowserSection" class="meli-extra-link"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f9e0.png" class="nav-photo-icon" alt="">Quiz</a>
-          </div>
-        </div>
-      </div>
-    </div>
-  </header>
-
-  <!-- Offcanvas Drawer (Preserves all #sidebar and child IDs) -->
+  <!-- Modern Permanent Sidebar Architecture (5 Hubs) -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <div class="sidebar-brand">
@@ -2813,7 +2176,7 @@ function renderDashboardHtml({
         </div>
         <div>
           <div class="brand-title"><span id="headerAiName">${aiDisplayName}</span></div>
-          <div class="brand-badge">Painel Oficial • Tech Core v2.0</div>
+          <div class="brand-badge">TECH CORE v2.0</div>
         </div>
       </div>
       <button class="sidebar-close-btn" id="sidebarCloseBtn" aria-label="Fechar menu">✕</button>
@@ -2823,51 +2186,187 @@ function renderDashboardHtml({
       <div class="sidebar-server-label">SERVIDOR CONECTADO</div>
       <div style="display: flex; align-items: center; gap: 0.65rem;">
         <img src="${initialServerIconUrl}" class="sidebar-server-avatar" id="sidebarServerIcon" alt="Servidor" onerror="this.onerror=null; this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
-        <div style="font-size: 0.88rem; font-weight: 700; color: #333333;">${initialServerName}</div>
+        <div style="font-size: 0.86rem; font-weight: 700; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" id="currentServerBadge">${initialServerName}</div>
       </div>
     </div>
 
     <nav class="sidebar-nav" id="sidebarNav">
-      <div class="menu-group-title"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f4cc.png" class="nav-photo-icon" alt=""> PRINCIPAL</div>
-      <button class="nav-item active" data-tab="tab-overview"><span class="nav-icon"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f3e0.png" class="nav-photo-icon" alt=""></span><span class="nav-label">Visão Geral</span></button>
-      <button class="nav-item" data-tab="tab-health"><span class="nav-icon"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f4ca.png" class="nav-photo-icon" alt=""></span><span class="nav-label">Métricas & Saúde</span></button>
+      <!-- HUB 1: DASHBOARD & SAÚDE -->
+      <div class="menu-group-title">DASHBOARD & SAÚDE</div>
+      <button class="nav-item active" data-tab="tab-overview">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
+        <span class="nav-label">Visão Geral</span>
+      </button>
+      <button class="nav-item" data-tab="tab-health">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
+        <span class="nav-label">Métricas & Saúde</span>
+        <span class="nav-badge-pill">Status</span>
+      </button>
+      <button class="nav-item" data-tab="tab-audit">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>
+        <span class="nav-label">Histórico de Auditoria</span>
+        <span class="nav-badge-pill">Logs</span>
+      </button>
 
-      <div class="menu-group-title"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f916.png" class="nav-photo-icon" alt=""> INTELIGÊNCIA ARTIFICIAL</div>
-      <button class="nav-item" data-tab="tab-identity"><span class="nav-icon"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f916.png" class="nav-photo-icon" alt=""></span><span class="nav-label">Identidade & Presença</span></button>
-      <button class="nav-item" data-tab="tab-aimemory"><span class="nav-icon"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f9e0.png" class="nav-photo-icon" alt=""></span><span class="nav-label">Memórias da IA (Forçar)</span></button>
-      <button class="nav-item" data-tab="tab-botspeak"><span class="nav-icon"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f4e2.png" class="nav-photo-icon" alt=""></span><span class="nav-label">Falar pelo Bot (Transmissor)</span></button>
+      <!-- HUB 2: SEGURANÇA & MEMBROS -->
+      <div class="menu-group-title">SEGURANÇA & MEMBROS</div>
+      <button class="nav-item" data-tab="tab-members">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+        <span class="nav-label">Membros & Usuários</span>
+      </button>
+      <button class="nav-item" data-tab="tab-moderation">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
+        <span class="nav-label">Moderação & Anti-Spam</span>
+      </button>
+      <button class="nav-item" data-tab="tab-welcome">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg></span>
+        <span class="nav-label">Boas-Vindas & AutoRole</span>
+      </button>
+      <button class="nav-item" data-tab="tab-starboard">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
+        <span class="nav-label">Starboard</span>
+      </button>
 
-      <div class="menu-group-title"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f44b.png" class="nav-photo-icon" alt=""> COMUNIDADE & MEMBROS</div>
-      <button class="nav-item" data-tab="tab-customcommands"><span class="nav-icon"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/26a1.png" class="nav-photo-icon" alt=""></span><span class="nav-label">Comandos Personalizados ({})</span></button>
-      <button class="nav-item" data-tab="tab-social" data-scroll="quizQuestionsBrowserSection"><span class="nav-icon"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f9e0.png" class="nav-photo-icon" alt=""></span><span class="nav-label">Quiz Arena & Perguntas</span></button>
-      <button class="nav-item" data-tab="tab-welcome"><span class="nav-icon"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f44b.png" class="nav-photo-icon" alt=""></span><span class="nav-label">Boas-Vindas & Despedida</span></button>
-      <button class="nav-item" data-tab="tab-social"><span class="nav-icon"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f495.png" class="nav-photo-icon" alt=""></span><span class="nav-label">Social & Romance</span></button>
-      <button class="nav-item" data-tab="tab-starboard"><span class="nav-icon"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f31f.png" class="nav-photo-icon" alt=""></span><span class="nav-label">Starboard (Destaques)</span></button>
-      <button class="nav-item" data-tab="tab-reviews"><span class="nav-icon"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/2b50.png" class="nav-photo-icon" alt=""></span><span class="nav-label">Avaliação da Equipe</span></button>
-      <button class="nav-item" data-tab="tab-community"><span class="nav-icon"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f4e2.png" class="nav-photo-icon" alt=""></span><span class="nav-label">Relatórios & Briefing</span></button>
-      <button class="nav-item" data-tab="tab-xp"><span class="nav-icon"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f3c6.png" class="nav-photo-icon" alt=""></span><span class="nav-label">Níveis, XP & Cargos</span></button>
+      <!-- HUB 3: ECONOMIA & SUPORTE -->
+      <div class="menu-group-title">ECONOMIA & SUPORTE</div>
+      <button class="nav-item" data-tab="tab-economy">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
+        <span class="nav-label">Economia, Loja & Banco</span>
+      </button>
+      <button class="nav-item" data-tab="tab-casino">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="4"/><circle cx="8" cy="8" r="1.5"/><circle cx="16" cy="16" r="1.5"/><circle cx="12" cy="12" r="1.5"/></svg></span>
+        <span class="nav-label">Cassino & Apostas</span>
+      </button>
+      <button class="nav-item" data-tab="tab-tickets">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9a3 3 0 0 0 0-6h18a3 3 0 0 0 0 6v6a3 3 0 0 0 0 6H3a3 3 0 0 0 0-6V9z"/><line x1="13" y1="5" x2="13" y2="7"/><line x1="13" y1="11" x2="13" y2="13"/><line x1="13" y1="17" x2="13" y2="19"/></svg></span>
+        <span class="nav-label">Central de Tickets</span>
+      </button>
+      <button class="nav-item" data-tab="tab-reviews">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></span>
+        <span class="nav-label">Avaliações da Equipe</span>
+      </button>
 
-      <div class="menu-group-title"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f6e1.png" class="nav-photo-icon" alt=""> MODERAÇÃO & MEMBROS</div>
-      <button class="nav-item" data-tab="tab-members"><span class="nav-icon"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f465.png" class="nav-photo-icon" alt=""></span><span class="nav-label">Membros & Usuários</span></button>
-      <button class="nav-item" data-tab="tab-moderation"><span class="nav-icon"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f6e1.png" class="nav-photo-icon" alt=""></span><span class="nav-label">Moderação & Anti-Spam</span></button>
-      <button class="nav-item" data-tab="tab-audit"><span class="nav-icon"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f4dc.png" class="nav-photo-icon" alt=""></span><span class="nav-label">Auditoria & Histórico</span></button>
+      <!-- HUB 4: IA & AUTOMAÇÕES -->
+      <div class="menu-group-title">IA & AUTOMAÇÕES</div>
+      <button class="nav-item" data-tab="tab-identity">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><circle cx="12" cy="5" r="2"/><line x1="12" y1="7" x2="12" y2="11"/><circle cx="8" cy="16" r="1"/><circle cx="16" cy="16" r="1"/></svg></span>
+        <span class="nav-label">Identidade & Presença</span>
+      </button>
+      <button class="nav-item" data-tab="tab-aimemory">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-5.04z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-5.04z"/></svg></span>
+        <span class="nav-label">Memórias IA (Forçar)</span>
+        <span class="nav-badge-pill" style="color: #38bdf8; border-color: rgba(56, 189, 248, 0.4);">Gemini</span>
+      </button>
+      <button class="nav-item" data-tab="tab-botspeak">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg></span>
+        <span class="nav-label">Falar pelo Bot</span>
+      </button>
+      <button class="nav-item" data-tab="tab-customcommands">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>
+        <span class="nav-label">Comandos Personalizados</span>
+      </button>
+      <button class="nav-item" data-tab="tab-community">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></span>
+        <span class="nav-label">Relatórios & Briefing</span>
+      </button>
 
-      <div class="menu-group-title"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f4b0.png" class="nav-photo-icon" alt=""> ECONOMIA, JOGOS & VOZ</div>
-      <button class="nav-item" data-tab="tab-economy"><span class="nav-icon"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f4b0.png" class="nav-photo-icon" alt=""></span><span class="nav-label">Economia & Banco</span></button>
-      <button class="nav-item" data-tab="tab-casino"><span class="nav-icon"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f3b0.png" class="nav-photo-icon" alt=""></span><span class="nav-label">Cassino & Apostas</span></button>
-      <button class="nav-item" data-tab="tab-music"><span class="nav-icon"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f3b5.png" class="nav-photo-icon" alt=""></span><span class="nav-label">Música & Streaming</span></button>
-      <button class="nav-item" data-tab="tab-tickets"><span class="nav-icon"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f3ab.png" class="nav-photo-icon" alt=""></span><span class="nav-label">Central de Tickets</span></button>
+      <!-- HUB 5: SOCIAL & ENTRETENIMENTO -->
+      <div class="menu-group-title">SOCIAL & ENTRETENIMENTO</div>
+      <button class="nav-item" data-tab="tab-social" data-scroll="quizQuestionsBrowserSection">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+        <span class="nav-label">Quiz Arena</span>
+        <span class="nav-badge-pill">Arena</span>
+      </button>
+      <button class="nav-item" data-tab="tab-social">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></span>
+        <span class="nav-label">Romance & Social</span>
+      </button>
+      <button class="nav-item" data-tab="tab-xp">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.45 1-1 1H7c-.55 0-1-.45-1-1v-2.34"/><path d="M14 14.66V17c0 .55.45 1 1 1h2c.55 0 1-.45 1-1v-2.34"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg></span>
+        <span class="nav-label">Níveis & XP</span>
+      </button>
+      <button class="nav-item" data-tab="tab-music">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span>
+        <span class="nav-label">Música & Voz</span>
+      </button>
     </nav>
 
     <div class="sidebar-footer">
-      <div style="font-size: 0.78rem; font-weight: 600; color: #00A650; display: flex; align-items: center; gap: 6px;">
-        <span style="width: 8px; height: 8px; background: #00A650; border-radius: 50%;"></span>
-        <span>Sistema Operacional</span>
+      <div style="font-size: 0.74rem; font-weight: 600; color: #10B981; display: flex; align-items: center; gap: 8px;">
+        <span style="width: 8px; height: 8px; background: #10B981; border-radius: 50%; box-shadow: 0 0 8px rgba(16, 185, 129, 0.7);"></span>
+        <span>Sistema Operacional • v2.0</span>
       </div>
     </div>
   </aside>
 
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+  <!-- Modern Slim Topbar -->
+  <header class="app-topbar">
+    <!-- Left: Mobile Toggle & Breadcrumb -->
+    <div class="topbar-left">
+      <button class="topbar-mobile-toggle" id="mobileToggleBtn" aria-label="Abrir navegação">☰</button>
+      <div class="topbar-breadcrumb">
+        <span class="breadcrumb-root">J.A.R.V.I.S.</span>
+        <span class="breadcrumb-sep">/</span>
+        <span class="breadcrumb-current" id="topHeaderActiveTabTitle">Visão Geral</span>
+      </div>
+    </div>
+
+    <!-- Center: Universal Quick Search -->
+    <div class="meli-search-container">
+      <div class="meli-search-box">
+        <input type="text" id="menuSearchInput" class="meli-search-input" placeholder="Buscar membros, comandos, módulos ou economia..." autocomplete="off" />
+        <button class="meli-search-submit" id="searchSubmitBtn" aria-label="Buscar">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="10.5" cy="10.5" r="7"/>
+            <line x1="21" y1="21" x2="15.8" y2="15.8"/>
+          </svg>
+        </button>
+      </div>
+      <div class="meli-search-dropdown" id="searchDropdown" style="display: none;"></div>
+    </div>
+
+    <!-- Right: Guild Selector & Quick Actions -->
+    <div class="topbar-actions">
+      <div class="meli-guild-card">
+        <img src="${initialServerIconUrl}" class="meli-guild-icon" id="topHeaderServerIcon" alt="Servidor" onerror="this.onerror=null; this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
+        <div class="meli-guild-meta">
+          <span class="meli-guild-label">Servidor</span>
+          <select id="guildSelector" class="meli-guild-select">
+            ${renderedGuildOptions}
+          </select>
+        </div>
+      </div>
+
+      <div class="meli-status-badge">
+        <span class="meli-status-dot"></span>
+        <span class="meli-status-text">Online</span>
+      </div>
+
+      <button class="meli-sync-btn" id="refreshAllBtn" title="Sincronizar dados em tempo real">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.19"/>
+        </svg>
+        <span id="syncBtnText">Sincronizar</span>
+      </button>
+
+      <button class="meli-sync-btn" id="themeToggleBtn" title="Alternar Modo Claro / Escuro">
+        <span id="themeToggleIcon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg></span>
+        <span id="themeToggleText">Claro</span>
+      </button>
+
+      <button class="meli-sync-btn" id="langToggleBtn" title="Switch Language / Alternar Idioma">
+        <span id="langToggleIcon" style="font-size:0.8rem; font-weight:700;">🌐</span>
+        <span id="langToggleText">EN</span>
+      </button>
+
+      <button class="meli-sync-btn" id="lockPanelBtn" title="Bloquear Painel (Requer Senha 1598)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <span id="lockBtnText">Bloquear</span>
+      </button>
+    </div>
+  </header>
 
   <div class="main-wrapper">
     <!-- Hidden legacy elements for JS script compatibility -->
@@ -2875,130 +2374,37 @@ function renderDashboardHtml({
 <main class="container">
     <!-- TAB 1: VISÃO GERAL -->
     <div id="tab-overview" class="tab-content active">
-      <!-- J.A.R.V.I.S. Hero Banner -->
-      <div class="meli-hero-section">
-        <div class="meli-hero-banner">
-          <div class="meli-hero-copy">
-            <span class="meli-hero-badge">J.A.R.V.I.S. • SISTEMA INTELIGENTE 2.0</span>
-            <h1 class="meli-hero-title">Gerencie seu Servidor Discord com Alta Performance e IA</h1>
-            <p class="meli-hero-subtitle">Membros, economia dinâmica, moderação ativa, memórias persistentes do Gemini 3.5 Flash Lite e automações em tempo real com o Discord.</p>
-            <div class="meli-hero-actions">
-              <button class="meli-btn-primary" onclick="switchTab('tab-members')">Gerenciar Membros</button>
-              <button class="meli-btn-outline" onclick="switchTab('tab-aimemory')">Configurar Memórias IA</button>
-              <button class="meli-btn-outline" onclick="switchTab('tab-economy')">Ajustar Economia</button>
-            </div>
-          </div>
-          <div class="meli-hero-media">
-            <img src="${botAvatarUrl}" class="meli-hero-img" alt="${aiDisplayName}" onerror="if(this.src!=='/api/bot/avatar'){this.src='/api/bot/avatar';}">
-          </div>
-        </div>
-
-        <!-- J.A.R.V.I.S. Core Pillars Strip -->
-        <div class="meli-benefits-row">
-          <div class="meli-benefit-card" onclick="switchTab('tab-aimemory')">
-            <div class="meli-benefit-icon"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/26a1.png" class="benefit-photo-icon" alt=""></div>
-            <div class="meli-benefit-text">
-              <span class="meli-benefit-heading">Gemini 3.5 Flash Lite</span>
-              <span class="meli-benefit-sub">Respostas inteligentes e memórias em tempo real</span>
-            </div>
-          </div>
-          <div class="meli-benefit-card" onclick="switchTab('tab-moderation')">
-            <div class="meli-benefit-icon"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f6e1.png" class="benefit-photo-icon" alt=""></div>
-            <div class="meli-benefit-text">
-              <span class="meli-benefit-heading">Proteção & Moderação</span>
-              <span class="meli-benefit-sub">Warns, advertências e anti-spam</span>
-            </div>
-          </div>
-          <div class="meli-benefit-card" onclick="switchTab('tab-economy')">
-            <div class="meli-benefit-icon"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f4b0.png" class="benefit-photo-icon" alt=""></div>
-            <div class="meli-benefit-text">
-              <span class="meli-benefit-heading">Economia & Banco</span>
-              <span class="meli-benefit-sub">Saldo, banco, loja e salários</span>
-            </div>
-          </div>
-          <div class="meli-benefit-card" onclick="switchTab('tab-health')">
-            <div class="meli-benefit-icon"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/23f1.png" class="benefit-photo-icon" alt=""></div>
-            <div class="meli-benefit-text">
-              <span class="meli-benefit-heading">100% Sincronizado</span>
-              <span class="meli-benefit-sub">Web e Discord em tempo real</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- J.A.R.V.I.S. Circular Module Shortcuts -->
-      <div class="meli-quick-row">
-        <div class="meli-section-header">
-          <h3 class="meli-section-title">Acesso Rápido aos Módulos</h3>
-          <span class="meli-section-desc">Clique no módulo desejado para abrir diretamente</span>
-        </div>
-        <div class="meli-circles-container">
-          <div class="meli-circle-item" data-tab="tab-members" onclick="switchTab('tab-members')">
-            <div class="meli-circle-bubble"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f465.png" class="circle-photo-icon" alt=""></div>
-            <span class="meli-circle-name">Membros</span>
-          </div>
-          <div class="meli-circle-item" data-tab="tab-economy" onclick="switchTab('tab-economy')">
-            <div class="meli-circle-bubble"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f4b0.png" class="circle-photo-icon" alt=""></div>
-            <span class="meli-circle-name">Economia</span>
-          </div>
-          <div class="meli-circle-item" data-tab="tab-moderation" onclick="switchTab('tab-moderation')">
-            <div class="meli-circle-bubble"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f6e1.png" class="circle-photo-icon" alt=""></div>
-            <span class="meli-circle-name">Moderação</span>
-          </div>
-          <div class="meli-circle-item" data-tab="tab-aimemory" onclick="switchTab('tab-aimemory')">
-            <div class="meli-circle-bubble"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f9e0.png" class="circle-photo-icon" alt=""></div>
-            <span class="meli-circle-name">Memórias IA</span>
-          </div>
-          <div class="meli-circle-item" data-tab="tab-customcommands" onclick="switchTab('tab-customcommands')">
-            <div class="meli-circle-bubble"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/26a1.png" class="circle-photo-icon" alt=""></div>
-            <span class="meli-circle-name">Comandos</span>
-          </div>
-          <div class="meli-circle-item" data-tab="tab-social" data-scroll="quizQuestionsBrowserSection" onclick="switchTab('tab-social', 'quizQuestionsBrowserSection')">
-            <div class="meli-circle-bubble"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f9e0.png" class="circle-photo-icon" alt=""></div>
-            <span class="meli-circle-name">Quiz Arena</span>
-          </div>
-          <div class="meli-circle-item" data-tab="tab-xp" onclick="switchTab('tab-xp')">
-            <div class="meli-circle-bubble"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f3c6.png" class="circle-photo-icon" alt=""></div>
-            <span class="meli-circle-name">Nível & XP</span>
-          </div>
-          <div class="meli-circle-item" data-tab="tab-botspeak" onclick="switchTab('tab-botspeak')">
-            <div class="meli-circle-bubble"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f4e2.png" class="circle-photo-icon" alt=""></div>
-            <span class="meli-circle-name">Falar (DM)</span>
-          </div>
-          <div class="meli-circle-item" data-tab="tab-reviews" onclick="switchTab('tab-reviews')">
-            <div class="meli-circle-bubble"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/2b50.png" class="circle-photo-icon" alt=""></div>
-            <span class="meli-circle-name">Avaliações</span>
-          </div>
-          <div class="meli-circle-item" data-tab="tab-casino" onclick="switchTab('tab-casino')">
-            <div class="meli-circle-bubble"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f3b0.png" class="circle-photo-icon" alt=""></div>
-            <span class="meli-circle-name">Cassino</span>
-          </div>
-          <div class="meli-circle-item" data-tab="tab-music" onclick="switchTab('tab-music')">
-            <div class="meli-circle-bubble"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f3b5.png" class="circle-photo-icon" alt=""></div>
-            <span class="meli-circle-name">Música</span>
-          </div>
-          <div class="meli-circle-item" data-tab="tab-tickets" onclick="switchTab('tab-tickets')">
-            <div class="meli-circle-bubble"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f3ab.png" class="circle-photo-icon" alt=""></div>
-            <span class="meli-circle-name">Tickets</span>
-          </div>
-          <div class="meli-circle-item" data-tab="tab-audit" onclick="switchTab('tab-audit')">
-            <div class="meli-circle-bubble"><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f4dc.png" class="circle-photo-icon" alt=""></div>
-            <span class="meli-circle-name">Auditoria</span>
-          </div>
-        </div>
-      </div>
-
+      <!-- Server Executive Header Banner -->
       <div class="server-hero-banner">
-        <img src="${initialServerIconUrl}" class="server-hero-avatar" id="overviewServerIcon" alt="Ícone do Servidor" onerror="this.onerror=null; this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
-        <div>
-          <div class="server-hero-title">
-            <span id="overviewServerName">${initialServerName}</span>
-            <span class="badge" style="background: rgba(87, 242, 135, 0.2); color: #57f287; font-size: 0.72rem;">Servidor Ativo</span>
+        <div style="display: flex; align-items: center; gap: 1.25rem;">
+          <img src="${initialServerIconUrl}" class="server-hero-avatar" id="overviewServerIcon" alt="Ícone do Servidor" onerror="this.onerror=null; this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
+          <div>
+            <div class="server-hero-title" style="display: flex; align-items: center; gap: 10px;">
+              <span id="overviewServerName">${initialServerName}</span>
+              <span class="badge" style="background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); color: #34d399; font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 999px;">Ativo & Seguro</span>
+            </div>
+            <div class="server-hero-meta">
+              <span><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -2px; margin-right: 4px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><strong id="overviewMemberCount">${initialMemberCount}</strong> membros</span>
+              <span>•</span>
+              <span>ID: <code id="overviewServerId" style="color: #93c5fd; background: rgba(0,0,0,0.25); padding: 2px 6px; border-radius: 4px;">${initialServerId}</code></span>
+              <span>•</span>
+              <span style="color: var(--cyan); font-weight: 600;">J.A.R.V.I.S. Core v2.0</span>
+            </div>
           </div>
-          <div class="server-hero-meta">
-            <span><img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f465.png" class="nav-photo-icon" alt=""> <strong id="overviewMemberCount">${initialMemberCount}</strong> membros</span> • 
-            <span>ID do Servidor: <code id="overviewServerId" style="color: #93c5fd;">${initialServerId}</code></span>
-          </div>
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <button class="meli-btn-primary" onclick="switchTab('tab-members')">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+            Gerenciar Membros
+          </button>
+          <button class="meli-btn-outline" onclick="switchTab('tab-audit')">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>
+            Auditoria
+          </button>
+          <button class="meli-btn-outline" onclick="switchTab('tab-economy')">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            Economia & Banco
+          </button>
         </div>
       </div>
       <div class="stat-row">
@@ -6313,6 +5719,12 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
 
       if (activeTabTitle && tabTitleMap[tabId]) {
         activeTabTitle.innerHTML = tabTitleMap[tabId];
+      }
+      const topBreadcrumb = document.getElementById('topHeaderActiveTabTitle');
+      if (topBreadcrumb && tabTitleMap[tabId]) {
+        const tmp = document.createElement('div');
+        tmp.innerHTML = tabTitleMap[tabId];
+        topBreadcrumb.innerText = tmp.textContent.trim();
       }
 
       if (typeof applyTwemoji === 'function') {
