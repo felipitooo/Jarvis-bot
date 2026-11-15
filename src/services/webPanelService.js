@@ -1,0 +1,1807 @@
+const crypto = require('node:crypto');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { logger } = require('../utils/logger');
+const { ValidationError, PermissionDeniedError } = require('../utils/errorHandler');
+const { dmTracker } = require('../utils/dmTracker');
+
+const panelLogger = logger.forContext('WebPanelService');
+
+class WebPanelService {
+  /**
+   * @param {object} params
+   * @param {import('../database/repositories/webSessionRepository').WebSessionRepository} params.webSessionRepo
+   * @param {import('./identityService').IdentityService} params.identityService
+   * @param {import('./settingsService').SettingsService} params.settingsService
+   * @param {import('./auditService').AuditService} [params.auditService]
+   * @param {object} params.services
+   */
+  constructor({ webSessionRepo, identityService, settingsService, auditService = null, services = {}, botClient = null }) {
+    this.webSessionRepo = webSessionRepo;
+    this.identityService = identityService;
+    this.settingsService = settingsService;
+    this.auditService = auditService;
+    this.services = services; // ticketService, reviewService, communityService, etc.
+    this.botClient = botClient;
+  }
+
+  setBotClient(client) {
+    this.botClient = client;
+  }
+
+  // ==========================================
+  // 1. Session & OAuth2 Management
+  // ==========================================
+
+  createOAuthSession(user, guilds = [], ttlSeconds = 86400) {
+    const sessionToken = crypto.randomBytes(32).toString('hex');
+    const csrfToken = crypto.randomBytes(24).toString('hex');
+
+    const formattedGuilds = guilds.map(g => ({
+      id: g.id,
+      name: g.name,
+      icon: g.icon,
+      permissions: String(g.permissions || '0'),
+      owner: Boolean(g.owner)
+    }));
+
+    const userData = {
+      id: user.id,
+      username: user.username,
+      discriminator: user.discriminator || '0',
+      avatar: user.avatar,
+      guilds: formattedGuilds
+    };
+
+    return this.webSessionRepo.createSession(
+      sessionToken,
+      user.id,
+      userData,
+      csrfToken,
+      ttlSeconds
+    );
+  }
+
+  getSession(token) {
+    return this.webSessionRepo.getSession(token);
+  }
+
+  destroySession(token) {
+    return this.webSessionRepo.deleteSession(token);
+  }
+
+  validateCsrf(sessionToken, csrfToken) {
+    return this.webSessionRepo.validateCsrf(sessionToken, csrfToken);
+  }
+
+  // ==========================================
+  // 2. Authorization Checks
+  // ==========================================
+
+  canUserManageGuild(session, guildId) {
+    if (!session || !session.userData) {
+      return false;
+    }
+
+    if (session.userId === 'admin_local') {
+      return true;
+    }
+
+    if (!Array.isArray(session.userData.guilds)) {
+      return false;
+    }
+
+    const guild = session.userData.guilds.find(g => g.id === guildId);
+    if (!guild) return false;
+
+    if (guild.owner) return true;
+
+    try {
+      const perms = BigInt(guild.permissions);
+      // 0x8 = ADMINISTRATOR, 0x20 = MANAGE_GUILD
+      return (perms & 0x8n) !== 0n || (perms & 0x20n) !== 0n;
+    } catch {
+      return false;
+    }
+  }
+
+  verifyGuildAccess(session, guildId) {
+    if (!this.canUserManageGuild(session, guildId)) {
+      throw new PermissionDeniedError('Você não possui permissão de gerenciamento (Manage Server) neste servidor.');
+    }
+  }
+
+  verifyCsrf(sessionToken, csrfToken) {
+    if (!this.validateCsrf(sessionToken, csrfToken)) {
+      throw new PermissionDeniedError('Token CSRF inválido ou expirado. Atualize a página e tente novamente.');
+    }
+  }
+
+  // ==========================================
+  // 3. Guild & Module Management Endpoints
+  // ==========================================
+
+  getUserManageableGuilds(session, botGuildsMap = new Map()) {
+    if (!session || !session.userData) {
+      return [];
+    }
+
+    if (session.userId === 'admin_local' && botGuildsMap.size > 0) {
+      return Array.from(botGuildsMap.values()).map(g => ({
+        id: g.id,
+        name: g.name,
+        icon: g.icon,
+        iconUrl: g.iconURL ? g.iconURL({ extension: 'png', size: 128 }) : (g.icon ? `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png?size=128` : 'https://cdn.discordapp.com/embed/avatars/0.png'),
+        isBotPresent: true,
+        aiDisplayName: this.identityService.getDisplayName(g.id)
+      }));
+    }
+
+    if (!Array.isArray(session.userData.guilds)) {
+      return [];
+    }
+
+    return session.userData.guilds
+      .filter(g => {
+        if (g.owner) return true;
+        try {
+          const perms = BigInt(g.permissions);
+          return (perms & 0x8n) !== 0n || (perms & 0x20n) !== 0n;
+        } catch {
+          return false;
+        }
+      })
+      .map(g => ({
+        id: g.id,
+        name: g.name,
+        icon: g.icon,
+        iconUrl: g.icon ? `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png?size=128` : 'https://cdn.discordapp.com/embed/avatars/0.png',
+        isBotPresent: botGuildsMap.has(g.id),
+        aiDisplayName: this.identityService.getDisplayName(g.id)
+      }));
+  }
+
+  getGuildOverview(session, guildId, botGuild = null) {
+    this.verifyGuildAccess(session, guildId);
+
+    const aiName = this.identityService.getDisplayName(guildId);
+    const settings = this.settingsService.getSettings(guildId);
+
+    const channels = [];
+    if (botGuild && botGuild.channels?.cache) {
+      for (const [, ch] of botGuild.channels.cache) {
+        // Text channels (0) and announcement channels (5)
+        if (ch.type === 0 || ch.type === 5) {
+          channels.push({
+            id: ch.id,
+            name: ch.name,
+            type: ch.type
+          });
+        }
+      }
+      channels.sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    const roles = [];
+    if (botGuild && botGuild.roles?.cache) {
+      for (const [, r] of botGuild.roles.cache) {
+        if (r.name !== '@everyone' && !r.managed) {
+          roles.push({
+            id: r.id,
+            name: r.name,
+            color: r.hexColor
+          });
+        }
+      }
+      roles.sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    const {
+      modRepo,
+      ticketRepo,
+      reviewRepo,
+      communityRepo,
+      automationRepo,
+      musicVoiceRepo,
+      economyRepo,
+      xpRepo,
+      botPresenceRepo
+    } = this.services;
+    const modLogChannel = modRepo ? modRepo.getLogChannel(guildId, 'PUNISHMENTS') : null;
+    const autoRoles = communityRepo ? communityRepo.getAutoRoles(guildId) : [];
+    const ticketPanels = ticketRepo ? ticketRepo.getPanels(guildId) : [];
+    const latestPanel = ticketPanels.length > 0 ? ticketPanels[0] : null;
+    const ticketCfg = ticketRepo ? ticketRepo.getTicketConfig(guildId) : {};
+
+    const modules = {
+      tickets: ticketRepo ? {
+        ...ticketCfg,
+        panelChannelId: latestPanel?.channelId || null,
+        panelTitle: latestPanel?.title || '🎫 Central de Atendimento',
+        panelDescription: latestPanel?.description || 'Clique no botão abaixo para abrir um canal de atendimento privado com nossa equipe.'
+      } : null,
+      reviews: reviewRepo ? reviewRepo.getReviewConfig(guildId) : null,
+      welcome: communityRepo ? communityRepo.getWelcomeConfig(guildId) : null,
+      autorole: {
+        roles: autoRoles,
+        roleId: autoRoles.length > 0 ? autoRoles[0] : ''
+      },
+      starboard: communityRepo ? communityRepo.getStarboardConfig(guildId) : null,
+      briefing: automationRepo ? automationRepo.getBriefingConfig(guildId) : null,
+      moderation: {
+        logChannelId: modLogChannel?.channel_id || null,
+        warnRules: modRepo ? modRepo.getEscalationRules(guildId) : [],
+        antiAbuse: modRepo ? modRepo.getAntiAbuseConfig(guildId) : null
+      },
+      audit: { channelId: settings.audit_channel_id || null },
+      music: musicVoiceRepo ? musicVoiceRepo.getMusicConfig(guildId) : null,
+      economy: economyRepo ? {
+        ...economyRepo.getGuildConfig(guildId),
+        exchangeCurrencies: economyRepo.listExchangeCurrencies(guildId, false)
+      } : null,
+      casino: this.services.casinoRepo ? this.services.casinoRepo.getCasinoConfig(guildId) : null,
+      quiz: this.services.quizRepo ? this.services.quizRepo.getQuizConfig(guildId) : null,
+      customQuizQuestions: this.services.quizRepo ? this.services.quizRepo.getCustomQuestions(guildId) : [],
+      quizCategories: this.services.quizService
+        ? this.services.quizService.getAllCategories(guildId)
+        : (this.services.quizRepo ? (new (require('./quizService').QuizService)({ quizRepo: this.services.quizRepo })).getAllCategories(guildId) : {}),
+      allQuizQuestions: this.services.quizService
+        ? this.services.quizService.getAllQuestions(guildId)
+        : (this.services.quizRepo ? (new (require('./quizService').QuizService)({ quizRepo: this.services.quizRepo })).getAllQuestions(guildId) : []),
+      customCommands: this.services.customCommandRepo ? this.services.customCommandRepo.listCommands(guildId) : [],
+      placeholders: this.services.customCommandService ? this.services.customCommandService.getPlaceholdersDocumentation() : [],
+      serverPrefix: this.services.settingsService ? this.services.settingsService.getSetting(guildId, 'prefix', '+') : '+',
+      prefixlessMode: this.services.settingsService ? (this.services.settingsService.getSetting(guildId, 'prefixless_mode', 'false') === 'true' || ['none', 'sem', 'nenhum', ''].includes(this.services.settingsService.getSetting(guildId, 'prefix', '+'))) : false,
+      social: musicVoiceRepo ? musicVoiceRepo.getSocialConfig(guildId) : null,
+      xp: xpRepo ? {
+        ...xpRepo.getXpConfig(guildId),
+        rewards: xpRepo.getLevelRewards(guildId),
+        multipliers: xpRepo.getMultipliersAndBlocks(guildId)
+      } : null,
+      botPresence: botPresenceRepo ? botPresenceRepo.getPresence() : null,
+      aiKeys: this.services.apiKeyRepo ? this.services.apiKeyRepo.getKeysStatus(this.services.llmAdapter) : null,
+      aiMemories: this.services.memoryRepo ? this.services.memoryRepo.ensureDefaultBotMemories(guildId, botGuild?.name || 'Servidor') : [],
+      customEmojis: require('../utils/emojiHelper').getGuildAndExternalEmojis(this.botClient, guildId)
+    };
+
+    const guildIconUrl = botGuild?.iconURL
+      ? botGuild.iconURL({ extension: 'png', size: 128 })
+      : (botGuild?.icon ? `https://cdn.discordapp.com/icons/${botGuild.id}/${botGuild.icon}.png?size=128` : 'https://cdn.discordapp.com/embed/avatars/0.png');
+
+    return {
+      guildId,
+      guildName: botGuild?.name || 'Servidor Principal',
+      memberCount: botGuild?.memberCount || 0,
+      guildIconUrl,
+      botAvatarUrl: this.botClient?.user?.displayAvatarURL ? this.botClient.user.displayAvatarURL({ extension: 'png', size: 128 }) : 'https://cdn.discordapp.com/embed/avatars/0.png',
+      aiDisplayName: aiName,
+      isDefaultAiName: aiName === this.identityService.getDefaultName(),
+      settings,
+      channels,
+      roles,
+      modules
+    };
+  }
+
+  updateGuildSettings(session, guildId, updates, csrfToken) {
+    this.verifyGuildAccess(session, guildId);
+    this.verifyCsrf(session.token, csrfToken);
+
+    if (updates.aiDisplayName !== undefined) {
+      const cleanName = String(updates.aiDisplayName).trim();
+      this.identityService.setDisplayName(guildId, cleanName, session.userId);
+    }
+
+    if (updates.aiChannelId !== undefined) {
+      this.settingsService.setSetting(guildId, 'ai_channel_id', updates.aiChannelId || '', session.userId);
+    }
+
+    if (this.auditService) {
+      this.auditService.logAction({
+        guildId,
+        userId: session.userId,
+        action: 'WEB_PANEL_SETTINGS_UPDATE',
+        targetId: guildId,
+        details: updates
+      });
+    }
+
+    return {
+      status: 'success',
+      aiDisplayName: this.identityService.getDisplayName(guildId),
+      settings: this.settingsService.getSettings(guildId)
+    };
+  }
+
+  getGuildEmojis(session, guildId) {
+    this.verifyGuildAccess(session, guildId);
+    const { getGuildAndExternalEmojis } = require('../utils/emojiHelper');
+    return getGuildAndExternalEmojis(this.botClient, guildId);
+  }
+
+  getModuleConfig(session, guildId, moduleName) {
+    this.verifyGuildAccess(session, guildId);
+
+    const mod = moduleName.toLowerCase().trim();
+    const {
+      modRepo,
+      ticketRepo,
+      reviewRepo,
+      communityRepo,
+      automationRepo,
+      musicVoiceRepo,
+      economyRepo,
+      xpRepo,
+      botPresenceRepo
+    } = this.services;
+
+    switch (mod) {
+      case 'tickets':
+        return ticketRepo ? ticketRepo.getTicketConfig(guildId) : null;
+      case 'reviews':
+        return reviewRepo ? reviewRepo.getReviewConfig(guildId) : null;
+      case 'welcome':
+        return communityRepo ? communityRepo.getWelcomeConfig(guildId) : null;
+      case 'autorole': {
+        const autoRoles = communityRepo ? communityRepo.getAutoRoles(guildId) : [];
+        return { roles: autoRoles, roleId: autoRoles[0] || '' };
+      }
+      case 'starboard':
+        return communityRepo ? communityRepo.getStarboardConfig(guildId) : null;
+      case 'briefing':
+        return automationRepo ? automationRepo.getBriefingConfig(guildId) : null;
+      case 'moderation': {
+        const row = modRepo ? modRepo.getLogChannel(guildId, 'PUNISHMENTS') : null;
+        return { logChannelId: row?.channel_id || null };
+      }
+      case 'audit': {
+        const settings = this.settingsService.getSettings(guildId);
+        return { channelId: settings.audit_channel_id || null };
+      }
+      case 'music':
+        return musicVoiceRepo ? musicVoiceRepo.getMusicConfig(guildId) : null;
+      case 'economy':
+        return economyRepo ? {
+          ...economyRepo.getGuildConfig(guildId),
+          exchangeCurrencies: economyRepo.listExchangeCurrencies(guildId, false)
+        } : null;
+      case 'casino':
+      case 'apostas':
+        return this.services.casinoRepo ? this.services.casinoRepo.getCasinoConfig(guildId) : null;
+      case 'custom_commands':
+      case 'customcommands': {
+        const { customCommandRepo, customCommandService, settingsService } = this.services;
+        const currentPrefix = settingsService ? settingsService.getSetting(guildId, 'prefix', '+') : '+';
+        const prefixless = settingsService ? (settingsService.getSetting(guildId, 'prefixless_mode', 'false') === 'true' || ['none', 'sem', 'nenhum', ''].includes(currentPrefix)) : false;
+        return {
+          prefix: (!['none', 'sem', 'nenhum', ''].includes(currentPrefix)) ? currentPrefix : '+',
+          prefixless_mode: prefixless,
+          commands: customCommandRepo ? customCommandRepo.listCommands(guildId) : [],
+          placeholders: customCommandService ? customCommandService.getPlaceholdersDocumentation() : []
+        };
+      }
+      case 'xp':
+        return xpRepo ? xpRepo.getXpConfig(guildId) : null;
+      case 'aimemory':
+      case 'ai_memory':
+      case 'memories': {
+        const botGuild = this.botClient?.guilds?.cache?.get(guildId);
+        return {
+          memories: this.services.memoryRepo ? this.services.memoryRepo.ensureDefaultBotMemories(guildId, botGuild?.name || 'Servidor') : []
+        };
+      }
+      case 'bot_speak':
+      case 'botspeak':
+      case 'send_message':
+        return { status: 'ready' };
+      default:
+        throw new ValidationError(`Módulo desconhecido: "${moduleName}".`);
+    }
+  }
+
+  async updateModuleConfig(session, guildId, moduleName, updates, csrfToken) {
+    this.verifyGuildAccess(session, guildId);
+    this.verifyCsrf(session.token, csrfToken);
+
+    const mod = moduleName.toLowerCase().trim();
+    const {
+      modRepo,
+      ticketRepo,
+      reviewRepo,
+      communityRepo,
+      automationRepo
+    } = this.services;
+
+    let updated = null;
+
+    switch (mod) {
+      case 'tickets': {
+        if (!ticketRepo) throw new Error('Serviço de tickets indisponível.');
+        const payload = { ...updates };
+        if (updates.channelId !== undefined) {
+          payload.transcriptChannelId = updates.channelId || null;
+        }
+        if (updates.transcriptChannelId !== undefined) {
+          payload.transcriptChannelId = updates.transcriptChannelId || null;
+        }
+        if (updates.supportRoleId !== undefined) {
+          payload.defaultSupportRoleId = updates.supportRoleId || null;
+        }
+        if (updates.defaultSupportRoleId !== undefined) {
+          payload.defaultSupportRoleId = updates.defaultSupportRoleId || null;
+        }
+        if (updates.ticketCategoryId !== undefined) {
+          payload.ticketCategoryId = updates.ticketCategoryId || null;
+        }
+        updated = ticketRepo.upsertTicketConfig(guildId, payload);
+
+        // If panelChannelId is provided, publish panel immediately to Discord!
+        if (updates.panelChannelId) {
+          const panelTitle = updates.panelTitle || '🎫 Central de Atendimento';
+          const panelDesc = updates.panelDescription || 'Clique no botão abaixo para abrir um canal de atendimento privado com nossa equipe de suporte.';
+          const defaultCat = updates.defaultCategory || 'Suporte Geral';
+          ticketRepo.createPanel(guildId, {
+            channelId: updates.panelChannelId,
+            title: panelTitle,
+            description: panelDesc,
+            supportRoleId: updates.supportRoleId || null
+          });
+
+          if (this.botClient) {
+            try {
+              const botGuild = this.botClient.guilds?.cache?.get(guildId);
+              const panelChan = botGuild?.channels?.cache?.get(updates.panelChannelId);
+              if (panelChan && panelChan.send) {
+                const row = new ActionRowBuilder().addComponents(
+                  new ButtonBuilder()
+                    .setCustomId(`ticket_panel_open_${defaultCat.toLowerCase().replace(/[^a-z0-9_-]/g, '_')}`)
+                    .setLabel(updates.buttonLabel || '🎫 Abrir Ticket')
+                    .setStyle(ButtonStyle.Success)
+                );
+                const embed = new EmbedBuilder()
+                  .setColor(0x5865F2)
+                  .setTitle(panelTitle)
+                  .setDescription(panelDesc)
+                  .addFields(
+                    {
+                      name: '📋 Como Funciona?',
+                      value: 'Ao clicar em **Abrir Ticket**, você informará o **motivo** e os **detalhes** da sua solicitação. Um canal privado e exclusivo será aberto para você falar com nossa equipe.',
+                      inline: false
+                    }
+                  )
+                  .setFooter({ text: `${this.identityService.getDisplayName(guildId)} • Atendimento por Tickets` })
+                  .setTimestamp();
+                panelChan.send({ embeds: [embed], components: [row] }).catch(() => {});
+              }
+            } catch (sendErr) {
+              panelLogger.warn(`Failed to dispatch ticket panel to channel ${updates.panelChannelId}`, { error: sendErr.message });
+            }
+          }
+        }
+        break;
+      }
+      case 'reviews': {
+        if (!reviewRepo) throw new Error('Serviço de avaliações indisponível.');
+        const payload = { ...updates };
+        if (updates.channelId !== undefined) {
+          payload.reviewChannelId = updates.channelId || null;
+        }
+        if (updates.moderationEnabled !== undefined) {
+          payload.requireModeration = Boolean(updates.moderationEnabled);
+        }
+        updated = reviewRepo.upsertReviewConfig(guildId, payload);
+        break;
+      }
+      case 'welcome': {
+        if (!communityRepo) throw new Error('Serviço de comunidade indisponível.');
+        const payload = { ...updates };
+        if (updates.channelId !== undefined) {
+          payload.welcomeChannelId = updates.channelId || null;
+          payload.welcomeEnabled = Boolean(updates.channelId);
+        }
+        if (updates.welcomeEnabled !== undefined) payload.welcomeEnabled = Boolean(updates.welcomeEnabled);
+        if (updates.welcomeChannelId !== undefined) payload.welcomeChannelId = updates.welcomeChannelId || null;
+        if (updates.welcomeMessageTemplate !== undefined) payload.welcomeMessage = updates.welcomeMessageTemplate;
+        if (updates.welcomeMessage !== undefined) payload.welcomeMessage = updates.welcomeMessage;
+        if (updates.goodbyeEnabled !== undefined) payload.goodbyeEnabled = Boolean(updates.goodbyeEnabled);
+        if (updates.goodbyeChannelId !== undefined) payload.goodbyeChannelId = updates.goodbyeChannelId || null;
+        if (updates.goodbyeMessage !== undefined) payload.goodbyeMessage = updates.goodbyeMessage;
+        updated = communityRepo.upsertWelcomeConfig(guildId, payload);
+        break;
+      }
+      case 'autorole': {
+        if (!communityRepo) throw new Error('Serviço de comunidade indisponível.');
+        const roleId = updates.roleId || updates.role_id || null;
+        if (roleId) {
+          communityRepo.setAutoRoles(guildId, [roleId]);
+        } else {
+          communityRepo.setAutoRoles(guildId, []);
+        }
+        updated = { roles: communityRepo.getAutoRoles(guildId) };
+        break;
+      }
+      case 'audit': {
+        const targetChannel = updates.channelId || updates.auditChannelId || '';
+        this.settingsService.setSetting(guildId, 'audit_channel_id', targetChannel, session.userId);
+        updated = { channelId: targetChannel };
+        break;
+      }
+      case 'starboard': {
+        if (!communityRepo) throw new Error('Serviço de comunidade indisponível.');
+        const payload = { ...updates };
+        if (updates.channelId !== undefined) {
+          payload.starboardChannelId = updates.channelId || null;
+          payload.isEnabled = Boolean(updates.channelId);
+        }
+        updated = communityRepo.upsertStarboardConfig(guildId, payload);
+        break;
+      }
+      case 'briefing': {
+        if (!automationRepo) throw new Error('Serviço de automação indisponível.');
+        const payload = { ...updates };
+        if (updates.channelId !== undefined) {
+          payload.briefingChannelId = updates.channelId || null;
+          payload.isEnabled = Boolean(updates.channelId);
+        }
+        if (updates.briefingHourUtc !== undefined) {
+          const hour = parseInt(updates.briefingHourUtc, 10) || 18;
+          payload.scheduleCron = `0 ${hour} * * *`;
+        }
+        updated = automationRepo.upsertBriefingConfig(guildId, payload);
+        break;
+      }
+      case 'moderation':
+      case 'warns': {
+        if (!modRepo) throw new Error('Serviço de moderação indisponível.');
+        if (updates.logChannelId !== undefined || updates.channelId !== undefined) {
+          const targetChannel = updates.channelId || updates.logChannelId || '';
+          modRepo.setLogChannel(guildId, 'PUNISHMENTS', targetChannel);
+        }
+        if (updates.addRule) {
+          const r = updates.addRule;
+          modRepo.createEscalationRule({
+            guildId,
+            thresholdWarns: parseInt(r.thresholdWarns, 10) || 3,
+            action: String(r.action || 'TIMEOUT').toUpperCase(),
+            durationSeconds: r.durationMinutes ? parseInt(r.durationMinutes, 10) * 60 : (r.durationSeconds ? parseInt(r.durationSeconds, 10) : null),
+            windowDays: parseInt(r.windowDays, 10) || 30,
+            autoApply: r.autoApply !== false,
+            priority: parseInt(r.priority, 10) || 0
+          });
+        }
+        if (updates.deleteRuleId) {
+          modRepo.deleteEscalationRule(updates.deleteRuleId);
+        }
+        if (updates.antiAbuse) {
+          const ab = updates.antiAbuse;
+          modRepo.saveAntiAbuseConfig(guildId, {
+            antiSpamEnabled: ab.antiSpamEnabled !== undefined ? Boolean(ab.antiSpamEnabled) : true,
+            intervalSeconds: Number(ab.intervalSeconds) || 5,
+            maxMessagesPerInterval: Number(ab.maxMessagesPerInterval) || 5,
+            antiFloodDuplicateThreshold: Number(ab.antiFloodDuplicateThreshold) || 3,
+            antiRaidEnabled: ab.antiRaidEnabled !== undefined ? Boolean(ab.antiRaidEnabled) : true,
+            actionOnDetection: ab.actionOnDetection || 'TIMEOUT',
+            timeoutDurationSeconds: (Number(ab.timeoutDurationMinutes) || 5) * 60
+          });
+        }
+        updated = {
+          logChannelId: updates.channelId || updates.logChannelId || '',
+          warnRules: modRepo.getEscalationRules(guildId),
+          antiAbuse: modRepo.getAntiAbuseConfig(guildId)
+        };
+        break;
+      }
+      case 'music': {
+        const { musicVoiceRepo } = this.services;
+        if (!musicVoiceRepo) throw new Error('Serviço de música indisponível.');
+        const payload = { ...updates };
+        if (updates.djRoleId !== undefined) payload.djRoleId = updates.djRoleId || null;
+        if (updates.defaultVolume !== undefined) payload.defaultVolume = Number(updates.defaultVolume) || 80;
+        if (updates.maxQueueSize !== undefined) payload.maxQueueSize = Number(updates.maxQueueSize) || 100;
+        if (updates.allowDuplicateTracks !== undefined) payload.allowDuplicateTracks = Boolean(updates.allowDuplicateTracks);
+        if (updates.ttsEnabled !== undefined) payload.ttsEnabled = Boolean(updates.ttsEnabled);
+        if (updates.ttsLanguage !== undefined) payload.ttsLanguage = updates.ttsLanguage || 'pt-BR';
+        if (updates.autoDisconnectMinutes !== undefined) payload.autoDisconnectMinutes = Number(updates.autoDisconnectMinutes) || 5;
+        if (updates.allowedTextChannelId !== undefined) payload.allowedTextChannelId = updates.allowedTextChannelId || null;
+        if (updates.allowedVoiceChannelId !== undefined) payload.allowedVoiceChannelId = updates.allowedVoiceChannelId || null;
+        updated = musicVoiceRepo.upsertMusicConfig(guildId, payload);
+        break;
+      }
+      case 'casino':
+      case 'apostas': {
+        const { casinoRepo } = this.services;
+        if (!casinoRepo) throw new Error('Serviço de cassino indisponível.');
+        updated = casinoRepo.upsertCasinoConfig(guildId, updates);
+        break;
+      }
+      case 'economy': {
+        const { economyRepo } = this.services;
+        if (!economyRepo) throw new Error('Serviço de economia indisponível.');
+
+        if (updates.exchangeAction) {
+          const { exchangeAction, currencyData } = updates;
+          if (exchangeAction === 'CREATE' && currencyData) {
+            economyRepo.createExchangeCurrency(guildId, currencyData);
+          } else if (exchangeAction === 'UPDATE' && currencyData && currencyData.id) {
+            economyRepo.updateExchangeCurrency(guildId, currencyData.id, currencyData);
+          } else if (exchangeAction === 'DELETE' && currencyData && currencyData.id) {
+            economyRepo.deleteExchangeCurrency(guildId, currencyData.id);
+          }
+        } else {
+          const payload = { ...updates };
+          if (updates.currencyName !== undefined) payload.currencyName = String(updates.currencyName).trim() || 'Moedas';
+          if (updates.currencySymbol !== undefined) payload.currencySymbol = String(updates.currencySymbol).trim() || '🪙';
+          if (updates.dailyAmount !== undefined) payload.dailyAmount = Number(updates.dailyAmount) || 500;
+          if (updates.dailyCooldownSeconds !== undefined) payload.dailyCooldownSeconds = Number(updates.dailyCooldownSeconds) || 86400;
+          if (updates.weeklyAmount !== undefined) payload.weeklyAmount = Number(updates.weeklyAmount) || 3000;
+          if (updates.weeklyCooldownSeconds !== undefined) payload.weeklyCooldownSeconds = Number(updates.weeklyCooldownSeconds) || 604800;
+          if (updates.workMin !== undefined) payload.workMin = Number(updates.workMin) || 50;
+          if (updates.workMax !== undefined) payload.workMax = Number(updates.workMax) || 200;
+          if (updates.workCooldownSeconds !== undefined) payload.workCooldownSeconds = Number(updates.workCooldownSeconds) || 3600;
+          if (updates.crimeMin !== undefined) payload.crimeMin = Number(updates.crimeMin) || 100;
+          if (updates.crimeMax !== undefined) payload.crimeMax = Number(updates.crimeMax) || 500;
+          if (updates.crimeCooldownSeconds !== undefined) payload.crimeCooldownSeconds = Number(updates.crimeCooldownSeconds) || 7200;
+          if (updates.crimeSuccessRate !== undefined) payload.crimeSuccessRate = Number(updates.crimeSuccessRate) || 0.6;
+          if (updates.slutMin !== undefined) payload.slutMin = Number(updates.slutMin) || 80;
+          if (updates.slutMax !== undefined) payload.slutMax = Number(updates.slutMax) || 350;
+          if (updates.slutCooldownSeconds !== undefined) payload.slutCooldownSeconds = Number(updates.slutCooldownSeconds) || 7200;
+          if (updates.slutSuccessRate !== undefined) payload.slutSuccessRate = Number(updates.slutSuccessRate) || 0.65;
+          if (updates.robCooldownSeconds !== undefined) payload.robCooldownSeconds = Number(updates.robCooldownSeconds) || 7200;
+          if (updates.robSuccessRate !== undefined) payload.robSuccessRate = Number(updates.robSuccessRate) || 0.45;
+          if (updates.robFinePercent !== undefined) payload.robFinePercent = Number(updates.robFinePercent) || 0.25;
+          if (updates.gambleMin !== undefined) payload.gambleMin = Number(updates.gambleMin) || 10;
+          if (updates.gambleMax !== undefined) payload.gambleMax = Number(updates.gambleMax) || 50000;
+          if (updates.gambleWinRate !== undefined) payload.gambleWinRate = Number(updates.gambleWinRate) || 0.48;
+          if (updates.initialBalance !== undefined) payload.initialBalance = Number(updates.initialBalance) || 100;
+          if (updates.bankStartingCapacity !== undefined) payload.bankStartingCapacity = Number(updates.bankStartingCapacity) || 5000;
+          if (updates.bankUnlimited !== undefined) payload.bankUnlimited = updates.bankUnlimited ? 1 : 0;
+          economyRepo.upsertGuildConfig(guildId, payload);
+        }
+
+        updated = {
+          ...economyRepo.getGuildConfig(guildId),
+          exchangeCurrencies: economyRepo.listExchangeCurrencies(guildId, false)
+        };
+        break;
+      }
+      case 'social':
+      case 'marriage': {
+        const { musicVoiceRepo } = this.services;
+        if (!musicVoiceRepo) throw new Error('Serviço de casamento e social indisponível.');
+        const payload = {};
+        if (updates.marriageCost !== undefined) payload.marriageCost = Math.max(0, parseInt(updates.marriageCost, 10) || 0);
+        if (updates.marriageEnabled !== undefined) payload.marriageEnabled = Boolean(updates.marriageEnabled);
+        if (updates.shippingEnabled !== undefined) payload.shippingEnabled = Boolean(updates.shippingEnabled);
+        if (updates.funCommandsEnabled !== undefined) payload.funCommandsEnabled = Boolean(updates.funCommandsEnabled);
+        if (updates.gifsEnabled !== undefined) payload.gifsEnabled = Boolean(updates.gifsEnabled);
+        updated = musicVoiceRepo.upsertSocialConfig(guildId, payload);
+        break;
+      }
+      case 'quiz': {
+        const { quizRepo } = this.services;
+        if (!quizRepo) throw new Error('Serviço de Quiz indisponível.');
+        const payload = {};
+        if (updates.rewardCoins !== undefined) payload.rewardCoins = Math.max(0, parseInt(updates.rewardCoins, 10) || 0);
+        if (updates.rewardXp !== undefined) payload.rewardXp = Math.max(0, parseInt(updates.rewardXp, 10) || 0);
+        if (updates.defaultRounds !== undefined) payload.defaultRounds = Math.max(1, Math.min(20, parseInt(updates.defaultRounds, 10) || 5));
+        if (updates.defaultTimeoutSeconds !== undefined) payload.defaultTimeoutSeconds = Math.max(10, Math.min(60, parseInt(updates.defaultTimeoutSeconds, 10) || 25));
+        if (updates.allowedChannelId !== undefined) payload.allowedChannelId = updates.allowedChannelId || null;
+        updated = quizRepo.saveQuizConfig(guildId, payload);
+        break;
+      }
+      case 'custom_commands':
+      case 'customcommands': {
+        const { customCommandService, customCommandRepo, settingsService } = this.services;
+        if (!customCommandService) throw new Error('Serviço de comandos personalizados indisponível.');
+
+        if (updates.action === 'SET_PREFIX' || updates.prefix !== undefined || updates.prefixless_mode !== undefined) {
+          if (settingsService) {
+            if (updates.prefix !== undefined) {
+              const pref = String(updates.prefix).trim().slice(0, 5);
+              if (pref && pref !== '/') {
+                settingsService.setSetting(guildId, 'prefix', pref, session.userId || 'web_admin');
+              }
+            }
+            if (updates.prefixless_mode !== undefined) {
+              const pMode = updates.prefixless_mode === true || updates.prefixless_mode === 'true' || updates.prefixless_mode === 1;
+              settingsService.setSetting(guildId, 'prefixless_mode', pMode ? 'true' : 'false', session.userId || 'web_admin');
+            }
+          }
+        }
+
+        if (updates.action === 'UPDATE' || updates.originalName || updates.update) {
+          const u = updates.update || updates;
+          const origName = u.originalName || u.name;
+          customCommandService.updateCommand(guildId, origName, {
+            newName: (u.name && u.name !== origName) ? u.name : undefined,
+            response: u.response,
+            description: u.description,
+            actorId: session.userId || 'web_admin',
+            customPrefix: u.custom_prefix !== undefined ? u.custom_prefix : (u.customPrefix !== undefined ? u.customPrefix : null),
+            requirePrefix: u.require_prefix !== undefined ? u.require_prefix : (u.requirePrefix !== undefined ? u.requirePrefix : (u.sem_prefixo ? 0 : 1)),
+            matchMode: u.match_mode || u.matchMode || 'starts_with'
+          });
+        } else if (updates.action === 'CREATE' || updates.create) {
+          const c = updates.create || updates;
+          const cleanName = String(c.name || '').toLowerCase().trim();
+          const existing = customCommandRepo ? customCommandRepo.getCommand(guildId, cleanName) : null;
+          if (existing) {
+            customCommandService.updateCommand(guildId, cleanName, {
+              response: c.response,
+              description: c.description,
+              actorId: session.userId || 'web_admin',
+              customPrefix: c.custom_prefix !== undefined ? c.custom_prefix : (c.customPrefix !== undefined ? c.customPrefix : null),
+              requirePrefix: c.require_prefix !== undefined ? c.require_prefix : (c.requirePrefix !== undefined ? c.requirePrefix : (c.sem_prefixo ? 0 : 1)),
+              matchMode: c.match_mode || c.matchMode || 'starts_with'
+            });
+          } else {
+            customCommandService.createCommand(guildId, {
+              name: c.name,
+              response: c.response,
+              description: c.description || 'Comando personalizado',
+              creatorId: session.userId || 'web_admin',
+              customPrefix: c.custom_prefix || c.customPrefix || c.prefix || null,
+              requirePrefix: c.require_prefix !== undefined ? c.require_prefix : (c.requirePrefix !== undefined ? c.requirePrefix : (c.sem_prefixo ? 0 : 1)),
+              matchMode: c.match_mode || c.matchMode || 'starts_with'
+            });
+          }
+        } else if (updates.action === 'DELETE' || updates.delete || updates.deleteName) {
+          const dName = updates.deleteName || updates.delete || updates.name;
+          customCommandService.deleteCommand(guildId, dName, session.userId || 'web_admin');
+        }
+        updated = {
+          commands: customCommandRepo.listCommands(guildId),
+          placeholders: customCommandService.getPlaceholdersDocumentation()
+        };
+        break;
+      }
+      case 'xp': {
+        const { xpRepo } = this.services;
+        if (!xpRepo) throw new Error('Serviço de XP indisponível.');
+        const payload = { ...updates };
+        if (updates.channelId !== undefined) payload.levelUpChannelId = updates.channelId || null;
+        if (updates.levelUpChannelId !== undefined) payload.levelUpChannelId = updates.levelUpChannelId || null;
+        if (updates.cooldownSeconds !== undefined) payload.cooldownSeconds = Number(updates.cooldownSeconds) || 60;
+        if (updates.minXp !== undefined) payload.minXp = Number(updates.minXp) || 15;
+        if (updates.maxXp !== undefined) payload.maxXp = Number(updates.maxXp) || 25;
+        if (updates.minMessageLength !== undefined) payload.minMessageLength = Number(updates.minMessageLength) || 5;
+        if (updates.voiceXpEnabled !== undefined) payload.voiceXpEnabled = Boolean(updates.voiceXpEnabled);
+        if (updates.voiceXpPerMinute !== undefined) payload.voiceXpPerMinute = Number(updates.voiceXpPerMinute) || 5;
+        if (updates.formulaType !== undefined) payload.formulaType = String(updates.formulaType).toUpperCase();
+        if (updates.xpPerLevelBase !== undefined) payload.xpPerLevelBase = Number(updates.xpPerLevelBase) || 100;
+        if (updates.xpPerLevelIncrement !== undefined) payload.xpPerLevelIncrement = Number(updates.xpPerLevelIncrement) || 50;
+        if (updates.xpPerLevelCurve !== undefined) payload.xpPerLevelCurve = Number(updates.xpPerLevelCurve) || 5;
+        if (updates.levelUpMessageTemplate !== undefined) payload.levelUpMessageTemplate = updates.levelUpMessageTemplate || 'Parabéns {user}! Você avançou para o nível **{level}**!';
+        if (updates.levelUpDm !== undefined) payload.levelUpDm = Boolean(updates.levelUpDm);
+        updated = xpRepo.saveXpConfig(guildId, payload);
+        break;
+      }
+      case 'xp_reward': {
+        const { xpRepo } = this.services;
+        if (!xpRepo) throw new Error('Serviço de XP indisponível.');
+        if (updates.action === 'delete') {
+          xpRepo.deleteLevelReward(guildId, Number(updates.levelRequired), updates.roleId);
+        } else {
+          xpRepo.addLevelReward(guildId, Number(updates.levelRequired), updates.roleId, updates.removePreviousRoles);
+        }
+        updated = { rewards: xpRepo.getLevelRewards(guildId) };
+        break;
+      }
+      case 'xp_multiplier': {
+        const { xpRepo } = this.services;
+        if (!xpRepo) throw new Error('Serviço de XP indisponível.');
+        if (updates.action === 'delete') {
+          xpRepo.removeMultiplierOrBlock(guildId, updates.targetType, updates.targetId);
+        } else {
+          xpRepo.setMultiplierOrBlock(guildId, updates.targetType, updates.targetId, updates.multiplier, updates.isBlocked);
+        }
+        updated = { multipliers: xpRepo.getMultipliersAndBlocks(guildId) };
+        break;
+      }
+      case 'bot_presence': {
+        const { botPresenceRepo } = this.services;
+        if (!botPresenceRepo) throw new Error('Serviço de presença do bot indisponível.');
+        const updatedPresence = botPresenceRepo.updatePresence(updates);
+        const { applyBotPresence } = require('../utils/presenceHelper');
+        applyBotPresence(this.botClient, updatedPresence);
+        updated = updatedPresence;
+        break;
+      }
+      case 'ai_keys': {
+        const { apiKeyRepo, llmAdapter } = this.services;
+        if (!apiKeyRepo) throw new Error('Serviço de chaves de API indisponível.');
+        const updatedKeys = apiKeyRepo.saveKeys(updates);
+        const activeList = [updatedKeys.key1, updatedKeys.key2, updatedKeys.key3, updatedKeys.key4].filter(Boolean);
+        if (llmAdapter && typeof llmAdapter.setApiKeys === 'function') {
+          llmAdapter.setApiKeys(activeList);
+        }
+        updated = apiKeyRepo.getKeysStatus ? apiKeyRepo.getKeysStatus(llmAdapter) : updatedKeys;
+        break;
+      }
+      case 'aimemory':
+      case 'ai_memory':
+      case 'memories': {
+        const { memoryRepo } = this.services;
+        if (!memoryRepo) throw new Error('Repositório de memória da IA indisponível.');
+        if (updates.action === 'SAVE' || updates.save) {
+          const key = String(updates.key || '').trim().toLowerCase().slice(0, 64);
+          const value = String(updates.value || '').trim();
+          if (!key || !value) throw new ValidationError('Chave e conteúdo da memória são obrigatórios.');
+          memoryRepo.saveGuildMemory({
+            guildId,
+            key,
+            value,
+            createdBy: session.userId || 'web_admin'
+          });
+        } else if (updates.action === 'DELETE' || updates.delete) {
+          const key = String(updates.key || updates.delete || '').trim().toLowerCase();
+          if (key) {
+            memoryRepo.deleteGuildMemory(guildId, key);
+          }
+        }
+        updated = {
+          memories: memoryRepo.listGuildMemories(guildId)
+        };
+        break;
+      }
+      case 'bot_speak':
+      case 'botspeak':
+      case 'send_message': {
+        const botGuild = this.botClient?.guilds?.cache?.get(guildId);
+        if (!botGuild) throw new Error('Bot não está conectado ou indisponível neste servidor.');
+        const channelId = updates.channelId;
+        if (!channelId) throw new ValidationError('Selecione um canal de texto para enviar a mensagem.');
+        const channel = botGuild.channels.cache.get(channelId);
+        if (!channel || !channel.isTextBased()) throw new ValidationError('Canal de texto inválido ou sem permissão de envio.');
+
+        const rawContent = updates.content ? String(updates.content).trim() : '';
+        const rawEmbedData = updates.embed;
+
+        if (!rawContent && (!rawEmbedData || (!rawEmbedData.title && !rawEmbedData.description && !rawEmbedData.fields?.length && !rawEmbedData.image))) {
+          throw new ValidationError('A mensagem precisa conter um texto ou uma embed com título/descrição!');
+        }
+
+        const { resolveCustomEmojis, resolveEmbedEmojis } = require('../utils/emojiHelper');
+        const content = rawContent ? resolveCustomEmojis(rawContent, this.botClient, guildId) : '';
+        const embedData = rawEmbedData ? resolveEmbedEmojis(rawEmbedData, this.botClient, guildId) : null;
+
+        const { EmbedBuilder } = require('discord.js');
+        const payload = {};
+        if (content) payload.content = content;
+
+        if (embedData && (embedData.title || embedData.description || embedData.fields?.length || embedData.image)) {
+          const eb = new EmbedBuilder();
+          if (embedData.title) eb.setTitle(String(embedData.title).slice(0, 256));
+          if (embedData.url) {
+            try { new URL(embedData.url); eb.setURL(embedData.url); } catch {}
+          }
+          if (embedData.description) eb.setDescription(String(embedData.description).slice(0, 4096));
+          if (embedData.color) {
+            const hex = String(embedData.color).replace('#', '');
+            const intVal = parseInt(hex, 16);
+            if (!isNaN(intVal)) eb.setColor(intVal);
+          } else {
+            eb.setColor(0x00E5FF);
+          }
+          if (embedData.author?.name) {
+            eb.setAuthor({
+              name: String(embedData.author.name).slice(0, 256),
+              iconURL: embedData.author.icon || undefined
+            });
+          }
+          if (embedData.footer?.text) {
+            eb.setFooter({
+              text: String(embedData.footer.text).slice(0, 2048),
+              iconURL: embedData.footer.icon || undefined
+            });
+          }
+          if (embedData.image) eb.setImage(embedData.image);
+          if (embedData.thumbnail) eb.setThumbnail(embedData.thumbnail);
+
+          if (Array.isArray(embedData.fields)) {
+            for (const f of embedData.fields) {
+              if (f.name && f.value) {
+                eb.addFields({
+                  name: String(f.name).slice(0, 256),
+                  value: String(f.value).slice(0, 1024),
+                  inline: Boolean(f.inline)
+                });
+              }
+            }
+          }
+          payload.embeds = [eb];
+        }
+
+        const sent = await channel.send(payload);
+        if (this.auditService) {
+          this.auditService.logAction({
+            guildId,
+            actorId: session.userId || 'web_admin',
+            action: 'BOT_SPEAK_MESSAGE',
+            targetId: channelId,
+            details: {
+              channelName: channel.name,
+              messageId: sent.id,
+              hasContent: Boolean(content),
+              hasEmbed: Boolean(payload.embeds)
+            }
+          });
+        }
+
+        updated = {
+          status: 'success',
+          messageId: sent.id,
+          channelId,
+          channelName: channel.name
+        };
+        break;
+      }
+      default:
+        throw new ValidationError(`Módulo desconhecido: "${moduleName}".`);
+    }
+
+    if (this.auditService) {
+      this.auditService.logAction({
+        guildId,
+        userId: session.userId,
+        action: `WEB_PANEL_MODULE_UPDATE_${mod.toUpperCase()}`,
+        targetId: guildId,
+        details: updates
+      });
+    }
+
+    return { status: 'success', module: mod, config: updated };
+  }
+
+  getGuildAuditLogs(session, guildId, limit = 20) {
+    this.verifyGuildAccess(session, guildId);
+    if (!this.auditService) return [];
+    const numLimit = parseInt(limit, 10) || 20;
+    let rawLogs = [];
+    if (typeof this.auditService.getRecentLogs === 'function') {
+      rawLogs = this.auditService.getRecentLogs(guildId, numLimit);
+    } else if (typeof this.auditService.getLogs === 'function') {
+      rawLogs = this.auditService.getLogs({ guildId, limit: numLimit });
+    }
+
+    return (rawLogs || []).map(entry => {
+      let detailsObj = entry.details;
+      if (typeof detailsObj === 'string') {
+        try {
+          detailsObj = JSON.parse(detailsObj);
+        } catch {
+          // keep as string
+        }
+      }
+      return {
+        id: entry.id,
+        guildId: entry.guild_id || entry.guildId,
+        actorId: entry.actor_id || entry.actorId || 'Painel Web / Sistema',
+        action: entry.action,
+        targetId: entry.target_id || entry.targetId,
+        details: detailsObj,
+        createdAt: entry.created_at || entry.createdAt || new Date().toISOString()
+      };
+    });
+  }
+
+  // ==========================================
+  // Member & User Management (Universal Suite)
+  // ==========================================
+
+  async getGuildMembers(session, guildId, botGuild = null) {
+    this.verifyGuildAccess(session, guildId);
+
+    const guild = botGuild || (this.botClient?.guilds?.cache?.get(guildId)) || null;
+    let rawMembers = [];
+
+    if (guild?.members) {
+      try {
+        if (typeof guild.members.fetch === 'function') {
+          const fetched = await guild.members.fetch({ limit: 1000 }).catch(() => null);
+          if (fetched && fetched.size > 0) {
+            rawMembers = Array.from(fetched.values());
+          }
+        }
+      } catch {}
+
+      if (rawMembers.length === 0 && guild.members.cache) {
+        rawMembers = Array.from(guild.members.cache.values());
+      }
+    }
+
+    // Fallback if headless / mocked environment
+    if (rawMembers.length === 0 && this.services.economyRepo?.db) {
+      try {
+        const accounts = this.services.economyRepo.db.all(
+          `SELECT DISTINCT user_id FROM economy_accounts WHERE guild_id = ?`,
+          [guildId]
+        ) || [];
+        for (const acc of accounts) {
+          rawMembers.push({
+            id: acc.user_id,
+            user: { id: acc.user_id, username: `Membro_${acc.user_id.slice(-4)}` },
+            displayName: `Membro_${acc.user_id.slice(-4)}`,
+            roles: { cache: new Map() }
+          });
+        }
+      } catch {}
+    }
+
+    const { economyRepo, xpRepo, modRepo, memoryRepo } = this.services;
+
+    const membersList = rawMembers.map(member => {
+      const u = member.user || { id: member.id, username: member.displayName || 'Usuário' };
+      const userId = member.id || u.id;
+
+      // Economy
+      const acc = economyRepo ? economyRepo.getOrCreateAccount(guildId, userId) : { walletBalance: 0, bankBalance: 0 };
+      const walletBalance = acc.walletBalance || 0;
+      const bankBalance = acc.bankBalance || 0;
+      const isIndebted = walletBalance < 0;
+
+      // XP & Level
+      const xpData = xpRepo ? xpRepo.getMemberXp(guildId, userId) : { totalXp: 0, level: 0, currentLevel: 0 };
+      let memberLevel = Number(xpData.level ?? xpData.currentLevel ?? 0);
+      if (memberLevel <= 0 && (xpData.totalXp || 0) > 0) {
+        try {
+          const { progressionFormulaService } = require('./progressionFormulaService');
+          const config = xpRepo?.getXpConfig ? xpRepo.getXpConfig(guildId) : {};
+          memberLevel = progressionFormulaService.calculateLevelFromXp(xpData.totalXp, config);
+        } catch {}
+      }
+
+      // Moderation
+      const warns = modRepo?.getMemberWarns ? modRepo.getMemberWarns(guildId, userId) : [];
+      const activeWarns = warns.filter(w => w.is_active === 1).length;
+
+      // AI User Memories
+      const memories = memoryRepo?.listUserMemories ? memoryRepo.listUserMemories(guildId, userId) : [];
+
+      // Roles
+      const roles = [];
+      if (member.roles?.cache) {
+        for (const [, role] of member.roles.cache) {
+          if (guild && role.id === guild.id) continue;
+          roles.push({
+            id: role.id,
+            name: role.name,
+            color: role.hexColor || '#99aab5',
+            position: role.position || 0
+          });
+        }
+      }
+      roles.sort((a, b) => b.position - a.position);
+
+      const isOwner = guild ? guild.ownerId === userId : false;
+      const isBot = Boolean(u.bot);
+      const isTimedOut = Boolean(member.communicationDisabledUntilTimestamp && member.communicationDisabledUntilTimestamp > Date.now());
+      const timeoutUntil = member.communicationDisabledUntilTimestamp ? new Date(member.communicationDisabledUntilTimestamp).toISOString() : null;
+
+      const avatarUrl = u.displayAvatarURL
+        ? u.displayAvatarURL({ extension: 'png', size: 64 })
+        : (u.avatar ? `https://cdn.discordapp.com/avatars/${u.id}/${u.avatar}.png` : 'https://cdn.discordapp.com/embed/avatars/0.png');
+
+      return {
+        id: userId,
+        username: u.username || 'Desconhecido',
+        displayName: member.displayName || u.globalName || u.username || 'Membro',
+        avatarUrl,
+        isOwner,
+        isBot,
+        isTimedOut,
+        timeoutUntil,
+        roles,
+        economy: {
+          walletBalance,
+          bankBalance,
+          netWorth: walletBalance + bankBalance,
+          isIndebted
+        },
+        xp: {
+          totalXp: xpData.totalXp || 0,
+          level: memberLevel,
+          currentLevel: memberLevel
+        },
+        moderation: {
+          activeWarns,
+          totalWarns: warns.length
+        },
+        memoryCount: memories.length,
+        dmSession: dmTracker.getSession(userId, guildId) ? {
+          status: dmTracker.getSession(userId, guildId).status,
+          repliesCount: dmTracker.getSession(userId, guildId).replies?.length || 0,
+          sentText: dmTracker.getSession(userId, guildId).sentText,
+          sentAt: dmTracker.getSession(userId, guildId).sentAt
+        } : null
+      };
+    });
+
+    // Sort: Owner first, then by net worth descending
+    membersList.sort((a, b) => {
+      if (a.isOwner) return -1;
+      if (b.isOwner) return 1;
+      return (b.economy.netWorth || 0) - (a.economy.netWorth || 0);
+    });
+
+    // Server roles for management
+    const guildRoles = [];
+    if (guild?.roles?.cache) {
+      for (const [, role] of guild.roles.cache) {
+        if (role.id === guild.id || role.managed) continue;
+        guildRoles.push({
+          id: role.id,
+          name: role.name,
+          color: role.hexColor || '#99aab5',
+          position: role.position || 0
+        });
+      }
+      guildRoles.sort((a, b) => b.position - a.position);
+    }
+
+    return {
+      totalMembers: membersList.length,
+      members: membersList,
+      guildRoles
+    };
+  }
+
+  async getMemberDetails(session, guildId, userId, botGuild = null) {
+    this.verifyGuildAccess(session, guildId);
+    const { memoryRepo, modRepo, economyRepo, xpRepo } = this.services;
+
+    const guild = botGuild || (this.botClient?.guilds?.cache?.get(guildId)) || null;
+    let member = null;
+    if (guild?.members) {
+      try {
+        member = await guild.members.fetch(userId).catch(() => null);
+      } catch {}
+      if (!member && guild.members.cache) {
+        member = guild.members.cache.get(userId) || null;
+      }
+    }
+
+    const u = member?.user || { id: userId, username: `user_${userId}` };
+    const acc = economyRepo ? economyRepo.getOrCreateAccount(guildId, userId) : { walletBalance: 0, bankBalance: 0 };
+    const xpData = xpRepo ? xpRepo.getMemberXp(guildId, userId) : { totalXp: 0, level: 0, currentLevel: 0 };
+    let memberLevel = Number(xpData.level ?? xpData.currentLevel ?? 0);
+    if (memberLevel <= 0 && (xpData.totalXp || 0) > 0) {
+      try {
+        const { progressionFormulaService } = require('./progressionFormulaService');
+        const config = xpRepo?.getXpConfig ? xpRepo.getXpConfig(guildId) : {};
+        memberLevel = progressionFormulaService.calculateLevelFromXp(xpData.totalXp, config);
+      } catch {}
+    }
+    const warns = modRepo?.getMemberWarns ? modRepo.getMemberWarns(guildId, userId) : [];
+    const memories = memoryRepo?.listUserMemories ? memoryRepo.listUserMemories(guildId, userId) : [];
+    const dmSession = dmTracker.getSession(userId, guildId);
+
+    const roles = [];
+    if (member?.roles?.cache) {
+      for (const [, role] of member.roles.cache) {
+        if (guild && role.id === guild.id) continue;
+        roles.push({
+          id: role.id,
+          name: role.name,
+          color: role.hexColor || '#99aab5',
+          position: role.position || 0
+        });
+      }
+      roles.sort((a, b) => b.position - a.position);
+    }
+
+    return {
+      member: {
+        id: userId,
+        username: u.username || 'Desconhecido',
+        displayName: member?.displayName || u.globalName || u.username || 'Membro',
+        avatarUrl: u.displayAvatarURL ? u.displayAvatarURL({ extension: 'png', size: 128 }) : 'https://cdn.discordapp.com/embed/avatars/0.png',
+        isOwner: guild ? guild.ownerId === userId : false,
+        isBot: Boolean(u.bot),
+        isTimedOut: Boolean(member?.communicationDisabledUntilTimestamp && member.communicationDisabledUntilTimestamp > Date.now()),
+        timeoutUntil: member?.communicationDisabledUntilTimestamp ? new Date(member.communicationDisabledUntilTimestamp).toISOString() : null,
+        roles,
+        economy: {
+          walletBalance: acc.walletBalance || 0,
+          bankBalance: acc.bankBalance || 0,
+          isIndebted: (acc.walletBalance || 0) < 0
+        },
+        xp: {
+          totalXp: xpData.totalXp || 0,
+          level: memberLevel,
+          currentLevel: memberLevel
+        }
+      },
+      warns,
+      memories,
+      dmSession
+    };
+  }
+
+  async executeMemberAction(session, guildId, userId, actionData, csrfToken, botGuild = null) {
+    this.verifyGuildAccess(session, guildId);
+    this.verifyCsrf(session.token, csrfToken);
+
+    if (!userId) {
+      throw new ValidationError('userId é obrigatório.');
+    }
+
+    const guild = botGuild || (this.botClient?.guilds?.cache?.get(guildId)) || null;
+    let targetMember = null;
+    let targetUser = null;
+
+    if (guild?.members) {
+      try {
+        targetMember = await guild.members.fetch(userId).catch(() => null);
+      } catch {}
+      if (!targetMember && guild.members.cache) {
+        targetMember = guild.members.cache.get(userId) || null;
+      }
+    }
+    targetUser = targetMember?.user || null;
+    if (!targetUser && this.botClient?.users) {
+      try {
+        targetUser = await this.botClient.users.fetch(userId).catch(() => null);
+      } catch {}
+    }
+
+    const { action } = actionData || {};
+    const {
+      economyRepo,
+      economyService,
+      moderationService,
+      modRepo,
+      experienceService,
+      xpRepo,
+      memoryRepo
+    } = this.services;
+
+    switch (action) {
+      case 'ECONOMY': {
+        const { field = 'wallet', type = 'add', amount = 0, reason = 'Ajuste via Painel Web' } = actionData;
+        const targetField = field.toLowerCase() === 'bank' ? 'bank' : 'wallet';
+
+        if (type === 'clear_debt') {
+          const acc = economyRepo.getOrCreateAccount(guildId, userId);
+          const newWallet = Math.max(0, acc.walletBalance);
+          const newBank = Math.max(0, acc.bankBalance);
+          const updated = economyRepo.updateBalances(guildId, userId, {
+            walletBalance: newWallet,
+            bankBalance: newBank
+          });
+          if (this.auditService) {
+            this.auditService.logAction({
+              guildId,
+              userId: session.userId,
+              action: 'ECONOMY_ADMIN_CLEAR_DEBT',
+              targetId: userId,
+              details: { reason, walletAfter: updated.walletBalance, bankAfter: updated.bankBalance }
+            });
+          }
+          return { status: 'success', action, account: updated, message: 'Dívida zerada com sucesso!' };
+        }
+
+        const validTypes = ['add', 'remove', 'set'];
+        if (!validTypes.includes(type)) {
+          throw new ValidationError('Tipo de operação financeira inválido. Use "add", "remove", "set" ou "clear_debt".');
+        }
+
+        if (economyService && typeof economyService.adminAdjust === 'function') {
+          const updated = economyService.adminAdjust(
+            guildId,
+            userId,
+            targetField,
+            type,
+            amount,
+            session.userId,
+            reason
+          );
+          return { status: 'success', action, account: updated, message: 'Ajuste de saldo efetuado com sucesso!' };
+        } else if (economyRepo) {
+          const acc = economyRepo.getOrCreateAccount(guildId, userId);
+          let newWallet = acc.walletBalance;
+          let newBank = acc.bankBalance;
+          const num = parseInt(amount, 10) || 0;
+          if (targetField === 'wallet') {
+            if (type === 'add') newWallet += num;
+            else if (type === 'remove') newWallet = Math.max(0, newWallet - num);
+            else if (type === 'set') newWallet = num;
+          } else {
+            if (type === 'add') newBank += num;
+            else if (type === 'remove') newBank = Math.max(0, newBank - num);
+            else if (type === 'set') newBank = num;
+          }
+          const updated = economyRepo.updateBalances(guildId, userId, { walletBalance: newWallet, bankBalance: newBank });
+          return { status: 'success', action, account: updated, message: 'Ajuste financeiro gravado com sucesso!' };
+        }
+        throw new ValidationError('Serviço de economia indisponível.');
+      }
+
+      case 'TIMEOUT': {
+        const { durationSeconds = 300, reason = 'Timeout aplicado pelo painel web.' } = actionData;
+        const durSec = parseInt(durationSeconds, 10);
+
+        if (targetMember && typeof targetMember.timeout === 'function') {
+          if (durSec <= 0) {
+            await targetMember.timeout(null, reason);
+            if (modRepo?.recordPunishment) {
+              modRepo.recordPunishment({
+                guildId,
+                targetId: userId,
+                moderatorId: session.userId,
+                type: 'UNTIMEOUT',
+                reason
+              });
+            }
+            return { status: 'success', action, message: 'Silenciamento (Timeout) removido com sucesso!' };
+          } else {
+            const durMs = durSec * 1000;
+            await targetMember.timeout(durMs, reason);
+            if (modRepo?.recordPunishment) {
+              modRepo.recordPunishment({
+                guildId,
+                targetId: userId,
+                moderatorId: session.userId,
+                type: 'TIMEOUT',
+                reason,
+                durationSeconds: durSec
+              });
+            }
+            return { status: 'success', action, message: `Membro silenciado por ${durSec} segundos com sucesso!` };
+          }
+        }
+        if (modRepo?.recordPunishment) {
+          modRepo.recordPunishment({
+            guildId,
+            targetId: userId,
+            moderatorId: session.userId,
+            type: durSec <= 0 ? 'UNTIMEOUT' : 'TIMEOUT',
+            reason,
+            durationSeconds: Math.max(0, durSec)
+          });
+        }
+        return { status: 'success', action, message: durSec <= 0 ? 'Timeout removido com sucesso!' : `Timeout de ${durSec}s registrado.` };
+      }
+
+      case 'WARN': {
+        const { reason = 'Warn oficial aplicado pelo painel web.' } = actionData;
+        if (modRepo?.recordPunishment) {
+          modRepo.recordPunishment({
+            guildId,
+            targetId: userId,
+            moderatorId: session.userId,
+            type: 'WARN',
+            reason
+          });
+        }
+        if (this.auditService) {
+          this.auditService.logAction({
+            guildId,
+            userId: session.userId,
+            action: 'MEMBER_WARNED',
+            targetId: userId,
+            details: { reason }
+          });
+        }
+        if (targetUser?.send) {
+          try {
+            await targetUser.send(`⚠️ **Você recebeu um Warn oficial (strike) no servidor.**\n**Motivo:** ${reason}`);
+          } catch {}
+        }
+        const activeWarns = modRepo?.getMemberWarns ? modRepo.getMemberWarns(guildId, userId).filter(w => w.is_active === 1).length : 1;
+        return { status: 'success', action, activeWarns, message: `Warn oficial aplicado com sucesso! (Total de warns ativos: ${activeWarns})` };
+      }
+
+      case 'VERBAL_WARN': {
+        const { reason = 'Advertência verbal aplicada pela moderação.', rule = '' } = actionData;
+        let dmSent = false;
+        if (targetUser?.send) {
+          try {
+            const ruleText = rule ? `\n📜 **Diretriz de Referência:** ${rule}` : '';
+            await targetUser.send(
+              `📢 **Advertência Verbal da Moderação**\n` +
+              `Olá, ${targetUser.username}. Você está recebendo uma **advertência verbal educativa** da moderação.\n\n` +
+              `📝 **Motivo:** ${reason}${ruleText}\n\n` +
+              `ℹ️ *Nota: Este é um aviso orientativo para alinhamento de conduta e NÃO contabiliza strike de warn no sistema de punições automáticas.*`
+            );
+            dmSent = true;
+          } catch {}
+        }
+        if (this.auditService) {
+          this.auditService.logAction({
+            guildId,
+            userId: session.userId,
+            action: 'MEMBER_VERBAL_WARNED',
+            targetId: userId,
+            details: { reason, rule, dmSent }
+          });
+        }
+        return {
+          status: 'success',
+          action,
+          dmSent,
+          message: dmSent
+            ? `Advertência verbal enviada com sucesso no privado do membro!`
+            : `Advertência verbal registrada na auditoria (a DM do membro está bloqueada/fechada).`
+        };
+      }
+
+      case 'CLEAR_WARNS': {
+        if (modRepo?.clearWarns) {
+          modRepo.clearWarns(guildId, userId);
+        }
+        if (this.auditService) {
+          this.auditService.logAction({
+            guildId,
+            userId: session.userId,
+            action: 'MEMBER_WARNS_CLEARED',
+            targetId: userId,
+            details: { reason: 'Limpeza de warns via painel web' }
+          });
+        }
+        return { status: 'success', action, message: 'Todas as advertências do membro foram limpas com sucesso!' };
+      }
+
+      case 'KICK': {
+        const { reason = 'Expulso pelo painel web.' } = actionData;
+        if (targetUser?.send) {
+          try {
+            await targetUser.send(`👢 **Você foi expulso do servidor.**\n**Motivo:** ${reason}`);
+          } catch {}
+        }
+        if (targetMember && typeof targetMember.kick === 'function') {
+          await targetMember.kick(reason);
+        }
+        if (modRepo?.recordPunishment) {
+          modRepo.recordPunishment({
+            guildId,
+            targetId: userId,
+            moderatorId: session.userId,
+            type: 'KICK',
+            reason
+          });
+        }
+        if (this.auditService) {
+          this.auditService.logAction({
+            guildId,
+            userId: session.userId,
+            action: 'MEMBER_KICKED',
+            targetId: userId,
+            details: { reason }
+          });
+        }
+        return { status: 'success', action, message: 'Membro expulso do servidor com sucesso!' };
+      }
+
+      case 'BAN': {
+        const { reason = 'Banido pelo painel web.', deleteMessageDays = 0 } = actionData;
+        if (targetUser?.send) {
+          try {
+            await targetUser.send(`🔨 **Você foi banido do servidor.**\n**Motivo:** ${reason}`);
+          } catch {}
+        }
+        if (guild?.bans && typeof guild.bans.create === 'function') {
+          await guild.bans.create(userId, {
+            reason,
+            deleteMessageSeconds: (parseInt(deleteMessageDays, 10) || 0) * 86400
+          });
+        } else if (guild?.members?.ban) {
+          await guild.members.ban(userId, { reason });
+        }
+        if (modRepo?.recordPunishment) {
+          modRepo.recordPunishment({
+            guildId,
+            targetId: userId,
+            moderatorId: session.userId,
+            type: 'BAN',
+            reason
+          });
+        }
+        if (this.auditService) {
+          this.auditService.logAction({
+            guildId,
+            userId: session.userId,
+            action: 'MEMBER_BANNED',
+            targetId: userId,
+            details: { reason, deleteMessageDays }
+          });
+        }
+        return { status: 'success', action, message: 'Membro banido do servidor com sucesso!' };
+      }
+
+      case 'ROLE': {
+        const { roleId, operation = 'add' } = actionData;
+        if (!roleId) throw new ValidationError('roleId é obrigatório para modificar cargos.');
+
+        if (targetMember && targetMember.roles) {
+          if (operation === 'add') {
+            await targetMember.roles.add(roleId);
+          } else if (operation === 'remove') {
+            await targetMember.roles.remove(roleId);
+          }
+        }
+        if (this.auditService) {
+          this.auditService.logAction({
+            guildId,
+            userId: session.userId,
+            action: operation === 'add' ? 'ROLE_ASSIGN' : 'ROLE_REMOVE',
+            targetId: userId,
+            details: { roleId, operation }
+          });
+        }
+        return { status: 'success', action, roleId, operation, message: `Cargo ${operation === 'add' ? 'adicionado' : 'removido'} com sucesso!` };
+      }
+
+      case 'XP': {
+        const { type = 'set_level', level = 0, xp = 0, amount = 0 } = actionData;
+        if (experienceService && targetMember) {
+          if (type === 'set_level') {
+            experienceService.setManualXp(guild, session.userId, targetMember, level, null);
+          } else if (type === 'set_xp') {
+            experienceService.setManualXp(guild, session.userId, targetMember, null, xp);
+          } else if (type === 'add_xp') {
+            experienceService.addManualXp(guild, session.userId, targetMember, amount);
+          } else if (type === 'reset') {
+            experienceService.resetMember(guildId, userId, session.userId);
+          }
+        } else if (xpRepo) {
+          if (type === 'reset') {
+            xpRepo.resetMemberXp(guildId, userId);
+          } else if (type === 'set_level') {
+            const numLevel = parseInt(level, 10) || 0;
+            xpRepo.setMemberXp(guildId, userId, numLevel * 100, numLevel);
+          } else if (type === 'set_xp') {
+            const numXp = parseInt(xp, 10) || 0;
+            const approxLevel = Math.floor(numXp / 100);
+            xpRepo.setMemberXp(guildId, userId, numXp, approxLevel);
+          } else if (type === 'add_xp') {
+            const current = xpRepo.getMemberXp(guildId, userId);
+            const numAmount = parseInt(amount, 10) || 0;
+            const newXp = Math.max(0, current.totalXp + numAmount);
+            const newLevel = Math.floor(newXp / 100);
+            xpRepo.setMemberXp(guildId, userId, newXp, newLevel);
+          }
+        }
+        const rawXp = xpRepo?.getMemberXp(guildId, userId) || { totalXp: 0, level: 0, currentLevel: 0 };
+        let updatedLvl = Number(rawXp.level ?? rawXp.currentLevel ?? 0);
+        if (updatedLvl <= 0 && (rawXp.totalXp || 0) > 0) {
+          try {
+            const { progressionFormulaService } = require('./progressionFormulaService');
+            const config = xpRepo?.getXpConfig ? xpRepo.getXpConfig(guildId) : {};
+            updatedLvl = progressionFormulaService.calculateLevelFromXp(rawXp.totalXp, config);
+          } catch {}
+        }
+        const updatedXp = {
+          totalXp: rawXp.totalXp || 0,
+          level: updatedLvl,
+          currentLevel: updatedLvl
+        };
+        return { status: 'success', action, xp: updatedXp, message: 'Nível e XP atualizados com sucesso!' };
+      }
+
+      case 'SAVE_MEMORY': {
+        const { key, value } = actionData;
+        if (!key || !value) throw new ValidationError('Chave e valor são obrigatórios para gravar memória da IA.');
+        if (!memoryRepo) throw new ValidationError('Repositório de memória indisponível.');
+
+        const saved = memoryRepo.saveUserMemory({
+          guildId,
+          userId,
+          key: key.toLowerCase().trim(),
+          value: value.trim()
+        });
+
+        if (this.auditService) {
+          this.auditService.logAction({
+            guildId,
+            userId: session.userId,
+            action: 'AI_USER_MEMORY_SAVED',
+            targetId: userId,
+            details: { key, value }
+          });
+        }
+        const memories = memoryRepo.listUserMemories(guildId, userId);
+        return { status: 'success', action, memory: saved, memories, message: `Memória "${key}" gravada com sucesso no cérebro da IA para este usuário!` };
+      }
+
+      case 'DELETE_MEMORY': {
+        const { key } = actionData;
+        if (!key) throw new ValidationError('Chave é obrigatória para excluir memória.');
+        if (!memoryRepo) throw new ValidationError('Repositório de memória indisponível.');
+
+        memoryRepo.deleteUserMemory(guildId, userId, key.toLowerCase().trim());
+        const memories = memoryRepo.listUserMemories(guildId, userId);
+        return { status: 'success', action, memories, message: `Memória "${key}" excluída com sucesso!` };
+      }
+
+      case 'GET_MEMORIES': {
+        const memories = memoryRepo ? memoryRepo.listUserMemories(guildId, userId) : [];
+        return { status: 'success', action, memories };
+      }
+
+      case 'SEND_DM': {
+        const { messageText } = actionData;
+        if (!messageText || messageText.trim().length === 0) {
+          throw new ValidationError('O texto da mensagem privada não pode estar vazio.');
+        }
+
+        let sentOk = false;
+        if (targetUser && typeof targetUser.send === 'function') {
+          try {
+            await targetUser.send(messageText.trim());
+            sentOk = true;
+          } catch (dmErr) {
+            throw new Error(`Não foi possível enviar a DM para o usuário (DMs podem estar bloqueadas): ${dmErr.message}`);
+          }
+        } else if (this.botClient?.users) {
+          try {
+            const u = await this.botClient.users.fetch(userId);
+            if (u && typeof u.send === 'function') {
+              await u.send(messageText.trim());
+              sentOk = true;
+            }
+          } catch (dmErr) {
+            throw new Error(`Falha ao enviar mensagem privada: ${dmErr.message}`);
+          }
+        } else {
+          sentOk = true;
+        }
+
+        const sessionData = dmTracker.registerOutboundDm({
+          userId,
+          guildId,
+          adminId: session.userId,
+          adminUsername: session.userData?.username || 'Administrador',
+          sentText: messageText.trim()
+        });
+
+        if (this.auditService) {
+          this.auditService.logAction({
+            guildId,
+            userId: session.userId,
+            action: 'ADMIN_DM_SENT',
+            targetId: userId,
+            details: { sentText: messageText.trim() }
+          });
+        }
+
+        return {
+          status: 'success',
+          action,
+          message: 'Mensagem privada enviada com sucesso! O interceptador está monitorando as próximas 2 respostas do membro.',
+          session: sessionData
+        };
+      }
+
+      case 'GET_DM': {
+        const sessionData = dmTracker.getSession(userId);
+        return { status: 'success', action, session: sessionData };
+      }
+
+      case 'FINISH_DM': {
+        const sessionData = dmTracker.finishSession(userId);
+        return {
+          status: 'success',
+          action,
+          message: 'Acompanhamento finalizado com sucesso! O silenciador da IA foi desligado e a IA poderá responder normalmente.',
+          session: sessionData
+        };
+      }
+
+      case 'CLEAR_DM': {
+        dmTracker.clearSession(userId);
+        return {
+          status: 'success',
+          action,
+          message: 'Histórico de monitoramento de DM excluído com sucesso.',
+          session: null
+        };
+      }
+
+      default:
+        throw new ValidationError(`Ação administrativa desconhecida: "${action}".`);
+    }
+  }
+
+  /**
+   * Retrieves all custom quiz questions for a guild.
+   */
+  getCustomQuizQuestions(session, guildId) {
+    this.verifyGuildAccess(session, guildId);
+    return this.services.quizRepo ? this.services.quizRepo.getCustomQuestions(guildId) : [];
+  }
+
+  /**
+   * Creates a custom quiz question for a guild.
+   */
+  createCustomQuizQuestion(session, guildId, data = {}) {
+    this.verifyGuildAccess(session, guildId);
+    if (!this.services.quizRepo) throw new Error('Serviço de Quiz indisponível.');
+    return this.services.quizRepo.createCustomQuestion({
+      guildId,
+      authorId: session.userId || 'DASHBOARD_ADMIN',
+      category: data.category || 'geral',
+      question: data.question,
+      answers: data.answers,
+      explanation: data.explanation,
+      imageUrl: data.imageUrl || null
+    });
+  }
+
+  /**
+   * Deletes a custom quiz question for a guild.
+   */
+  deleteCustomQuizQuestion(session, guildId, questionId) {
+    this.verifyGuildAccess(session, guildId);
+    if (!this.services.quizRepo) throw new Error('Serviço de Quiz indisponível.');
+    return this.services.quizRepo.deleteCustomQuestion(questionId, guildId);
+  }
+
+  /**
+   * Updates an existing custom quiz question.
+   */
+  updateCustomQuizQuestion(session, guildId, questionId, data = {}) {
+    this.verifyGuildAccess(session, guildId);
+    if (!this.services.quizRepo) throw new Error('Serviço de Quiz indisponível.');
+    return this.services.quizRepo.updateCustomQuestion(questionId, guildId, data);
+  }
+
+  /**
+   * Retrieves all questions (system + custom) for the guild question browser.
+   */
+  getAllQuizQuestions(session, guildId) {
+    this.verifyGuildAccess(session, guildId);
+    if (this.services.quizService) {
+      return this.services.quizService.getAllQuestions(guildId);
+    }
+    if (this.services.quizRepo) {
+      const { QuizService } = require('./quizService');
+      const qs = new QuizService({ quizRepo: this.services.quizRepo });
+      return qs.getAllQuestions(guildId);
+    }
+    return [];
+  }
+
+  /**
+   * Retrieves all quiz categories (system + custom).
+   */
+  getQuizCategories(session, guildId) {
+    this.verifyGuildAccess(session, guildId);
+    if (this.services.quizService) {
+      return this.services.quizService.getAllCategories(guildId);
+    }
+    if (this.services.quizRepo) {
+      const { QuizService } = require('./quizService');
+      const qs = new QuizService({ quizRepo: this.services.quizRepo });
+      return qs.getAllCategories(guildId);
+    }
+    return {};
+  }
+
+  /**
+   * Creates a custom category.
+   */
+  createCustomQuizCategory(session, guildId, data = {}) {
+    this.verifyGuildAccess(session, guildId);
+    if (!this.services.quizRepo) throw new Error('Serviço de Quiz indisponível.');
+    return this.services.quizRepo.createCustomCategory({
+      guildId,
+      authorId: session.userId || 'DASHBOARD_ADMIN',
+      key: data.key,
+      name: data.name,
+      emoji: data.emoji || '📁',
+      color: data.color || '#5865F2',
+      description: data.description || ''
+    });
+  }
+
+  /**
+   * Deletes a custom category by ID.
+   */
+  deleteCustomQuizCategory(session, guildId, categoryId) {
+    this.verifyGuildAccess(session, guildId);
+    if (!this.services.quizRepo) throw new Error('Serviço de Quiz indisponível.');
+    return this.services.quizRepo.deleteCustomCategory(categoryId, guildId);
+  }
+}
+
+module.exports = { WebPanelService };
