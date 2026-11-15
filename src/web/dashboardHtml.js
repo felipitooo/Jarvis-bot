@@ -301,11 +301,12 @@ function renderDashboardHtml({
     .meli-guild-card {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       background: rgba(255, 255, 255, 0.04);
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-pill);
-      padding: 4px 10px 4px 6px;
+      padding: 3px 8px 3px 5px;
+      height: 28px;
       transition: border-color 0.15s;
     }
 
@@ -355,14 +356,15 @@ function renderDashboardHtml({
     .meli-status-badge {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
       background: rgba(16, 185, 129, 0.12);
       border: 1px solid rgba(16, 185, 129, 0.25);
       border-radius: var(--radius-pill);
-      padding: 5px 10px;
-      font-size: 0.76rem;
+      padding: 3px 8px;
+      font-size: 0.72rem;
       font-weight: 600;
       color: #34D399;
+      height: 26px;
     }
 
     .meli-status-dot {
@@ -376,15 +378,20 @@ function renderDashboardHtml({
     .meli-sync-btn, .topbar-btn {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
       background: rgba(255, 255, 255, 0.05);
       border: 1px solid var(--border-subtle);
-      border-radius: var(--radius);
+      border-radius: 6px;
       color: var(--text-muted);
-      padding: 6px 11px;
-      font-size: 0.8rem;
+      padding: 3px 8px;
+      font-size: 0.74rem;
       font-weight: 600;
+      height: 28px;
+      max-height: 28px;
+      box-sizing: border-box;
       cursor: pointer;
+      overflow: hidden;
+      line-height: 1;
       transition: all 0.15s ease;
     }
 
@@ -396,7 +403,26 @@ function renderDashboardHtml({
 
     .meli-sync-btn svg, .topbar-btn svg {
       flex-shrink: 0;
+      width: 13px;
+      height: 13px;
     }
+
+    /* Strict Icon Dimensions to Prevent Button Sizing Explosions */
+    .nav-photo-icon,
+    img.nav-photo-icon,
+    .topbar-actions img,
+    .meli-sync-btn img,
+    img.emoji,
+    .emoji {
+      width: 14px !important;
+      height: 14px !important;
+      max-width: 14px !important;
+      max-height: 14px !important;
+      object-fit: contain !important;
+      vertical-align: -2px !important;
+      display: inline-block !important;
+    }
+
 
     #lockPanelBtn {
       background: rgba(239, 68, 68, 0.12) !important;
@@ -536,16 +562,16 @@ function renderDashboardHtml({
     }
 
     .menu-group-title {
-      font-size: 0.68rem;
+      font-size: 0.62rem;
       font-weight: 800;
       color: var(--text-muted);
       letter-spacing: 0.8px;
-      padding: 0.9rem 0.65rem 0.3rem;
+      padding: 0.65rem 0.5rem 0.2rem;
       text-transform: uppercase;
       display: flex;
       align-items: center;
-      gap: 6px;
-      opacity: 0.85;
+      gap: 5px;
+      opacity: 0.75;
     }
 
     .menu-group-title:first-child {
@@ -555,19 +581,20 @@ function renderDashboardHtml({
     .nav-item {
       display: flex;
       align-items: center;
-      gap: 0.7rem;
+      gap: 0.55rem;
       width: 100%;
-      padding: 0.52rem 0.75rem;
-      border-radius: var(--radius);
+      padding: 0.35rem 0.6rem;
+      border-radius: 5px;
       border: none;
       background: transparent;
       color: var(--text-muted);
-      font-size: 0.85rem;
+      font-size: 0.79rem;
       font-weight: 500;
       cursor: pointer;
       text-align: left;
       transition: all 0.12s ease;
       position: relative;
+      height: 30px;
     }
 
     .nav-item:hover {
@@ -597,10 +624,15 @@ function renderDashboardHtml({
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 18px;
-      height: 18px;
+      width: 15px;
+      height: 15px;
       flex-shrink: 0;
       color: inherit;
+    }
+
+    .nav-icon svg {
+      width: 15px;
+      height: 15px;
     }
 
     .nav-label {
@@ -676,10 +708,10 @@ function renderDashboardHtml({
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 1.5rem;
+      gap: 1rem;
       flex-wrap: wrap;
-      margin-bottom: 24px;
-      padding: 24px 28px;
+      margin-bottom: 20px;
+      padding: 16px 20px;
       background: linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(15, 23, 42, 0.85) 100%);
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-lg);
@@ -687,28 +719,28 @@ function renderDashboardHtml({
     }
 
     .server-hero-title {
-      font-size: 1.3rem;
+      font-size: 1.15rem;
       font-weight: 800;
       color: #FFFFFF;
       letter-spacing: -0.2px;
     }
 
     .server-hero-meta {
-      font-size: 0.84rem;
+      font-size: 0.78rem;
       color: var(--text-muted);
-      margin-top: 4px;
+      margin-top: 3px;
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
       flex-wrap: wrap;
     }
 
     .server-hero-avatar {
-      width: 60px;
-      height: 60px;
-      border-radius: 16px;
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
       border: 2px solid var(--cyan);
-      box-shadow: 0 0 14px rgba(56, 189, 248, 0.25);
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
       object-fit: cover;
       flex-shrink: 0;
     }
@@ -717,15 +749,18 @@ function renderDashboardHtml({
       background: linear-gradient(135deg, var(--cyan) 0%, var(--primary) 100%);
       color: #FFFFFF;
       border: none;
-      padding: 9px 18px;
-      border-radius: var(--radius);
-      font-size: 0.86rem;
-      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 5px;
+      font-size: 0.76rem;
+      font-weight: 600;
+      height: 28px;
+      max-height: 28px;
+      box-sizing: border-box;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      box-shadow: 0 4px 14px rgba(56, 189, 248, 0.25);
+      gap: 5px;
+      box-shadow: 0 2px 6px rgba(56, 189, 248, 0.25);
       transition: transform 0.1s, box-shadow 0.15s;
     }
 
@@ -738,14 +773,17 @@ function renderDashboardHtml({
       background: rgba(255, 255, 255, 0.05);
       color: #FFFFFF;
       border: 1px solid var(--border-hover);
-      padding: 9px 16px;
-      border-radius: var(--radius);
-      font-size: 0.86rem;
+      padding: 4px 9px;
+      border-radius: 5px;
+      font-size: 0.76rem;
       font-weight: 600;
+      height: 28px;
+      max-height: 28px;
+      box-sizing: border-box;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
       transition: background 0.15s, border-color 0.15s;
     }
 
@@ -882,20 +920,20 @@ function renderDashboardHtml({
     button.primary-btn,
     .btn-primary,
     button.btn-primary,
-    button.save-btn,
-    .meli-btn-primary {
+    button.save-btn {
       background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
       color: #FFFFFF !important;
       border: 1px solid rgba(255, 255, 255, 0.15);
-      padding: 10px 20px;
-      border-radius: var(--radius);
-      font-size: 0.88rem;
-      font-weight: 700;
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 0.81rem;
+      font-weight: 600;
+      height: 32px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
-      box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+      gap: 6px;
+      box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
       cursor: pointer;
     }
 
@@ -927,15 +965,15 @@ function renderDashboardHtml({
     .secondary-btn,
     button.secondary-btn,
     .btn-secondary,
-    button.btn-secondary,
-    .meli-btn-outline {
+    button.btn-secondary {
       background: rgba(255, 255, 255, 0.06);
       color: var(--text-main) !important;
       border: 1px solid rgba(255, 255, 255, 0.14);
-      padding: 10px 18px;
-      border-radius: var(--radius);
-      font-size: 0.88rem;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.81rem;
       font-weight: 600;
+      height: 32px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -1089,17 +1127,20 @@ function renderDashboardHtml({
       background: rgba(255, 255, 255, 0.04);
       border: 1px solid var(--border-subtle);
       color: var(--text-main) !important;
-      padding: 12px 18px;
-      border-radius: var(--radius);
-      font-size: 0.88rem;
-      font-weight: 600;
+      padding: 5px 10px;
+      border-radius: 5px;
+      font-size: 0.78rem;
+      font-weight: 500;
       text-align: left;
-      width: 100%;
+      height: 30px;
+      max-height: 30px;
+      box-sizing: border-box;
       display: flex;
       align-items: center;
       justify-content: flex-start;
-      gap: 10px;
+      gap: 6px;
       cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
     }
 
     .nav-switch-btn:hover,
@@ -2157,7 +2198,7 @@ function renderDashboardHtml({
           <input type="password" id="panelPinInput" placeholder="Digite a senha de acesso..." autocomplete="current-password" autofocus style="width: 100%; padding: 0.85rem 1rem; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.16); background: #0d1017; color: #ffffff; font-size: 1.1rem; text-align: center; letter-spacing: 0.25rem; outline: none; transition: all 0.2s ease;">
         </div>
         <div id="panelPinError" style="display: none; color: #f87171; font-size: 0.86rem; background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 6px; padding: 0.5rem 0.75rem; text-align: center;"></div>
-        <button type="submit" id="panelUnlockBtn" style="width: 100%; padding: 0.85rem; border: none; border-radius: 8px; background: linear-gradient(135deg, #0284c7, #38bdf8); color: #ffffff; font-weight: 600; font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; transition: transform 0.15s ease, box-shadow 0.15s ease; box-shadow: 0 4px 14px rgba(56, 189, 248, 0.35);">
+        <button type="submit" id="panelUnlockBtn" style="width: 100%; padding: 0.55rem 1rem; border: none; border-radius: 6px; background: linear-gradient(135deg, #0284c7, #38bdf8); color: #ffffff; font-weight: 600; font-size: 0.88rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; height: 38px; transition: transform 0.15s ease, box-shadow 0.15s ease; box-shadow: 0 4px 14px rgba(56, 189, 248, 0.35);">
           <img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f513.png" style="width:18px;height:18px;object-fit:contain;" alt=""> Entrar no Painel
         </button>
       </form>
@@ -2392,17 +2433,17 @@ function renderDashboardHtml({
             </div>
           </div>
         </div>
-        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
           <button class="meli-btn-primary" onclick="switchTab('tab-members')">
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
             Gerenciar Membros
           </button>
           <button class="meli-btn-outline" onclick="switchTab('tab-audit')">
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>
             Auditoria
           </button>
           <button class="meli-btn-outline" onclick="switchTab('tab-economy')">
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
             Economia & Banco
           </button>
         </div>
@@ -2438,18 +2479,18 @@ function renderDashboardHtml({
             <label>Identidade Atual da IA</label>
             <input type="text" id="overviewAiName" value="${aiDisplayName}" readonly>
           </div>
-          <button class="nav-switch-btn" data-tab="tab-identity">✏️ Alterar Nome da IA</button>
+          <button class="nav-switch-btn" data-tab="tab-identity" style="margin-top: 10px;">✏️ Alterar Nome da IA</button>
         </div>
 
         <div class="card">
           <h2>⚡ Atalhos Rápidos de Configuração</h2>
           <p>Acesse rapidamente as configurações mais importantes do seu servidor:</p>
-          <div style="display: flex; flex-direction: column; gap: 0.6rem;">
-            <button class="nav-switch-btn" data-tab="tab-tickets">🎫 Configurar Central de Atendimento por Tickets</button>
-            <button class="nav-switch-btn" data-tab="tab-welcome">👋 Configurar Mensagem de Boas-Vindas e AutoRole</button>
-            <button class="nav-switch-btn" data-tab="tab-music">🎵 Configurar DJ, Volume e Player de Música</button>
-            <button class="nav-switch-btn" data-tab="tab-economy">💰 Ajustar Economia, Trabalho e Banco</button>
-            <button class="nav-switch-btn" data-tab="tab-audit">📜 Ver Registro de Auditoria</button>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px;">
+            <button class="nav-switch-btn" data-tab="tab-tickets">🎫 Central de Tickets</button>
+            <button class="nav-switch-btn" data-tab="tab-welcome">👋 Boas-Vindas & AutoRole</button>
+            <button class="nav-switch-btn" data-tab="tab-music">🎵 Música & Player</button>
+            <button class="nav-switch-btn" data-tab="tab-economy">💰 Economia & Banco</button>
+            <button class="nav-switch-btn" data-tab="tab-audit">📜 Auditoria & Logs</button>
           </div>
         </div>
 
@@ -9826,12 +9867,12 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
     function updateThemeUI(isLight) {
       if (isLight) {
         document.documentElement.classList.add('theme-light');
-        if (themeIcon) themeIcon.innerHTML = '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f319.png" class="nav-photo-icon" style="margin-right:0;" alt="">';
+        if (themeIcon) themeIcon.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
         if (themeText) themeText.innerText = currentLang === 'en' ? 'Dark' : 'Escuro';
         if (themeBtn) themeBtn.title = currentLang === 'en' ? 'Switch to Dark Mode' : 'Alternar para Modo Escuro';
       } else {
         document.documentElement.classList.remove('theme-light');
-        if (themeIcon) themeIcon.innerHTML = '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/2600.png" class="nav-photo-icon" style="margin-right:0;" alt="">';
+        if (themeIcon) themeIcon.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>';
         if (themeText) themeText.innerText = currentLang === 'en' ? 'Light' : 'Claro';
         if (themeBtn) themeBtn.title = currentLang === 'en' ? 'Switch to Light Mode' : 'Alternar para Modo Claro';
       }
@@ -9966,7 +10007,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       const t = i18nDict[lang] || i18nDict.pt;
 
       // Update Header Lang Button
-      if (langIcon) langIcon.innerHTML = lang === 'en' ? '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f1e7-1f1f7.png" class="nav-photo-icon" style="margin-right:0;" alt="PT">' : '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f1fa-1f1f8.png" class="nav-photo-icon" style="margin-right:0;" alt="EN">';
+      if (langIcon) langIcon.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>';
       if (langText) langText.innerText = lang === 'en' ? 'PT' : 'EN';
       if (langBtn) langBtn.title = lang === 'en' ? 'Mudar para Português' : 'Switch to English';
 
