@@ -2860,17 +2860,7 @@ function renderDashboardHtml({
     <!-- TAB 2: IDENTIDADE DA IA -->
     <div id="tab-identity" class="tab-content">
       <div class="grid">
-        <div class="card">
-          <h2>🤖 Personalidade & Identidade da IA</h2>
-          <p>Defina o nome exibido pelo assistente exclusivamente para este servidor.</p>
-          <div class="form-group">
-            <label>Nome de Exibição da IA</label>
-            <input type="text" id="aiNameInput" value="${aiDisplayName}">
-          </div>
-          <button class="primary-btn" id="saveAiNameBtn">💾 Salvar Nome da IA</button>
-        </div>
-
-        <div class="card">
+        <div class="card" style="grid-column: 1 / -1;">
           <h2>💬 Canal Exclusivo de Conversa IA</h2>
           <p>Restrinja as respostas automáticas da IA a um canal específico ou deixe aberto para todo o servidor.</p>
           <div class="form-group">
@@ -6190,34 +6180,6 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
               <input type="text" id="cfgTriggerNames" placeholder="Ex: Jarvis, J.A.R.V.I.S, Cell">
               <small style="color: var(--text-subtle); font-size: 0.75rem;">Separados por vírgula. Responde sem precisar de @menção.</small>
             </div>
-          </div>
-
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 0.5rem;">
-            <div class="form-group">
-              <label>Status no Discord</label>
-              <select id="cfgBotPresenceStatus">
-                <option value="online">🟢 Online</option>
-                <option value="idle">🟡 Ausente (Idle)</option>
-                <option value="dnd">🔴 Não Perturbe (DND)</option>
-                <option value="invisible">⚪ Invisível</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Tipo de Atividade</label>
-              <select id="cfgBotPresenceType">
-                <option value="Custom">💬 Personalizado</option>
-                <option value="Playing">🎮 Jogando</option>
-                <option value="Listening">🎧 Ouvindo</option>
-                <option value="Watching">📺 Assistindo</option>
-                <option value="Competing">🏆 Competindo</option>
-                <option value="Streaming">🔴 Transmitindo</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label>Texto da Atividade / Presença</label>
-            <input type="text" id="cfgBotPresenceText" placeholder="Ex: Protocolos ativos | +help">
           </div>
         </div>
 
@@ -12514,9 +12476,6 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       if (document.getElementById('cfgBotName')) document.getElementById('cfgBotName').value = cfg.identity?.name || '';
       if (document.getElementById('cfgBotPrefix')) document.getElementById('cfgBotPrefix').value = cfg.identity?.defaultPrefix || '+';
       if (document.getElementById('cfgTriggerNames')) document.getElementById('cfgTriggerNames').value = (cfg.identity?.triggerNames || []).join(', ');
-      if (document.getElementById('cfgBotPresenceStatus')) document.getElementById('cfgBotPresenceStatus').value = cfg.identity?.presence?.status || 'online';
-      if (document.getElementById('cfgBotPresenceType')) document.getElementById('cfgBotPresenceType').value = cfg.identity?.presence?.activityType || 'Custom';
-      if (document.getElementById('cfgBotPresenceText')) document.getElementById('cfgBotPresenceText').value = cfg.identity?.presence?.activityText || '';
 
       // 2. AI & Persona
       if (document.getElementById('cfgAiRole')) document.getElementById('cfgAiRole').value = cfg.ai?.persona?.role || '';
@@ -12773,12 +12732,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         identity: {
           name: document.getElementById('cfgBotName')?.value?.trim() || 'J.A.R.V.I.S.',
           defaultPrefix: document.getElementById('cfgBotPrefix')?.value?.trim() || '+',
-          triggerNames,
-          presence: {
-            status: document.getElementById('cfgBotPresenceStatus')?.value || 'online',
-            activityType: document.getElementById('cfgBotPresenceType')?.value || 'Custom',
-            activityText: document.getElementById('cfgBotPresenceText')?.value?.trim() || ''
-          }
+          triggerNames
         },
         ai: {
           model: document.getElementById('cfgAiModel')?.value || 'gemini-3.5-flash-lite',
