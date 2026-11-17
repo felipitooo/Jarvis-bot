@@ -2472,7 +2472,8 @@ class PrefixCommandHandler {
         // ==========================================
         // 3. MODERAÇÃO
         // ==========================================
-        case 'ban': {
+        case 'ban':
+        case 'banir': {
           if (!member.permissions.has(PermissionFlagsBits.BanMembers) && !member.permissions.has(PermissionFlagsBits.Administrator)) {
             await message.reply('❌ Você não tem permissão de **Banir Membros**.');
             return true;
@@ -2522,7 +2523,8 @@ class PrefixCommandHandler {
           return true;
         }
 
-        case 'kick': {
+        case 'kick':
+        case 'expulsar': {
           if (!member.permissions.has(PermissionFlagsBits.KickMembers) && !member.permissions.has(PermissionFlagsBits.Administrator)) {
             await message.reply('❌ Você não tem permissão de **Expulsar Membros**.');
             return true;
@@ -2808,7 +2810,9 @@ class PrefixCommandHandler {
         }
 
         case 'mute':
-        case 'timeout': {
+        case 'timeout':
+        case 'mutar':
+        case 'silenciar': {
           if (!member.permissions.has(PermissionFlagsBits.ModerateMembers) && !member.permissions.has(PermissionFlagsBits.Administrator)) {
             await message.reply('❌ Você não tem permissão de **Moderar Membros**.');
             return true;
@@ -2874,7 +2878,9 @@ class PrefixCommandHandler {
         }
 
         case 'unmute':
-        case 'untimeout': {
+        case 'untimeout':
+        case 'desmutar':
+        case 'desilenciar': {
           if (!member.permissions.has(PermissionFlagsBits.ModerateMembers) && !member.permissions.has(PermissionFlagsBits.Administrator)) {
             await message.reply('❌ Você não tem permissão de **Moderar Membros**.');
             return true;
@@ -2898,7 +2904,8 @@ class PrefixCommandHandler {
           return true;
         }
 
-        case 'unban': {
+        case 'unban':
+        case 'desbanir': {
           if (!member.permissions.has(PermissionFlagsBits.BanMembers) && !member.permissions.has(PermissionFlagsBits.Administrator)) {
             await message.reply('❌ Você não tem permissão de **Banir Membros**.');
             return true;

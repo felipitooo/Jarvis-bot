@@ -12219,7 +12219,6 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         reset_factory: '🔄 Factory Defaults',
         reset_factory_all: '🔄 Reset All Configurations to Default'
       }
-      }
     };
 
     function applyLanguage(lang) {
@@ -12766,7 +12765,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         .filter(Boolean);
 
       const guidelines = (document.getElementById('cfgAiGuidelines')?.value || '')
-        .split('\n')
+        .split(String.fromCharCode(10))
         .map(s => s.trim())
         .filter(Boolean);
 
