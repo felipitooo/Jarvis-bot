@@ -60,6 +60,20 @@ function renderDashboardHtml({
         } else {
           document.documentElement.lang = 'pt-BR';
         }
+        const savedCustomTheme = localStorage.getItem('jarvis_custom_theme');
+        if (savedCustomTheme) {
+          const th = JSON.parse(savedCustomTheme);
+          const r = document.documentElement;
+          if (th.primary) r.style.setProperty('--primary', th.primary);
+          if (th.accent) r.style.setProperty('--cyan', th.accent);
+          if (th.bgPage) r.style.setProperty('--bg-page', th.bgPage);
+          if (th.bgSurface) r.style.setProperty('--bg-surface', th.bgSurface);
+          if (th.bgHeader) r.style.setProperty('--bg-header', th.bgHeader);
+          if (th.textMain) r.style.setProperty('--text-main', th.textMain);
+          if (th.topbarBorder) r.style.setProperty('--topbar-border', th.topbarBorder);
+          if (th.topbarBrand) r.style.setProperty('--topbar-brand', th.topbarBrand);
+          if (th.topbarActiveTitle) r.style.setProperty('--topbar-active-title', th.topbarActiveTitle);
+        }
       } catch(e) {}
     })();
   </script>
@@ -127,6 +141,10 @@ function renderDashboardHtml({
       --text-muted: ${activeConfig.theme?.panel?.textMuted || '#94A3B8'};
       --text-subtle: #64748B;
 
+      --topbar-border: ${activeConfig.theme?.panel?.topbarBorder || 'var(--border-subtle)'};
+      --topbar-brand: ${activeConfig.theme?.panel?.topbarBrand || 'var(--cyan)'};
+      --topbar-active-title: ${activeConfig.theme?.panel?.topbarActiveTitle || 'var(--text-main)'};
+
       --success: #10B981;
       --success-light: rgba(16, 185, 129, 0.15);
       --warning: #F59E0B;
@@ -177,13 +195,13 @@ function renderDashboardHtml({
       background: var(--bg-header);
       backdrop-filter: blur(14px);
       -webkit-backdrop-filter: blur(14px);
-      border-bottom: 1px solid var(--border-subtle);
+      border-bottom: 1px solid var(--topbar-border, var(--border-subtle));
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding: 0 24px;
       box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
-      transition: margin-left 0.25s ease, background 0.3s ease;
+      transition: margin-left 0.25s ease, background 0.25s ease, border-color 0.25s ease;
     }
 
     @media (min-width: 1024px) {
@@ -228,11 +246,12 @@ function renderDashboardHtml({
 
     .breadcrumb-root {
       font-weight: 700;
-      color: var(--cyan);
+      color: var(--topbar-brand, var(--cyan));
       letter-spacing: 0.5px;
       display: inline-flex;
       align-items: center;
       gap: 6px;
+      transition: color 0.25s ease;
     }
 
     .breadcrumb-sep {
@@ -242,7 +261,8 @@ function renderDashboardHtml({
 
     .breadcrumb-current {
       font-weight: 700;
-      color: var(--text-main);
+      color: var(--topbar-active-title, var(--text-main));
+      transition: color 0.25s ease;
     }
 
     /* Universal Search in Topbar */
@@ -352,33 +372,35 @@ function renderDashboardHtml({
       display: flex;
       align-items: center;
       gap: 10px;
-      background: rgba(255, 255, 255, 0.05);
+      background: rgba(255, 255, 255, 0.04);
       border: 1px solid var(--border-subtle);
-      border-radius: 24px;
-      padding: 4px 14px 4px 6px;
-      min-height: 38px;
+      border-radius: 12px;
+      padding: 5px 14px 5px 8px;
+      min-height: 42px;
       transition: all 0.2s ease;
     }
 
     .meli-guild-card:hover {
       background: rgba(255, 255, 255, 0.08);
       border-color: var(--cyan);
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.15);
     }
 
     .meli-guild-icon {
-      width: 28px;
-      height: 28px;
+      width: 30px;
+      height: 30px;
       border-radius: 50%;
       object-fit: cover;
-      border: 1px solid var(--border-subtle);
-      box-shadow: 0 0 6px rgba(0, 0, 0, 0.3);
+      border: 1.5px solid var(--primary);
+      box-shadow: 0 0 8px rgba(0, 0, 0, 0.4);
+      flex-shrink: 0;
     }
 
     .meli-guild-meta {
       display: flex;
       flex-direction: column;
       justify-content: center;
-      gap: 1px;
+      gap: 2px;
     }
 
     .meli-guild-label {
@@ -386,7 +408,7 @@ function renderDashboardHtml({
       font-weight: 700;
       color: var(--text-muted);
       text-transform: uppercase;
-      letter-spacing: 0.6px;
+      letter-spacing: 0.8px;
       line-height: 1;
     }
 
@@ -405,8 +427,8 @@ function renderDashboardHtml({
     }
 
     .meli-guild-select option {
-      background: #0F172A;
-      color: #F8FAFC;
+      background: #1E293B !important;
+      color: #F8FAFC !important;
     }
 
     .meli-status-badge {
@@ -2063,6 +2085,7 @@ function renderDashboardHtml({
       color: #0f172a !important;
     }
 
+    html.theme-light .app-topbar,
     html.theme-light .meli-header {
       background: #ffffff !important;
       border-bottom: 1px solid #e2e8f0 !important;
@@ -2677,6 +2700,7 @@ function renderDashboardHtml({
       <button class="topbar-mobile-toggle" id="mobileToggleBtn" aria-label="Abrir navegação">☰</button>
       <div class="topbar-breadcrumb">
         <span class="breadcrumb-root" id="topHeaderBreadcrumbRoot">${activeConfig.identity?.name || aiDisplayName}</span>
+        <span class="badge" id="topHeaderBadge" style="font-size: 0.65rem; background: var(--primary); color: #ffffff; padding: 2px 8px; border-radius: 999px; font-weight: 700; margin: 0 4px; letter-spacing: 0.4px;">${activeConfig.panelBranding?.badge || brandBadge}</span>
         <span class="breadcrumb-sep">/</span>
         <span class="breadcrumb-current" id="topHeaderActiveTabTitle">Visão Geral</span>
       </div>
@@ -6329,6 +6353,30 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
                 <input type="text" id="cfgColorTextMain" placeholder="#F8FAFC" style="flex: 1;">
               </div>
             </div>
+
+            <div class="form-group">
+              <label>Cor do Nome/Marca na Barra Superior</label>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <input type="color" id="cfgColorTopbarBrandPicker" style="width: 44px; height: 38px; border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; background: transparent; padding: 2px;">
+                <input type="text" id="cfgColorTopbarBrand" placeholder="#38BDF8" style="flex: 1;">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Cor do Título Ativo na Barra Superior</label>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <input type="color" id="cfgColorTopbarTitlePicker" style="width: 44px; height: 38px; border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; background: transparent; padding: 2px;">
+                <input type="text" id="cfgColorTopbarTitle" placeholder="#F8FAFC" style="flex: 1;">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Cor da Borda da Barra Superior</label>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <input type="color" id="cfgColorTopbarBorderPicker" style="width: 44px; height: 38px; border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; background: transparent; padding: 2px;">
+                <input type="text" id="cfgColorTopbarBorder" placeholder="rgba(255, 255, 255, 0.08)" style="flex: 1;">
+              </div>
+            </div>
           </div>
 
           <!-- Live Theme Preview Box -->
@@ -7006,6 +7054,12 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
     let toastTimeout = null;
 
     function showToast(msg, type = 'success', customTitle = null) {
+      if (customTitle === 'success' || customTitle === 'error' || customTitle === 'warning' || customTitle === 'info') {
+        const actualType = customTitle;
+        customTitle = msg;
+        msg = type;
+        type = actualType;
+      }
       const toastEl = document.getElementById('toast');
       const toastTitleEl = document.getElementById('toastTitle');
       const toastMsgEl = document.getElementById('toastMsg');
@@ -11813,6 +11867,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           if (pinError) pinError.style.display = 'none';
           showToast('🔓 Painel desbloqueado com sucesso!');
           loadGuilds();
+          if (typeof loadBotConfigTab === 'function') loadBotConfigTab();
           setTimeout(() => { if (typeof applyTwemoji === 'function') applyTwemoji(document.body); }, 200);
           syncBotLiveAvatar();
           setInterval(syncBotLiveAvatar, 10000);
@@ -12317,52 +12372,76 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
     // ==========================================
     const PRESET_THEMES = {
       stark: {
+        name: 'Stark Violet',
         primary: '#6366F1',
         accent: '#38BDF8',
         bgPage: '#0B0F19',
         bgSurface: '#1E293B',
         bgHeader: '#0F172A',
-        textMain: '#F8FAFC'
+        textMain: '#F8FAFC',
+        topbarBorder: 'rgba(99, 102, 241, 0.35)',
+        topbarBrand: '#818CF8',
+        topbarActiveTitle: '#F8FAFC'
       },
       midas: {
+        name: 'Midas Gold',
         primary: '#F59E0B',
         accent: '#FBBF24',
-        bgPage: '#09090B',
-        bgSurface: '#18181B',
-        bgHeader: '#121215',
-        textMain: '#FAFAFA'
+        bgPage: '#0C0A06',
+        bgSurface: '#1C1914',
+        bgHeader: '#1A1408',
+        textMain: '#FEF3C7',
+        topbarBorder: 'rgba(245, 158, 11, 0.4)',
+        topbarBrand: '#FBBF24',
+        topbarActiveTitle: '#FDE68A'
       },
       crimson: {
+        name: 'Crimson Iron',
         primary: '#EF4444',
         accent: '#F87171',
-        bgPage: '#0C0A09',
-        bgSurface: '#1C1917',
-        bgHeader: '#151210',
-        textMain: '#F5F5F4'
+        bgPage: '#0D0507',
+        bgSurface: '#1F0B10',
+        bgHeader: '#1A070B',
+        textMain: '#FEE2E2',
+        topbarBorder: 'rgba(239, 68, 68, 0.4)',
+        topbarBrand: '#F87171',
+        topbarActiveTitle: '#FECACA'
       },
       matrix: {
+        name: 'Matrix Emerald',
         primary: '#10B981',
         accent: '#34D399',
-        bgPage: '#021008',
-        bgSurface: '#062615',
-        bgHeader: '#04180E',
-        textMain: '#ECFDF5'
+        bgPage: '#02120A',
+        bgSurface: '#062617',
+        bgHeader: '#031C0E',
+        textMain: '#ECFDF5',
+        topbarBorder: 'rgba(16, 185, 129, 0.4)',
+        topbarBrand: '#34D399',
+        topbarActiveTitle: '#A7F3D0'
       },
       ocean: {
+        name: 'Deep Ocean',
         primary: '#0EA5E9',
         accent: '#38BDF8',
-        bgPage: '#030E1A',
-        bgSurface: '#082138',
-        bgHeader: '#051626',
-        textMain: '#F0F9FF'
+        bgPage: '#030E1E',
+        bgSurface: '#08213D',
+        bgHeader: '#04172C',
+        textMain: '#F0F9FF',
+        topbarBorder: 'rgba(14, 165, 233, 0.4)',
+        topbarBrand: '#38BDF8',
+        topbarActiveTitle: '#BAE6FD'
       },
       midnight: {
+        name: 'Midnight Purple',
         primary: '#A855F7',
         accent: '#C084FC',
-        bgPage: '#0B0714',
-        bgSurface: '#1A122B',
-        bgHeader: '#120B20',
-        textMain: '#FAF5FF'
+        bgPage: '#0E061A',
+        bgSurface: '#1F0F38',
+        bgHeader: '#160829',
+        textMain: '#FAF5FF',
+        topbarBorder: 'rgba(168, 85, 247, 0.4)',
+        topbarBrand: '#C084FC',
+        topbarActiveTitle: '#E9D5FF'
       }
     };
 
@@ -12407,6 +12486,9 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       setColorInputValue('cfgColorBgSurface', 'cfgColorBgSurfacePicker', p.bgSurface || '#1E293B');
       setColorInputValue('cfgColorBgHeader', 'cfgColorBgHeaderPicker', p.bgHeader || '#0F172A');
       setColorInputValue('cfgColorTextMain', 'cfgColorTextMainPicker', p.textMain || '#F8FAFC');
+      setColorInputValue('cfgColorTopbarBrand', 'cfgColorTopbarBrandPicker', p.topbarBrand || '#38BDF8');
+      setColorInputValue('cfgColorTopbarTitle', 'cfgColorTopbarTitlePicker', p.topbarActiveTitle || '#F8FAFC');
+      setColorInputValue('cfgColorTopbarBorder', 'cfgColorTopbarBorderPicker', p.topbarBorder || 'rgba(255, 255, 255, 0.08)');
 
       // 4. Discord Embeds
       const e = cfg.theme?.discordEmbeds || {};
@@ -12449,6 +12531,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       const bgSurface = document.getElementById('cfgColorBgSurface')?.value || '#1E293B';
       const textMain = document.getElementById('cfgColorTextMain')?.value || '#F8FAFC';
       const botName = document.getElementById('cfgBotName')?.value || 'J.A.R.V.I.S.';
+      const badgeText = document.getElementById('cfgPanelBadge')?.value?.trim() || 'TECH CORE';
 
       const card = document.getElementById('themeLivePreviewCard');
       const previewBtn = document.getElementById('previewBtn');
@@ -12468,8 +12551,12 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       }
       const bRoot = document.getElementById('topHeaderBreadcrumbRoot');
       if (bRoot) bRoot.innerText = botName;
+      const tBadge = document.getElementById('topHeaderBadge');
+      if (tBadge) tBadge.innerText = badgeText;
       const sideBrand = document.getElementById('headerAiName');
       if (sideBrand) sideBrand.innerText = botName;
+      const sideBadge = document.querySelector('.brand-badge');
+      if (sideBadge) sideBadge.innerText = badgeText;
     }
 
     // Color Pickers <-> Text Inputs Two-way Data Binding
@@ -12480,6 +12567,9 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       ['cfgColorBgSurface', 'cfgColorBgSurfacePicker', '--bg-surface'],
       ['cfgColorBgHeader', 'cfgColorBgHeaderPicker', '--bg-header'],
       ['cfgColorTextMain', 'cfgColorTextMainPicker', '--text-main'],
+      ['cfgColorTopbarBrand', 'cfgColorTopbarBrandPicker', '--topbar-brand'],
+      ['cfgColorTopbarTitle', 'cfgColorTopbarTitlePicker', '--topbar-active-title'],
+      ['cfgColorTopbarBorder', 'cfgColorTopbarBorderPicker', '--topbar-border'],
       ['cfgEmbedPrimary', 'cfgEmbedPrimaryPicker', null],
       ['cfgEmbedSuccess', 'cfgEmbedSuccessPicker', null],
       ['cfgEmbedWarning', 'cfgEmbedWarningPicker', null],
@@ -12505,29 +12595,87 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       }
     });
 
+    // 1-Click Preset Theme Applier with Immediate Persistence
+    async function applyPresetTheme(presetKey) {
+      const theme = PRESET_THEMES[presetKey];
+      if (!theme) return;
+
+      // 1. Remove light theme class to enforce dark preset
+      document.documentElement.classList.remove('theme-light');
+      try { localStorage.setItem('jarvis_theme', 'dark'); } catch(e) {}
+      if (typeof updateThemeUI === 'function') updateThemeUI(false);
+
+      // 2. Set all color inputs & color pickers in the form
+      setColorInputValue('cfgColorPrimary', 'cfgColorPrimaryPicker', theme.primary);
+      setColorInputValue('cfgColorAccent', 'cfgColorAccentPicker', theme.accent);
+      setColorInputValue('cfgColorBgPage', 'cfgColorBgPagePicker', theme.bgPage);
+      setColorInputValue('cfgColorBgSurface', 'cfgColorBgSurfacePicker', theme.bgSurface);
+      setColorInputValue('cfgColorBgHeader', 'cfgColorBgHeaderPicker', theme.bgHeader);
+      setColorInputValue('cfgColorTextMain', 'cfgColorTextMainPicker', theme.textMain);
+      setColorInputValue('cfgColorTopbarBrand', 'cfgColorTopbarBrandPicker', theme.topbarBrand);
+      setColorInputValue('cfgColorTopbarTitle', 'cfgColorTopbarTitlePicker', theme.topbarActiveTitle);
+      setColorInputValue('cfgColorTopbarBorder', 'cfgColorTopbarBorderPicker', theme.topbarBorder);
+
+      // 3. Set root CSS variables immediately
+      const r = document.documentElement;
+      r.style.setProperty('--primary', theme.primary);
+      r.style.setProperty('--cyan', theme.accent);
+      r.style.setProperty('--bg-page', theme.bgPage);
+      r.style.setProperty('--bg-surface', theme.bgSurface);
+      r.style.setProperty('--bg-header', theme.bgHeader);
+      r.style.setProperty('--text-main', theme.textMain);
+      r.style.setProperty('--topbar-brand', theme.topbarBrand);
+      r.style.setProperty('--topbar-active-title', theme.topbarActiveTitle);
+      r.style.setProperty('--topbar-border', theme.topbarBorder);
+
+      // 4. Save to localStorage for instant restoration on reload
+      try {
+        localStorage.setItem('jarvis_custom_theme', JSON.stringify({
+          primary: theme.primary,
+          accent: theme.accent,
+          bgPage: theme.bgPage,
+          bgSurface: theme.bgSurface,
+          bgHeader: theme.bgHeader,
+          textMain: theme.textMain,
+          topbarBrand: theme.topbarBrand,
+          topbarActiveTitle: theme.topbarActiveTitle,
+          topbarBorder: theme.topbarBorder
+        }));
+      } catch(e) {}
+
+      updateThemeLivePreview();
+      showToast('Tema ' + (theme.name || presetKey) + ' aplicado com sucesso!', 'success', 'Tema Atualizado');
+
+      // 5. Persist to backend
+      try {
+        await authFetch('/api/bot/config', {
+          method: 'POST',
+          body: JSON.stringify({
+            theme: {
+              panel: {
+                primary: theme.primary,
+                accent: theme.accent,
+                bgPage: theme.bgPage,
+                bgSurface: theme.bgSurface,
+                bgHeader: theme.bgHeader,
+                textMain: theme.textMain,
+                topbarBrand: theme.topbarBrand,
+                topbarActiveTitle: theme.topbarActiveTitle,
+                topbarBorder: theme.topbarBorder
+              }
+            }
+          })
+        });
+      } catch(err) {
+        console.warn('Erro ao sincronizar preset no backend:', err);
+      }
+    }
+
     // Preset Theme Buttons Handlers
     document.querySelectorAll('.preset-theme-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const presetKey = btn.getAttribute('data-preset');
-        const theme = PRESET_THEMES[presetKey];
-        if (!theme) return;
-
-        setColorInputValue('cfgColorPrimary', 'cfgColorPrimaryPicker', theme.primary);
-        setColorInputValue('cfgColorAccent', 'cfgColorAccentPicker', theme.accent);
-        setColorInputValue('cfgColorBgPage', 'cfgColorBgPagePicker', theme.bgPage);
-        setColorInputValue('cfgColorBgSurface', 'cfgColorBgSurfacePicker', theme.bgSurface);
-        setColorInputValue('cfgColorBgHeader', 'cfgColorBgHeaderPicker', theme.bgHeader);
-        setColorInputValue('cfgColorTextMain', 'cfgColorTextMainPicker', theme.textMain);
-
-        document.documentElement.style.setProperty('--primary', theme.primary);
-        document.documentElement.style.setProperty('--cyan', theme.accent);
-        document.documentElement.style.setProperty('--bg-page', theme.bgPage);
-        document.documentElement.style.setProperty('--bg-surface', theme.bgSurface);
-        document.documentElement.style.setProperty('--bg-header', theme.bgHeader);
-        document.documentElement.style.setProperty('--text-main', theme.textMain);
-
-        updateThemeLivePreview();
-        showToast('Tema selecionado!', 'Cores aplicadas na pré-visualização. Clique em "Salvar Tudo" para persistir.', 'success');
+        applyPresetTheme(presetKey);
       });
     });
 
@@ -12541,10 +12689,14 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       });
     }
 
-    // Bot name input live sync
+    // Bot name & badge input live sync
     const bNameInput = document.getElementById('cfgBotName');
     if (bNameInput) {
       bNameInput.addEventListener('input', updateThemeLivePreview);
+    }
+    const bBadgeInput = document.getElementById('cfgPanelBadge');
+    if (bBadgeInput) {
+      bBadgeInput.addEventListener('input', updateThemeLivePreview);
     }
 
     // Save Bot Config Universal Function
@@ -12560,7 +12712,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         .filter(Boolean);
 
       const guidelines = (document.getElementById('cfgAiGuidelines')?.value || '')
-        .split('\\n')
+        .split('\n')
         .map(s => s.trim())
         .filter(Boolean);
 
@@ -12592,7 +12744,10 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
             bgPage: document.getElementById('cfgColorBgPage')?.value?.trim() || '#0B0F19',
             bgSurface: document.getElementById('cfgColorBgSurface')?.value?.trim() || '#1E293B',
             bgHeader: document.getElementById('cfgColorBgHeader')?.value?.trim() || '#0F172A',
-            textMain: document.getElementById('cfgColorTextMain')?.value?.trim() || '#F8FAFC'
+            textMain: document.getElementById('cfgColorTextMain')?.value?.trim() || '#F8FAFC',
+            topbarBrand: document.getElementById('cfgColorTopbarBrand')?.value?.trim() || '#38BDF8',
+            topbarActiveTitle: document.getElementById('cfgColorTopbarTitle')?.value?.trim() || '#F8FAFC',
+            topbarBorder: document.getElementById('cfgColorTopbarBorder')?.value?.trim() || 'rgba(255, 255, 255, 0.08)'
           },
           discordEmbeds: {
             primaryColor: document.getElementById('cfgEmbedPrimary')?.value?.trim() || '#6366F1',
@@ -12620,15 +12775,13 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       };
 
       try {
-        const res = await fetch('/api/bot/config', {
+        const res = await authFetch('/api/bot/config', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
           body: JSON.stringify(payload)
         });
         const data = await res.json();
         if (data.success) {
-          showToast('Configurações Salvas!', 'Identidade, persona da IA, cores e módulos atualizados com sucesso.', 'success');
+          showToast('Configurações salvas com sucesso!', 'success', 'Salvo!');
 
           // Apply live CSS variables to root immediately
           const r = document.documentElement;
@@ -12638,17 +12791,28 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           r.style.setProperty('--bg-surface', payload.theme.panel.bgSurface);
           r.style.setProperty('--bg-header', payload.theme.panel.bgHeader);
           r.style.setProperty('--text-main', payload.theme.panel.textMain);
+          r.style.setProperty('--topbar-brand', payload.theme.panel.topbarBrand);
+          r.style.setProperty('--topbar-active-title', payload.theme.panel.topbarActiveTitle);
+          r.style.setProperty('--topbar-border', payload.theme.panel.topbarBorder);
 
+          try {
+            localStorage.setItem('jarvis_custom_theme', JSON.stringify(payload.theme.panel));
+          } catch(e) {}
+
+          const bRoot = document.getElementById('topHeaderBreadcrumbRoot');
+          if (bRoot) bRoot.innerText = payload.identity.name;
+          const tBadge = document.getElementById('topHeaderBadge');
+          if (tBadge) tBadge.innerText = payload.panelBranding.badge;
           const headerName = document.getElementById('headerAiName');
           if (headerName) headerName.innerText = payload.identity.name;
           const badgeEl = document.querySelector('.brand-badge');
           if (badgeEl) badgeEl.innerText = payload.panelBranding.badge;
           document.title = payload.panelBranding.title;
         } else {
-          showToast('Erro ao Salvar', data.error || 'Não foi possível salvar as configurações.', 'error');
+          showToast(data.error || 'Não foi possível salvar as configurações.', 'error', 'Erro ao Salvar');
         }
       } catch (err) {
-        showToast('Erro de Conexão', err.message, 'error');
+        showToast(err.message, 'error', 'Erro de Conexão');
       } finally {
         if (saveBtn) saveBtn.innerText = '💾 Salvar Tudo';
         if (saveBtnBottom) saveBtnBottom.innerText = '💾 Salvar Todas as Configurações';
@@ -12661,20 +12825,18 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         return;
       }
       try {
-        const res = await fetch('/api/bot/config/reset', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include'
+        const res = await authFetch('/api/bot/config/reset', {
+          method: 'POST'
         });
         const data = await res.json();
         if (data.success && data.config) {
           populateBotConfigForm(data.config);
-          showToast('Configurações Restauradas!', 'Padrões de fábrica restaurados com sucesso.', 'success');
+          showToast('Padrões de fábrica restaurados com sucesso.', 'success', 'Configurações Restauradas!');
         } else {
-          showToast('Erro', data.error || 'Não foi possível restaurar.', 'error');
+          showToast(data.error || 'Não foi possível restaurar.', 'error', 'Erro');
         }
       } catch (err) {
-        showToast('Erro', err.message, 'error');
+        showToast(err.message, 'error', 'Erro');
       }
     }
 
@@ -12687,6 +12849,11 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
     if (rBtn) rBtn.addEventListener('click', resetBotConfigFromForm);
     const rBtnB = document.getElementById('resetConfigBtnBottom');
     if (rBtnB) rBtnB.addEventListener('click', resetBotConfigFromForm);
+
+    // Auto-load bot config data on initialization
+    if (typeof loadBotConfigTab === 'function') {
+      loadBotConfigTab();
+    }
 
     // Apply Twemoji photo icons across initial DOM
     setTimeout(() => {

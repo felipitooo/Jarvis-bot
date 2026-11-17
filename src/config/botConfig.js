@@ -46,7 +46,10 @@ const DEFAULT_CONFIG = {
       textMain: '#F8FAFC',
       textMuted: '#94A3B8',
       borderColor: 'rgba(255, 255, 255, 0.08)',
-      shadowGlow: 'rgba(56, 189, 248, 0.22)'
+      shadowGlow: 'rgba(56, 189, 248, 0.22)',
+      topbarBrand: '#38BDF8',
+      topbarBorder: 'rgba(255, 255, 255, 0.08)',
+      topbarActiveTitle: '#F8FAFC'
     },
     discordEmbeds: {
       primaryColor: '#6366F1',
