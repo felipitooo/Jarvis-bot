@@ -47,7 +47,10 @@ module.exports = {
     if (sub === 'adicionar') {
       const targetUser = interaction.options.getUser('membro', true);
       const amount = interaction.options.getInteger('xp', true);
-      const targetMember = await guild.members.fetch(targetUser.id);
+      const targetMember = await guild.members.fetch(targetUser.id).catch(() => null);
+      if (!targetMember) {
+        return interaction.reply({ content: '❌ Membro não encontrado no servidor.', ephemeral: true });
+      }
 
       const res = experienceService.addManualXp(guild, actorId, targetMember, amount);
       return interaction.reply({
@@ -60,7 +63,10 @@ module.exports = {
       const targetUser = interaction.options.getUser('membro', true);
       const level = interaction.options.getInteger('nivel');
       const xp = interaction.options.getInteger('xp');
-      const targetMember = await guild.members.fetch(targetUser.id);
+      const targetMember = await guild.members.fetch(targetUser.id).catch(() => null);
+      if (!targetMember) {
+        return interaction.reply({ content: '❌ Membro não encontrado no servidor.', ephemeral: true });
+      }
 
       const res = experienceService.setManualXp(guild, actorId, targetMember, level, xp);
       return interaction.reply({

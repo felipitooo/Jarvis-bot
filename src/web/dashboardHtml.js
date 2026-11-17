@@ -6270,12 +6270,12 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
 
         <!-- 3. TEMA VISUAL DO PAINEL WEB (COLOR PALETTE + PRESETS) -->
         <div class="card" style="grid-column: 1 / -1;">
-          <h2>🎨 Cores & Tema Visual do Painel Web</h2>
-          <p>Personalize 100% da paleta visual da interface web. As alterações são aplicadas instantaneamente!</p>
+          <h2 id="cfgHeadingColors">🎨 Cores & Tema Visual do Painel Web</h2>
+          <p id="cfgHeadingColorsDesc">Personalize 100% da paleta visual da interface web. As alterações são aplicadas instantaneamente!</p>
 
           <!-- Presets de Cores em 1 Clique -->
           <div style="margin-bottom: 1.25rem;">
-            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.82rem; color: var(--text-muted); text-transform: uppercase;">Presets Prontos de Tema (1 Clique)</label>
+            <label id="cfgHeadingPresets" style="display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.82rem; color: var(--text-muted); text-transform: uppercase;">Presets Prontos de Tema (1 Clique)</label>
             <div style="display: flex; flex-wrap: wrap; gap: 0.6rem;">
               <button type="button" class="preset-theme-btn" data-preset="stark" style="background: #1e1b4b; border: 1px solid #6366f1; color: #c7d2fe; padding: 0.45rem 0.85rem; border-radius: 8px; cursor: pointer; font-size: 0.84rem; display: flex; align-items: center; gap: 6px;">
                 <span style="width: 12px; height: 12px; border-radius: 50%; background: #6366F1; display: inline-block;"></span>
@@ -6323,7 +6323,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
             </div>
 
             <div class="form-group">
-              <label>Fundo da Página (Background)</label>
+              <label>Fundo da Página (Principal)</label>
               <div style="display: flex; gap: 8px; align-items: center;">
                 <input type="color" id="cfgColorBgPagePicker" style="width: 44px; height: 38px; border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; background: transparent; padding: 2px;">
                 <input type="text" id="cfgColorBgPage" placeholder="#0B0F19" style="flex: 1;">
@@ -6397,8 +6397,8 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
 
         <!-- 4. EMBLEMAS & CORES NO DISCORD -->
         <div class="card">
-          <h2>📜 Estilo dos Embeds no Discord</h2>
-          <p>Configure as cores das mensagens enviadas pelo bot nos canais do Discord.</p>
+          <h2 id="cfgHeadingEmbeds">📜 Estilo das Mensagens (Embeds) no Discord</h2>
+          <p id="cfgHeadingEmbedsDesc">Configure as cores das mensagens enviadas pelo bot nos canais do Discord.</p>
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
             <div class="form-group">
@@ -6440,10 +6440,10 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           </div>
         </div>
 
-        <!-- 5. BRANDING & TEXTOS DO PAINEL -->
+        <!-- 5. IDENTIDADE & TEXTOS DO PAINEL -->
         <div class="card">
-          <h2>🏷️ Branding & Textos do Painel Web</h2>
-          <p>Títulos, insígnias e rodapé exibidos no navegador.</p>
+          <h2 id="cfgHeadingBranding">🏷️ Identidade & Textos do Painel Web</h2>
+          <p id="cfgHeadingBrandingDesc">Títulos, insígnias e rodapé exibidos no navegador.</p>
 
           <div class="form-group">
             <label>Título da Aba do Navegador</label>
@@ -6452,7 +6452,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
             <div class="form-group">
-              <label>Insígnia / Badge do Topo</label>
+              <label>Insígnia / Distintivo do Topo</label>
               <input type="text" id="cfgPanelBadge" placeholder="Ex: TECH CORE v2.0">
             </div>
             <div class="form-group">
@@ -6467,10 +6467,10 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           </div>
         </div>
 
-        <!-- 6. MÓDULOS & RECURSOS ATIVOS (FEATURE FLAGS) -->
+        <!-- 6. MÓDULOS & RECURSOS ATIVOS -->
         <div class="card" style="grid-column: 1 / -1;">
-          <h2>⚡ Módulos & Recursos Ativos do Sistema</h2>
-          <p>Ative ou desative subsistemas inteiros conforme a proposta do seu bot.</p>
+          <h2 id="cfgHeadingModules">⚡ Módulos & Recursos Ativos do Sistema</h2>
+          <p id="cfgHeadingModulesDesc">Ative ou desative subsistemas inteiros conforme a proposta do seu bot.</p>
 
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin-top: 0.75rem;">
             <label style="display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.2); padding: 0.85rem 1.15rem; border-radius: 8px; border: 1px solid var(--border-color); cursor: pointer;">
@@ -7315,6 +7315,10 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       if (mSearch) mSearch.value = '';
       const uSearch = document.getElementById('universalSearchInput');
       if (uSearch) uSearch.value = '';
+      const topSearchInp = document.getElementById('menuSearchInput');
+      if (topSearchInp) topSearchInp.value = '';
+      const topSearchDrop = document.getElementById('searchDropdown');
+      if (topSearchDrop) topSearchDrop.style.display = 'none';
       const mList = document.getElementById('membersListContainer');
       if (mList) mList.innerHTML = '<div style="text-align: center; padding: 2.5rem 1rem; color: #949ba4;"><div style="font-size: 1.8rem; margin-bottom: 0.5rem;">⏳</div>Carregando membros do servidor...</div>';
       const countAll = document.getElementById('filterCountAll');
@@ -7349,9 +7353,14 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
 
         // 1. AI Display Name
         if (data.aiDisplayName) {
-          document.getElementById('headerAiName').innerText = data.aiDisplayName;
-          document.getElementById('overviewAiName').value = data.aiDisplayName;
-          document.getElementById('aiNameInput').value = data.aiDisplayName;
+          const hName = document.getElementById('headerAiName');
+          if (hName) hName.innerText = data.aiDisplayName;
+          const topBread = document.getElementById('topHeaderBreadcrumbRoot');
+          if (topBread) topBread.innerText = data.aiDisplayName;
+          const oName = document.getElementById('overviewAiName');
+          if (oName) oName.value = data.aiDisplayName;
+          const aInp = document.getElementById('aiNameInput');
+          if (aInp) aInp.value = data.aiDisplayName;
           const prevBot = document.getElementById('previewBotName');
           if (prevBot) prevBot.innerText = data.aiDisplayName;
           const prevSpeakBot = document.getElementById('speakBotNamePreview');
@@ -7407,8 +7416,9 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         }
 
         // Custom Commands & Prefix
-        if (mods.serverPrefix && document.getElementById('serverPrefixInput')) {
-          document.getElementById('serverPrefixInput').value = mods.serverPrefix;
+        if (mods.serverPrefix) {
+          if (document.getElementById('serverPrefixInput')) document.getElementById('serverPrefixInput').value = mods.serverPrefix;
+          if (document.getElementById('cfgBotPrefix')) document.getElementById('cfgBotPrefix').value = mods.serverPrefix;
         }
         if (document.getElementById('prefixlessModeCheckbox')) {
           document.getElementById('prefixlessModeCheckbox').checked = !!mods.prefixlessMode;
@@ -12079,7 +12089,20 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           'tab-audit': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f4dc.png" class="nav-photo-icon" alt="">Auditoria',
           'tab-health': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f4ca.png" class="nav-photo-icon" alt="">Métricas',
           'tab-settings': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/2699.png" class="nav-photo-icon" alt="">Configurações'
-        }
+        },
+        cfg_colors: '🎨 Cores & Tema Visual do Painel Web',
+        cfg_colors_desc: 'Personalize 100% da paleta visual da interface web. As alterações são aplicadas instantaneamente!',
+        cfg_presets: 'Presets Prontos de Tema (1 Clique)',
+        cfg_embeds: '📜 Estilo das Mensagens (Embeds) no Discord',
+        cfg_embeds_desc: 'Configure as cores das mensagens enviadas pelo bot nos canais do Discord.',
+        cfg_branding: '🏷️ Identidade & Textos do Painel Web',
+        cfg_branding_desc: 'Títulos, insígnias e rodapé exibidos no navegador.',
+        cfg_modules: '⚡ Módulos & Recursos Ativos do Sistema',
+        cfg_modules_desc: 'Ative ou desative subsistemas inteiros conforme a proposta do seu bot.',
+        save_all: '💾 Salvar Tudo',
+        save_all_cfg: '💾 Salvar Todas as Configurações',
+        reset_factory: '🔄 Padrões de Fábrica',
+        reset_factory_all: '🔄 Redefinir Todas as Configurações para o Padrão'
       },
       en: {
         sync: 'Sync',
@@ -12181,7 +12204,21 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           'tab-audit': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f4dc.png" class="nav-photo-icon" alt="">Audit Logs',
           'tab-health': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f4ca.png" class="nav-photo-icon" alt="">Metrics',
           'tab-settings': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/2699.png" class="nav-photo-icon" alt="">Settings'
-        }
+        },
+        cfg_colors: '🎨 Web Dashboard Colors & Visual Theme',
+        cfg_colors_desc: 'Customize 100% of the web interface color palette. Changes are applied instantly!',
+        cfg_presets: 'Ready-made Theme Presets (1-Click)',
+        cfg_embeds: '📜 Discord Embed Message Styling',
+        cfg_embeds_desc: 'Configure the colors of messages sent by the bot across Discord channels.',
+        cfg_branding: '🏷️ Branding & Web Dashboard Texts',
+        cfg_branding_desc: 'Titles, badges, and footer displayed in the browser.',
+        cfg_modules: '⚡ Active System Modules & Features',
+        cfg_modules_desc: 'Enable or disable entire subsystems based on your bot project.',
+        save_all: '💾 Save All',
+        save_all_cfg: '💾 Save All Configurations',
+        reset_factory: '🔄 Factory Defaults',
+        reset_factory_all: '🔄 Reset All Configurations to Default'
+      }
       }
     };
 
@@ -12329,6 +12366,21 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       if (lPin) lPin.placeholder = t.lock_ph;
       const lBtn = document.getElementById('panelUnlockBtn');
       if (lBtn) lBtn.innerHTML = '<span>🔓</span> ' + t.lock_btn;
+
+      // Settings Tab Headings & Action Buttons
+      if (t.cfg_colors && document.getElementById('cfgHeadingColors')) document.getElementById('cfgHeadingColors').innerText = t.cfg_colors;
+      if (t.cfg_colors_desc && document.getElementById('cfgHeadingColorsDesc')) document.getElementById('cfgHeadingColorsDesc').innerText = t.cfg_colors_desc;
+      if (t.cfg_presets && document.getElementById('cfgHeadingPresets')) document.getElementById('cfgHeadingPresets').innerText = t.cfg_presets;
+      if (t.cfg_embeds && document.getElementById('cfgHeadingEmbeds')) document.getElementById('cfgHeadingEmbeds').innerText = t.cfg_embeds;
+      if (t.cfg_embeds_desc && document.getElementById('cfgHeadingEmbedsDesc')) document.getElementById('cfgHeadingEmbedsDesc').innerText = t.cfg_embeds_desc;
+      if (t.cfg_branding && document.getElementById('cfgHeadingBranding')) document.getElementById('cfgHeadingBranding').innerText = t.cfg_branding;
+      if (t.cfg_branding_desc && document.getElementById('cfgHeadingBrandingDesc')) document.getElementById('cfgHeadingBrandingDesc').innerText = t.cfg_branding_desc;
+      if (t.cfg_modules && document.getElementById('cfgHeadingModules')) document.getElementById('cfgHeadingModules').innerText = t.cfg_modules;
+      if (t.cfg_modules_desc && document.getElementById('cfgHeadingModulesDesc')) document.getElementById('cfgHeadingModulesDesc').innerText = t.cfg_modules_desc;
+      if (t.save_all && document.getElementById('saveGlobalConfigBtn')) document.getElementById('saveGlobalConfigBtn').innerText = t.save_all;
+      if (t.save_all_cfg && document.getElementById('saveGlobalConfigBtnBottom')) document.getElementById('saveGlobalConfigBtnBottom').innerText = t.save_all_cfg;
+      if (t.reset_factory && document.getElementById('resetConfigBtn')) document.getElementById('resetConfigBtn').innerText = t.reset_factory;
+      if (t.reset_factory_all && document.getElementById('resetConfigBtnBottom')) document.getElementById('resetConfigBtnBottom').innerText = t.reset_factory_all;
 
       // Anti-Spam / Anti-Flood Options
       const actionSelect = document.getElementById('antiSpamActionSelect');
@@ -12644,7 +12696,9 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       } catch(e) {}
 
       updateThemeLivePreview();
-      showToast('Tema ' + (theme.name || presetKey) + ' aplicado com sucesso!', 'success', 'Tema Atualizado');
+      const toastMsg = currentLang === 'en' ? ('Theme ' + (theme.name || presetKey) + ' applied successfully!') : ('Tema ' + (theme.name || presetKey) + ' aplicado com sucesso!');
+      const toastTitle = currentLang === 'en' ? 'Theme Applied' : 'Tema Atualizado';
+      showToast(toastMsg, 'success', toastTitle);
 
       // 5. Persist to backend
       try {
@@ -12781,7 +12835,9 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         });
         const data = await res.json();
         if (data.success) {
-          showToast('Configurações salvas com sucesso!', 'success', 'Salvo!');
+          const sMsg = currentLang === 'en' ? 'Configurations saved successfully!' : 'Configurações salvas com sucesso!';
+          const sTitle = currentLang === 'en' ? 'Saved!' : 'Salvo!';
+          showToast(sMsg, 'success', sTitle);
 
           // Apply live CSS variables to root immediately
           const r = document.documentElement;
@@ -12830,8 +12886,13 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         });
         const data = await res.json();
         if (data.success && data.config) {
+          try {
+            localStorage.removeItem('jarvis_custom_theme');
+          } catch(e) {}
           populateBotConfigForm(data.config);
-          showToast('Padrões de fábrica restaurados com sucesso.', 'success', 'Configurações Restauradas!');
+          const rMsg = currentLang === 'en' ? 'Factory defaults restored successfully.' : 'Padrões de fábrica restaurados com sucesso.';
+          const rTitle = currentLang === 'en' ? 'Restored!' : 'Configurações Restauradas!';
+          showToast(rMsg, 'success', rTitle);
         } else {
           showToast(data.error || 'Não foi possível restaurar.', 'error', 'Erro');
         }

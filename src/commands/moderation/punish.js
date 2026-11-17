@@ -74,7 +74,10 @@ module.exports = {
       const targetUser = interaction.options.getUser('membro', true);
       const reason = interaction.options.getString('motivo', true);
       const evidence = interaction.options.getString('evidencia');
-      const targetMember = await guild.members.fetch(targetUser.id);
+      const targetMember = await guild.members.fetch(targetUser.id).catch(() => null);
+      if (!targetMember) {
+        return interaction.reply({ content: '❌ Membro não encontrado no servidor.', ephemeral: true });
+      }
 
       const res = await moderationService.warn(botMember, modMember, targetMember, {
         reason,
@@ -133,7 +136,10 @@ module.exports = {
       const targetUser = interaction.options.getUser('membro', true);
       const minutes = interaction.options.getInteger('minutos', true);
       const reason = interaction.options.getString('motivo') || 'Timeout aplicado por moderador.';
-      const targetMember = await guild.members.fetch(targetUser.id);
+      const targetMember = await guild.members.fetch(targetUser.id).catch(() => null);
+      if (!targetMember) {
+        return interaction.reply({ content: '❌ Membro não encontrado no servidor.', ephemeral: true });
+      }
 
       await moderationService.timeout(botMember, modMember, targetMember, {
         durationSeconds: minutes * 60,
@@ -149,7 +155,10 @@ module.exports = {
     if (sub === 'untimeout') {
       const targetUser = interaction.options.getUser('membro', true);
       const reason = interaction.options.getString('motivo') || 'Timeout removido.';
-      const targetMember = await guild.members.fetch(targetUser.id);
+      const targetMember = await guild.members.fetch(targetUser.id).catch(() => null);
+      if (!targetMember) {
+        return interaction.reply({ content: '❌ Membro não encontrado no servidor.', ephemeral: true });
+      }
 
       await moderationService.untimeout(botMember, modMember, targetMember, { reason });
 
@@ -162,7 +171,10 @@ module.exports = {
     if (sub === 'kick') {
       const targetUser = interaction.options.getUser('membro', true);
       const reason = interaction.options.getString('motivo', true);
-      const targetMember = await guild.members.fetch(targetUser.id);
+      const targetMember = await guild.members.fetch(targetUser.id).catch(() => null);
+      if (!targetMember) {
+        return interaction.reply({ content: '❌ Membro não encontrado no servidor.', ephemeral: true });
+      }
 
       await moderationService.kick(botMember, modMember, targetMember, { reason });
 

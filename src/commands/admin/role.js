@@ -48,7 +48,10 @@ module.exports = {
     if (sub === 'atribuir' || sub === 'remover') {
       const targetUser = interaction.options.getUser('membro', true);
       const role = interaction.options.getRole('cargo', true);
-      const targetMember = await guild.members.fetch(targetUser.id);
+      const targetMember = await guild.members.fetch(targetUser.id).catch(() => null);
+      if (!targetMember) {
+        return interaction.reply({ content: '❌ Membro não encontrado no servidor.', ephemeral: true });
+      }
 
       const res = await serverAdminService.setMemberRole(
         botMember,

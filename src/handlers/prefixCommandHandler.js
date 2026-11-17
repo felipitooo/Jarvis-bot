@@ -597,7 +597,7 @@ class PrefixCommandHandler {
           if (sub === 'p2p' || sub === 'propor') {
             const borrower = await resolveUser(message, args[1]);
             if (!borrower) {
-              await message.reply('❌ Marque o membro que receberá a proposta de empréstimo. Exemplo: `+emprestimo p2p @usuario 1000 10 7` ou `+emprestimo p2p @usuario 5 ouro`');
+              await message.reply('❌ Marque o membro que receberá a proposta de empréstimo. Exemplo: `+emprestimo p2p @usuário 1000 10 7` ou `+emprestimo p2p @usuário 5 ouro`');
               return true;
             }
             const amount = args[2];
@@ -1193,7 +1193,7 @@ class PrefixCommandHandler {
         case 'roubar': {
           const target = await resolveUser(message, args[0]);
           if (!target) {
-            await message.reply('❌ Mencione quem você quer assaltar! Ex: `+rob @usuario`');
+            await message.reply('❌ Mencione quem você quer assaltar! Ex: `+rob @usuário`');
             return true;
           }
           if (target.bot) {
@@ -1444,7 +1444,7 @@ class PrefixCommandHandler {
           const amount = args[1] && ['all', 'tudo', 'max'].includes(args[1].toLowerCase()) ? args[1] : parseInt(args[1], 10);
           const currencyCode = args[2] || null;
           if (!target || (!amount || (typeof amount === 'number' && (isNaN(amount) || amount <= 0)))) {
-            await message.reply('❌ Uso correto: `+pay @usuario <quantia> [moeda_de_cambio]`\nExemplo: `+pay @usuario 500` ou `+pay @usuario 2 ouro`');
+            await message.reply('❌ Uso correto: `+pay @usuário <quantia> [moeda_de_cambio]`\nExemplo: `+pay @usuário 500` ou `+pay @usuário 2 ouro`');
             return true;
           }
           if (target.bot) {
@@ -1577,7 +1577,7 @@ class PrefixCommandHandler {
               qtyInput = args[2] || '1';
             }
             if (!target || !code) {
-              await message.reply('❓ Uso correto: `+cambio enviar @membro <codigo_moeda> [quantidade|tudo]`\nExemplo: `+cambio enviar @usuario ouro 2`');
+              await message.reply('❓ Uso correto: `+cambio enviar @membro <codigo_moeda> [quantidade|tudo]`\nExemplo: `+cambio enviar @usuário ouro 2`');
               return true;
             }
             try {
@@ -1745,10 +1745,10 @@ class PrefixCommandHandler {
               '⚔️ **Arena de Duelos X1 (PvP):**\n' +
               'Desafie outro membro valendo moedas ou Moedas de Câmbio!\n\n' +
               '📌 **Uso:** `+duelo @membro <quantia> [moeda_de_cambio] [moeda|dado|roleta]`\n' +
-              '• `+duelo @usuario 5000` *(Cara ou Coroa X1 valendo 5.000 moedas)*\n' +
-              '• `+duelo @usuario 5000 dado` *(Dados 2d6 X1)*\n' +
-              '• `+duelo @usuario 5000 roleta` *(Roleta Russa Stark turno a turno!)*\n' +
-              '• `+duelo @usuario 2 ouro dado` *(Valendo 2x Barra de Ouro!)*'
+              '• `+duelo @usuário 5000` *(Cara ou Coroa X1 valendo 5.000 moedas)*\n' +
+              '• `+duelo @usuário 5000 dado` *(Dados 2d6 X1)*\n' +
+              '• `+duelo @usuário 5000 roleta` *(Roleta Russa Stark turno a turno!)*\n' +
+              '• `+duelo @usuário 2 ouro dado` *(Valendo 2x Barra de Ouro!)*'
             );
             return true;
           }
@@ -2024,7 +2024,7 @@ class PrefixCommandHandler {
 
             const emp = await resolveUser(message, args[1]);
             if (!emp || emp.bot) {
-              await message.reply('❌ Mencione um membro válido para contratar ou use `+empresa contratar npc` para contratar um funcionário operacional da IA!\nExemplo: `+empresa contratar @usuario` ou `+empresa contratar npc`');
+              await message.reply('❌ Mencione um membro válido para contratar ou use `+empresa contratar npc` para contratar um funcionário operacional da IA!\nExemplo: `+empresa contratar @usuário` ou `+empresa contratar npc`');
               return true;
             }
             try {
@@ -2043,7 +2043,7 @@ class PrefixCommandHandler {
           if (sub === 'demitir' || sub === 'fire') {
             const emp = await resolveUser(message, args[1]);
             if (!emp) {
-              await message.reply('❌ Mencione o funcionário que deseja desligar. Exemplo: `+empresa demitir @usuario`');
+              await message.reply('❌ Mencione o funcionário que deseja desligar. Exemplo: `+empresa demitir @usuário`');
               return true;
             }
             try {
@@ -2479,7 +2479,7 @@ class PrefixCommandHandler {
           }
           const target = await resolveUser(message, args[0]);
           if (!target) {
-            await message.reply('❌ Mencione ou informe o ID do usuário para banir. Ex: `+ban @usuario spam e desrespeito`');
+            await message.reply('❌ Mencione ou informe o ID do usuário para banir. Ex: `+ban @usuário spam e desrespeito`');
             return true;
           }
           const reason = args.slice(1).join(' ') || 'Banido por moderador via comando +ban.';
@@ -2529,7 +2529,7 @@ class PrefixCommandHandler {
           }
           const target = await resolveUser(message, args[0]);
           if (!target) {
-            await message.reply('❌ Mencione quem deseja expulsar. Ex: `+kick @usuario motivo`');
+            await message.reply('❌ Mencione quem deseja expulsar. Ex: `+kick @usuário motivo`');
             return true;
           }
           const targetMember = await guild.members.fetch(target.id).catch(() => null);
@@ -2580,7 +2580,7 @@ class PrefixCommandHandler {
           }
           const target = await resolveUser(message, args[0]);
           if (!target) {
-            await message.reply('❌ Mencione quem deseja punir com Warn. Ex: `+warn @usuario não faça flood`');
+            await message.reply('❌ Mencione quem deseja punir com Warn. Ex: `+warn @usuário não faça flood`');
             return true;
           }
           const targetMember = await guild.members.fetch(target.id).catch(() => null);
@@ -2650,7 +2650,7 @@ class PrefixCommandHandler {
           }
           const target = await resolveUser(message, args[0]);
           if (!target) {
-            await message.reply('❌ Mencione quem deseja advertir verbalmente. Ex: `+advertir @usuario mantenha o respeito no chat geral`');
+            await message.reply('❌ Mencione quem deseja advertir verbalmente. Ex: `+advertir @usuário mantenha o respeito no chat geral`');
             return true;
           }
           const targetMember = await guild.members.fetch(target.id).catch(() => null);
@@ -2704,7 +2704,7 @@ class PrefixCommandHandler {
           }
           const target = await resolveUser(message, args[0]);
           if (!target) {
-            await message.reply('❌ Mencione o membro cujas advertências deseja limpar. Ex: `+clearwarns @usuario`');
+            await message.reply('❌ Mencione o membro cujas advertências deseja limpar. Ex: `+clearwarns @usuário`');
             return true;
           }
           try {
@@ -2815,7 +2815,7 @@ class PrefixCommandHandler {
           }
           const target = await resolveUser(message, args[0]);
           if (!target) {
-            await message.reply('❌ Uso: `+mute @usuario [minutos] [motivo]`');
+            await message.reply('❌ Uso: `+mute @usuário [minutos] [motivo]`');
             return true;
           }
           const targetMember = await guild.members.fetch(target.id).catch(() => null);
@@ -2881,7 +2881,7 @@ class PrefixCommandHandler {
           }
           const target = await resolveUser(message, args[0]);
           if (!target) {
-            await message.reply('❌ Mencione o membro para desmutar. Ex: `+unmute @usuario`');
+            await message.reply('❌ Mencione o membro para desmutar. Ex: `+unmute @usuário`');
             return true;
           }
           const targetMember = await guild.members.fetch(target.id).catch(() => null);
@@ -3095,7 +3095,7 @@ class PrefixCommandHandler {
           }
 
           if (!u1 || !u2) {
-            await message.reply('💖 **Como usar o +ship:**\n• `+ship @alguem` (testa sua compatibilidade com a pessoa)\n• `+ship @usuario1 @usuario2` (analisa a compatibilidade do casal)');
+            await message.reply('💖 **Como usar o +ship:**\n• `+ship @alguem` (testa sua compatibilidade com a pessoa)\n• `+ship @usuário1 @usuário2` (analisa a compatibilidade do casal)');
             return true;
           }
 
@@ -3341,7 +3341,7 @@ class PrefixCommandHandler {
           if (!target) {
             const { SOCIAL_ACTIONS } = require('../services/socialFunService');
             const available = Object.keys(SOCIAL_ACTIONS).join(', ');
-            await message.reply(`🤗 **Como interagir:** \`+${cmdName} @usuario\`\nAções disponíveis: \`${available}\``);
+            await message.reply(`🤗 **Como interagir:** \`+${cmdName} @usuário\`\nAções disponíveis: \`${available}\``);
             return true;
           }
 
