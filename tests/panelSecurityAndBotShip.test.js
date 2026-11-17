@@ -215,5 +215,9 @@ describe('Security Shield (PIN 1598), Multi-Tenant Isolation & Jarvis Romance Va
     assert.ok(html.includes('langToggleBtn'), 'Should contain langToggleBtn');
     assert.ok(html.includes('i18nDict'), 'Should contain i18n translation dictionary');
     assert.ok(html.includes('Managing now'), 'Should contain English translation strings');
+    assert.ok(html.includes('const t = i18nDict[lang] || i18nDict.pt;'), 'Should define t in applyLanguage');
+    assert.ok(html.includes('cfgLangEnBtn'), 'Should contain cfgLangEnBtn');
+    assert.ok(html.includes('cfgLangPtBtn'), 'Should contain cfgLangPtBtn');
+    assert.ok(html.includes('DASHBOARD & HEALTH'), 'Should contain English hub translations');
   });
 });
