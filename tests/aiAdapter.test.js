@@ -8,7 +8,7 @@ describe('GeminiAdapter & LLM Core', () => {
     const adapter = new GeminiAdapter({ mockMode: true });
 
     assert.equal(adapter.getProviderName(), 'Google Gemini');
-    assert.equal(adapter.getModelName(), 'gemini-2.5-flash');
+    assert.equal(adapter.getModelName(), 'gemini-3.5-flash-lite');
 
     const result = await adapter.generate({
       systemInstruction: 'Você é um assistente.',

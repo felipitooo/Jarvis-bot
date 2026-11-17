@@ -104,6 +104,236 @@ module.exports = {
           }
         }
 
+        // PvP Duels X1 (Aceitar, Recusar, Puxar Gatilho na Roleta Russa)
+        if (customId.startsWith('duel_accept_')) {
+          const duelId = customId.replace('duel_accept_', '');
+          if (!context.economyService) {
+            return await interaction.reply({ content: '❌ Serviço de economia indisponível.', ephemeral: true }).catch(() => {});
+          }
+          try {
+            const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+            const { formatCompactNumber } = require('../utils/numberFormatter');
+            const aiName = context.identityService?.getDisplayName(guild.id) || 'J.A.R.V.I.S';
+            const res = context.economyService.acceptDuelChallenge(guild.id, duelId, user.id);
+
+            if (res.mode === 'roleta' && !res.finished) {
+              const rr = res.rrState;
+              const potStr = rr.currency
+                ? `**${formatCompactNumber(rr.pot)}x ${rr.currency.symbol} ${rr.currency.name}**`
+                : `**${formatCompactNumber(rr.pot)} moedas**`;
+
+              const row = new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                  .setCustomId(`duel_rr_pull_${rr.id}`)
+                  .setLabel('💥 Puxar o Gatilho (1/6)')
+                  .setStyle(ButtonStyle.Danger)
+              );
+
+              const embed = new EmbedBuilder()
+                .setColor(0xFEE75C)
+                .setTitle('🔫 Roleta Russa Stark — Duelo Iniciado!')
+                .setDescription(
+                  `O tambor de 6 câmaras foi girado! As apostas foram travadas no pote!\n\n` +
+                  `💰 **Pote Total:** ${potStr}\n` +
+                  `🎯 **Vez de jogar:** <@${rr.currentTurnId}>\n\n` +
+                  `*<@${rr.currentTurnId}>, clique no botão abaixo para puxar o gatilho!*`
+                )
+                .setFooter({ text: `${aiName} • Roleta Russa X1` })
+                .setTimestamp();
+
+              return await interaction.update({
+                content: `🔫 **Vez de <@${rr.currentTurnId}>!**`,
+                embeds: [embed],
+                components: [row]
+              }).catch(() => {});
+            }
+
+            const prizeStr = res.currency
+              ? `**${formatCompactNumber(res.amount)}x ${res.currency.symbol} ${res.currency.name}** *(Pote: ${formatCompactNumber(res.pot)}x)*`
+              : `**${formatCompactNumber(res.amount)} moedas** *(Pote: ${formatCompactNumber(res.pot)} moedas)*`;
+
+            const winEmbed = new EmbedBuilder()
+              .setColor(0x57F287)
+              .setTitle('🏆 Duelo X1 Concluído!')
+              .setDescription(
+                `${res.detailsText}\n\n` +
+                `🎉 **Vencedor(a):** <@${res.winnerId}>!\n` +
+                `💸 **Lucro Líquido Recebido de <@${res.loserId}>:** ${prizeStr}`
+              )
+              .setFooter({ text: `${aiName} • Arena PvP Stark` })
+              .setTimestamp();
+
+            return await interaction.update({
+              content: `⚔️ **Fim de Duelo!** <@${res.winnerId}> venceu <@${res.loserId}>!`,
+              embeds: [winEmbed],
+              components: []
+            }).catch(() => {});
+          } catch (err) {
+            return await interaction.reply({ content: `❌ ${err.message}`, ephemeral: true }).catch(() => {});
+          }
+        }
+
+        if (customId.startsWith('duel_decline_')) {
+          const duelId = customId.replace('duel_decline_', '');
+          try {
+            const duel = context.economyService.declineDuelChallenge(guild.id, duelId, user.id);
+            return await interaction.update({
+              content: `🏳️ **Duelo Cancelado/Recusado!** O desafio entre <@${duel.challengerId}> e <@${duel.opponentId}> foi encerrado por <@${user.id}>.`,
+              embeds: [],
+              components: []
+            }).catch(() => {});
+          } catch (err) {
+            return await interaction.reply({ content: `❌ ${err.message}`, ephemeral: true }).catch(() => {});
+          }
+        }
+
+        if (customId.startsWith('duel_rr_pull_')) {
+          const duelId = customId.replace('duel_rr_pull_', '');
+          try {
+            const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+            const { formatCompactNumber } = require('../utils/numberFormatter');
+            const aiName = context.identityService?.getDisplayName(guild.id) || 'J.A.R.V.I.S';
+            const res = context.economyService.pullRussianRouletteTrigger(guild.id, duelId, user.id);
+            const rr = res.rrState;
+            const potStr = rr.currency
+              ? `**${formatCompactNumber(rr.pot)}x ${rr.currency.symbol} ${rr.currency.name}**`
+              : `**${formatCompactNumber(rr.pot)} moedas**`;
+
+            if (res.finished) {
+              const endEmbed = new EmbedBuilder()
+                .setColor(0x57F287)
+                .setTitle('💥 FIM DA ROLETA RUSSA — TEMOS UM SOBREVIVENTE!')
+                .setDescription(
+                  rr.log.join('\n') + '\n\n' +
+                  `🏆 **Sobrevivente Vencedor:** <@${res.winnerId}>!\n` +
+                  `💰 **Prêmio Total Recebido:** ${potStr}`
+                )
+                .setFooter({ text: `${aiName} • Roleta Russa X1` })
+                .setTimestamp();
+
+              return await interaction.update({
+                content: `🎉 <@${res.winnerId}> sobreviveu e levou o pote de ${potStr}!`,
+                embeds: [endEmbed],
+                components: []
+              }).catch(() => {});
+            }
+
+            const nextChamber = rr.chamberIndex + 1;
+            const row = new ActionRowBuilder().addComponents(
+              new ButtonBuilder()
+                .setCustomId(`duel_rr_pull_${rr.id}`)
+                .setLabel(`💥 Puxar o Gatilho (${nextChamber}/6)`)
+                .setStyle(ButtonStyle.Danger)
+            );
+
+            const turnEmbed = new EmbedBuilder()
+              .setColor(0xFEE75C)
+              .setTitle(`🔫 Roleta Russa Stark — Câmara ${nextChamber}/6`)
+              .setDescription(
+                rr.log.join('\n') + '\n\n' +
+                `💰 **Pote em Jogo:** ${potStr}\n` +
+                `🎯 **Próximo a puxar o gatilho:** <@${rr.currentTurnId}>`
+              )
+              .setFooter({ text: `${aiName} • Roleta Russa X1` })
+              .setTimestamp();
+
+            return await interaction.update({
+              content: `🔫 **Vez de <@${rr.currentTurnId}>!**`,
+              embeds: [turnEmbed],
+              components: [row]
+            }).catch(() => {});
+          } catch (err) {
+            return await interaction.reply({ content: `❌ ${err.message}`, ephemeral: true }).catch(() => {});
+          }
+        }
+
+        // Bankruptcy confirmation buttons (+empresa falir)
+        if (customId.startsWith('comp_bankrupt_yes_') || customId.startsWith('comp_bankrupt_no_')) {
+          const confirmed = customId.startsWith('comp_bankrupt_yes_');
+          const [bkOwnerId, bkCompanyId] = customId
+            .replace(confirmed ? 'comp_bankrupt_yes_' : 'comp_bankrupt_no_', '')
+            .split('_');
+          if (user.id !== bkOwnerId) {
+            return await interaction.reply({ content: '❌ Apenas o proprietário desta empresa pode decidir sobre a falência!', ephemeral: true }).catch(() => {});
+          }
+          if (!confirmed) {
+            return await interaction.update({ content: '✅ Falência cancelada. Sua empresa continua operando!', embeds: [], components: [] }).catch(() => {});
+          }
+          try {
+            const { formatCompactNumber } = require('../utils/numberFormatter');
+            const companyRules = require('../utils/companyRules');
+            const res = context.economyService.declareCompanyBankruptcy(guild.id, user.id, bkCompanyId, 'MANUAL');
+            const banUnix = Math.floor(new Date(res.banUntil).getTime() / 1000);
+            for (const fid of res.firedUserIds) {
+              interaction.client.users.fetch(fid)
+                .then(u => u.send(`💼 A empresa **${res.originalCompany.emoji} ${res.originalCompany.name}**, onde você trabalhava, faliu. Você ficou desempregado e perdeu o bônus no \`+work\`.`))
+                .catch(() => {});
+            }
+            return await interaction.update({
+              content:
+                `☠️ **Falência declarada — ${res.originalCompany.emoji} ${res.originalCompany.name}**\n` +
+                `O administrador do bot comprou a empresa e vai recolocá-la à venda.\n` +
+                `• Valor contábil: ${formatCompactNumber(res.bookValue)} • Sua parte (${Math.round(companyRules.OWNER_PAYOUT_RATE * 100)}%): ${formatCompactNumber(res.grossShare)}\n` +
+                `• Lucros no cofre: +${formatCompactNumber(res.claimable)} • Dívidas: -${formatCompactNumber(res.debt)}\n` +
+                `• **Você recebeu: ${formatCompactNumber(res.ownerPayout)} moedas**\n` +
+                `• Você não pode fundar nem assumir empresas até <t:${banUnix}:f> (<t:${banUnix}:R>).`,
+              embeds: [],
+              components: []
+            }).catch(() => {});
+          } catch (err) {
+            return await interaction.update({ content: `❌ ${err.message}`, embeds: [], components: [] }).catch(() => {});
+          }
+        }
+
+        // Company Interactive Buttons (+empresa)
+        if (customId.startsWith('comp_collect_') || customId.startsWith('comp_upgrade_') || customId.startsWith('comp_restock_') || customId.startsWith('comp_manager_') || customId.startsWith('comp_npc_')) {
+          let action = 'collect';
+          if (customId.startsWith('comp_upgrade_')) action = 'upgrade';
+          else if (customId.startsWith('comp_restock_')) action = 'restock';
+          else if (customId.startsWith('comp_manager_')) action = 'manager';
+          else if (customId.startsWith('comp_npc_')) action = 'npc';
+
+          const ownerId = customId.replace(`comp_${action}_`, '');
+          if (user.id !== ownerId) {
+            return await interaction.reply({ content: '❌ Apenas o proprietário desta empresa pode operar este painel!', ephemeral: true }).catch(() => {});
+          }
+          try {
+            const { formatCompactNumber } = require('../utils/numberFormatter');
+            if (action === 'collect') {
+              const res = context.economyService.collectCompanyProfits(guild.id, user.id);
+              let details = `💰 **Lucros Resgatados!** Você coletou **${formatCompactNumber(res.totalCollected)} moedas** para sua carteira!`;
+              details += require('../utils/companyText').describeAutoRestock(res);
+              return await interaction.reply({ content: details, ephemeral: false }).catch(() => {});
+            } else if (action === 'upgrade') {
+              const res = context.economyService.upgradeCompany(guild.id, user.id);
+              return await interaction.reply({
+                content: `⬆️ **Upgrade Corporativo Concluído!** Sua empresa **${res.company.emoji} ${res.company.name}** subiu para o **Nível ${res.company.level}** (*${res.company.tierTitle}*) e agora rende **+${formatCompactNumber(res.company.effectiveHourlyIncome)} moedas/hora** com teto de estoque expandido para **${res.company.maxStock}** ${res.company.supplyEmoji} ${res.company.supplyName}!${res.convertedNotice || ''}`,
+                ephemeral: false
+              }).catch(() => {});
+            } else if (action === 'restock') {
+              const res = context.economyService.restockCompany(guild.id, user.id, 'max');
+              return await interaction.reply({
+                content: `📦 **Estoque 100% Reabastecido!** Foram comprados **+${res.qtyAdded}x ${res.supplyEmoji} ${res.supplyName}** por **${formatCompactNumber(res.totalCost)} moedas** (${formatCompactNumber(res.unitCost)} cada)! Estoque atual: **${res.newStock}/${res.company.maxStock}**.${res.convertedNotice || ''}`,
+                ephemeral: false
+              }).catch(() => {});
+            } else if (action === 'manager') {
+              const res = context.economyService.toggleCompanyAutoRestock(guild.id, user.id);
+              return await interaction.reply({
+                content: `👔 **Gerente de Suprimentos:** ${res.isActive ? '🟢 **ATIVADO**' : '⚪ **DESATIVADO**'}!\n${res.notice}`,
+                ephemeral: false
+              }).catch(() => {});
+            } else if (action === 'npc') {
+              const res = context.economyService.hireNpcWorker(guild.id, user.id);
+              return await interaction.reply({
+                content: `👥 **Novo Funcionário Operacional Contratado!** Custo: **${formatCompactNumber(res.hireCost)} moedas**.\n• Aumento de produtividade: **+12%**\n• Capacidade de estoque: **${res.company.maxStock}** ${res.company.supplyEmoji} ${res.company.supplyName}`,
+                ephemeral: false
+              }).catch(() => {});
+            }
+          } catch (err) {
+            return await interaction.reply({ content: `❌ ${err.message}`, ephemeral: true }).catch(() => {});
+          }
+        }
+
         // Profile Interactive Buttons & Tabs
         if (customId.startsWith('profile_')) {
           const parts = customId.split('_');

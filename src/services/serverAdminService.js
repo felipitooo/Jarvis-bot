@@ -128,7 +128,7 @@ class ServerAdminService {
   // Role Management
   // ==========================================
 
-  async createRole(guild, { name, color = 0, hoist = false, mentionable = false, permissions = null }) {
+  async createRole(guild, { name, color = 0, hoist = false, mentionable = false, permissions = null, position = null }) {
     const role = await guild.roles.create({
       name: name.trim(),
       color,
@@ -138,11 +138,77 @@ class ServerAdminService {
       reason: 'Criação de cargo solicitada via administração'
     });
 
+    if (position !== null && position !== undefined && guild?.members?.me) {
+      try {
+        const botMaxPos = Math.max(1, (guild.members.me.roles?.highest?.position || 2) - 1);
+        const safePos = Math.max(1, Math.min(Number(position) || botMaxPos, botMaxPos));
+        if (typeof role.setPosition === 'function') {
+          await role.setPosition(safePos);
+        }
+      } catch {
+        // Ignore position errors if restricted or in mock
+      }
+    }
+
     return {
       id: role.id,
       name: role.name,
       color: role.hexColor,
       position: role.position
+    };
+  }
+
+  async updateRole(botMember, modMember, role, { name = undefined, color = undefined, hoist = undefined, mentionable = undefined, position = undefined } = {}) {
+    if (botMember && this.hierarchy && typeof this.hierarchy.canBotManageRole === 'function') {
+      const roleCheck = this.hierarchy.canBotManageRole(botMember, role);
+      if (!roleCheck.allowed) {
+        throw new PermissionDeniedError(roleCheck.reason);
+      }
+    }
+
+    const editPayload = {};
+    if (name !== undefined && name !== null && String(name).trim() !== '') {
+      editPayload.name = String(name).trim();
+    }
+    if (color !== undefined && color !== null && String(color).trim() !== '') {
+      editPayload.color = color;
+    }
+    if (hoist !== undefined && hoist !== null) {
+      editPayload.hoist = Boolean(hoist);
+    }
+    if (mentionable !== undefined && mentionable !== null) {
+      editPayload.mentionable = Boolean(mentionable);
+    }
+
+    const updated = await role.edit(editPayload, 'Edição de cargo solicitada via administração');
+
+    if (position !== undefined && position !== null && botMember && typeof updated.setPosition === 'function') {
+      try {
+        const botMaxPos = Math.max(1, (botMember.roles?.highest?.position || 2) - 1);
+        const safePos = Math.max(1, Math.min(Number(position) || botMaxPos, botMaxPos));
+        await updated.setPosition(safePos);
+      } catch {
+        // Ignore position errors if mocked or restricted
+      }
+    }
+
+    if (this.auditService && botMember?.guild) {
+      this.auditService.logAction({
+        guildId: botMember.guild.id,
+        actorId: modMember?.id || null,
+        action: 'ROLE_UPDATED',
+        targetId: updated.id,
+        details: { roleName: updated.name, color: updated.hexColor, hoist: updated.hoist }
+      });
+    }
+
+    return {
+      id: updated.id,
+      name: updated.name,
+      color: updated.hexColor,
+      hoist: updated.hoist,
+      mentionable: updated.mentionable,
+      position: updated.position
     };
   }
 
@@ -178,11 +244,14 @@ class ServerAdminService {
   // ==========================================
 
   async createChannel(guild, { name, type = ChannelType.GuildText, parentId = null, topic = null }) {
+    const cleanName = type === ChannelType.GuildText
+      ? name.trim().toLowerCase().replace(/\s+/g, '-')
+      : name.trim();
     const channel = await guild.channels.create({
-      name: name.trim().toLowerCase().replace(/\s+/g, '-'),
+      name: cleanName,
       type,
       parent: parentId || undefined,
-      topic: topic || undefined,
+      topic: (type === ChannelType.GuildText && topic) ? topic : undefined,
       reason: 'Criação de canal via administração'
     });
 
@@ -191,6 +260,44 @@ class ServerAdminService {
       name: channel.name,
       type: channel.type,
       parentId: channel.parentId
+    };
+  }
+
+  async updateChannel(guild, modMember, channel, { name = undefined, topic = undefined, parentId = undefined, nsfw = undefined } = {}) {
+    const editPayload = {};
+    if (name !== undefined && name !== null && String(name).trim() !== '') {
+      editPayload.name = channel.type === ChannelType.GuildText
+        ? String(name).trim().toLowerCase().replace(/\s+/g, '-')
+        : String(name).trim();
+    }
+    if (topic !== undefined && topic !== null && channel.type === ChannelType.GuildText) {
+      editPayload.topic = String(topic);
+    }
+    if (parentId !== undefined) {
+      editPayload.parent = parentId || null;
+    }
+    if (nsfw !== undefined && nsfw !== null && channel.type === ChannelType.GuildText) {
+      editPayload.nsfw = Boolean(nsfw);
+    }
+
+    const updated = await channel.edit(editPayload, 'Edição de canal solicitada via administração');
+
+    if (this.auditService && guild) {
+      this.auditService.logAction({
+        guildId: guild.id,
+        actorId: modMember?.id || null,
+        action: 'CHANNEL_UPDATED',
+        targetId: updated.id,
+        details: { channelName: updated.name, topic: updated.topic, parentId: updated.parentId }
+      });
+    }
+
+    return {
+      id: updated.id,
+      name: updated.name,
+      type: updated.type,
+      topic: updated.topic || null,
+      parentId: updated.parentId || null
     };
   }
 

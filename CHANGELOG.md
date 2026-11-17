@@ -5,6 +5,32 @@ Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [6.0.0] - 2026-11-17
+
+### Adicionado
+- **Motor White-Label 100% Customizável (Nova Aba "Configurações do Bot"):**
+  - Personalização dinâmica da identidade do bot: nome oficial, prefixo de comandos, gatilhos de chat e presença/atividade no Discord (jogando, ouvindo, assistindo, transmitindo).
+  - Personalização total da IA e System Prompt: papel principal, tom de voz, saudações, diretrizes de comportamento e controle de temperatura.
+  - Suporte ao modelo oficial **Gemini 3.5 Flash Lite** como padrão ultrarrápido com failover automático e tool calls nativas.
+  - Paleta de cores do painel personalizável via CSS variables dinâmicas com 6 color pickers e 6 presets prontos em 1 clique (Stark Violet, Midas Gold, Crimson Iron, Matrix Emerald, Deep Ocean, Midnight Purple).
+  - Estilização universal dos Embeds do Discord (cores de destaque, sucesso, aviso, erro e rodapé personalizado).
+  - Gestão de Feature Flags para ativar/desativar subsistemas inteiros (IA, Música, Economia, XP, Moderação, Tickets, Quiz).
+  - Persistência e auto-recuperação de configurações via `data/bot_config.json` e rotas `/api/bot/config`.
+  - Controles centrais de contraste visual (Modo Escuro / Modo Claro) e idioma do painel (travado por padrão 100% em Português).
+- **Empresas (+empresa) reformuladas:** preço escalável anti-monopólio, níveis corporativos com exigência de faturamento, funcionários NPC, gerente de suprimentos automático e botões interativos.
+- **Estoque dinâmico por tipo de empresa:** cada negócio consome o próprio insumo (nome, emoji, consumo/hora e custo por unidade configuráveis; custo automático em ~30% da renda). Campos novos no painel web.
+- **Sistema de falência:** empresa sem estoque entra em alerta com prazo de 24h (DMs de aviso e último aviso); o dono também pode usar `+empresa falir`. Dívidas com fornecedores, ban de 3 dias para fundar/assumir empresas e demissão dos funcionários humanos.
+- **Compra automática pelo bot:** o administrador NPC compra a empresa falida, mantém o estoque e a recoloca à venda (`+empresa leilao`, `+empresa assumir`) com valorização diária até o valor contábil.
+- Worker de verificação de falências a cada 10 minutos e migrações 026 a 029.
+- Câmbio e Bolsa Stark com ciclo diário automático e suporte a emojis do servidor em todo o painel.
+
+### Corrigido
+- Formatação e espaçamento do seletor de "Servidor Conectado" no cabeçalho superior do painel web.
+- Correção de fundo branco em menus suspensos nativos do navegador (`select option` / `color-scheme: dark`) e seleção de texto (`::selection`).
+- Tradução de todos os termos residuais da interface web para Português (Brasil).
+- Salvamento do painel web (CSRF, cabeçalhos e servidor inicial) nos 14 módulos.
+- Renderização de emojis customizados do Discord (`<:nome:id>`) e glifos quebrados nas tabelas do painel.
+
 ## [1.0.0] - 2026-11-12
 
 ### Adicionado

@@ -209,10 +209,15 @@ class WebServer {
     const requiredPass = String(process.env.PANEL_PASSWORD || '1598').trim();
     if (session?.isUnlocked === true) return true;
     const cookies = this._parseCookies(req);
-    if (cookies.cell_auth === requiredPass) return true;
-    if (req.headers['x-panel-password'] === requiredPass) return true;
+    if (cookies.cell_auth === requiredPass || req.headers['x-panel-password'] === requiredPass) {
+      if (session) session.isUnlocked = true;
+      return true;
+    }
     // Allow Bearer token authorization header (used by unit tests and headless OAuth)
-    if (req.headers['authorization']) return true;
+    if (req.headers['authorization']) {
+      if (session) session.isUnlocked = true;
+      return true;
+    }
     return false;
   }
 
@@ -407,9 +412,11 @@ class WebServer {
         }
 
         const isUnlocked = this._isPanelUnlocked(req, session);
+        const { botConfig } = require('../config/botConfig');
+        const activeBotConfig = botConfig.getConfig();
         const html = renderDashboardHtml({
           isUnlocked,
-          aiDisplayName: defaultAiName,
+          aiDisplayName: defaultAiName || activeBotConfig.identity?.name || 'Jarvis',
           botAvatarUrl,
           botAvatarDataUri,
           csrfToken: session?.csrfToken || '',
@@ -420,7 +427,8 @@ class WebServer {
           initialUptimeStr,
           initialHeapUsedMb: `${heapUsedMb} MB`,
           initialMemberCount,
-          initialServerId
+          initialServerId,
+          botConfig: activeBotConfig
         });
         res.writeHead(200, {
           'Content-Type': 'text/html; charset=utf-8',
@@ -548,6 +556,76 @@ class WebServer {
         }
         res.setHeader('Set-Cookie', 'cell_auth=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0');
         return this._sendJson(res, 200, { success: true, message: 'Painel bloqueado com sucesso.' });
+      }
+
+      // ==========================================
+      // Universal White-Label Bot Configuration API
+      // ==========================================
+
+      // GET /api/bot/config — Retrieve comprehensive configuration
+      if (pathname === '/api/bot/config' && method === 'GET') {
+        const { botConfig } = require('../config/botConfig');
+        return this._sendJson(res, 200, botConfig.getConfig());
+      }
+
+      // POST /api/bot/config — Update universal configuration
+      if (pathname === '/api/bot/config' && method === 'POST') {
+        if (!this._isPanelUnlocked(req, session)) {
+          return this._sendError(res, 401, 'Painel bloqueado. Insira a senha de acesso para salvar configurações.');
+        }
+        const body = await this._parseBody(req);
+        const { botConfig } = require('../config/botConfig');
+        const updated = botConfig.updateConfig(body);
+
+        // Update live Discord presence if client is ready
+        if (this.botClient?.user && updated.identity?.presence) {
+          try {
+            const { applyBotPresence } = require('../utils/presenceHelper');
+            applyBotPresence(this.botClient, {
+              botStatus: updated.identity.presence.status || 'online',
+              activityType: updated.identity.presence.activityType || 'Custom',
+              activityName: updated.identity.presence.activityText || `${updated.identity.name} | +help`,
+              activityUrl: updated.identity.presence.activityUrl || null
+            });
+          } catch (e) {
+            serverLogger.warn(`Erro ao atualizar presença do bot via config: ${e.message}`);
+          }
+        }
+
+        // Update default AI display name in IdentityService if available
+        if (this.webPanelService?.identityService && updated.identity?.name) {
+          this.webPanelService.identityService.defaultName = updated.identity.name;
+        }
+
+        // Update live Gemini model if available
+        if (this.webPanelService?.services?.llmAdapter && updated.ai?.model) {
+          this.webPanelService.services.llmAdapter.model = updated.ai.model;
+        }
+
+        return this._sendJson(res, 200, {
+          success: true,
+          message: 'Configurações atualizadas com sucesso!',
+          config: updated
+        });
+      }
+
+      // POST /api/bot/config/reset — Restore factory default configuration
+      if (pathname === '/api/bot/config/reset' && method === 'POST') {
+        if (!this._isPanelUnlocked(req, session)) {
+          return this._sendError(res, 401, 'Painel bloqueado.');
+        }
+        const { botConfig } = require('../config/botConfig');
+        const reset = botConfig.resetConfig();
+
+        if (this.webPanelService?.services?.llmAdapter && reset.ai?.model) {
+          this.webPanelService.services.llmAdapter.model = reset.ai.model;
+        }
+
+        return this._sendJson(res, 200, {
+          success: true,
+          message: 'Configurações redefinidas para os padrões de fábrica com sucesso!',
+          config: reset
+        });
       }
 
       // ==========================================

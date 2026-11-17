@@ -9,6 +9,8 @@ const {
 } = require('discord.js');
 const { logger } = require('../utils/logger');
 const { formatCompactNumber } = require('../utils/numberFormatter');
+const { describeAutoRestock } = require('../utils/companyText');
+const companyRules = require('../utils/companyRules');
 const { buildProfilePayload } = require('../utils/profileBuilder');
 const { confirmModerationAction } = require('../utils/moderationConfirmation');
 const { permissionService } = require('../services/permissionService');
@@ -91,14 +93,16 @@ const KNOWN_COMMANDS = new Set([
   'shop', 'loja',
   'inv', 'inventario', 'inventory',
   'rich', 'topmoney', 'toprico',
-  'cambio', 'exchange', 'cota',
+  'cambio', 'exchange', 'cota', 'grafico', 'bolsa', 'chart',
   'emprestimo', 'loan', 'emprestar',
+  'empresa', 'empresas', 'company',
   // Casino & Games
   'bj', 'blackjack', '21',
   'slots', 'slot', 'cacaniqueis',
   'roleta', 'roulette', 'aposta', 'apostar', 'gamble',
   'dado', 'dice', 'roll',
   'coinflip', 'moeda', 'caraoucoroa',
+  'duelo', 'x1', 'pvp',
   // Music & Voice
   'play', 'p', 'tocar',
   'pause', 'pausar',
@@ -1641,15 +1645,47 @@ class PrefixCommandHandler {
           }
 
           const userMap = new Map(userCurrencies.map(c => [c.currencyId, c.amount]));
+          if (sub === 'grafico' || sub === 'chart' || sub === 'bolsa') {
+            const targetCode = args[1] || null;
+            try {
+              const { currency, history } = economyService.getCurrencyChartData(guild.id, targetCode);
+              const { generateStockChartCanvas } = require('../utils/stockChartGenerator');
+              const chartBuffer = generateStockChartCanvas({ currency, history, guildName: guild.name });
+              const attachment = new AttachmentBuilder(chartBuffer, { name: `grafico-${currency.code}.png` });
+              const sign = currency.changePercent >= 0 ? '📈 +' : '📉 ';
+
+              const embed = new EmbedBuilder()
+                .setColor(currency.changePercent >= 0 ? 0x00F59B : 0xFF3864)
+                .setTitle(`📊 Terminal da Bolsa Stark — ${currency.symbol} ${currency.name} (${currency.code.toUpperCase()})`)
+                .setDescription(
+                  `• **Cotação Atual:** **${Number(currency.rate).toLocaleString('pt-BR')} moedas** *(${sign}${currency.changePercent}%)*\n` +
+                  `• **Regime:** ${currency.isDynamic ? '📈 **Bolsa Dinâmica (Oferta & Demanda)**' : '🔒 **Cotação Estável (Fixa)**'}\n` +
+                  `• **Faixa Operacional:** Piso de **${formatCompactNumber(currency.minRate)}** | Teto de **${formatCompactNumber(currency.maxRate)}**\n` +
+                  `• **Operar:** \`+cambio comprar ${currency.code} <qtd|tudo>\` | \`+cambio vender ${currency.code} <qtd|tudo>\``
+                )
+                .setImage(`attachment://grafico-${currency.code}.png`)
+                .setFooter({ text: `${aiName} • Stark Stock Exchange` })
+                .setTimestamp();
+
+              await message.reply({ embeds: [embed], files: [attachment] });
+            } catch (err) {
+              await message.reply(`❌ ${err.message}`);
+            }
+            return true;
+          }
+
           const lines = currencies.map(c => {
             const status = c.isActive ? '🟢 Ativo' : '🔴 Pausado';
+            const modeTag = c.isDynamic
+              ? `📈 Bolsa (${c.changePercent >= 0 ? `+${c.changePercent}%` : `${c.changePercent}%`})`
+              : '🔒 Fixa';
             const userHoldings = userMap.get(c.id) || 0;
             const formattedRate = Number(c.rate).toLocaleString('pt-BR');
             const compactRate = formatCompactNumber(c.rate);
             const desc = c.description ? `\n> *${c.description}*` : '';
 
             return (
-              `### ${c.symbol} **${c.name}** (\`${c.code}\`)\n` +
+              `### ${c.symbol} **${c.name}** (\`${c.code}\`) — *${modeTag}*\n` +
               `• **Cotação Unitária:** ${config.currencySymbol} **${compactRate}** ${config.currencyName} *(${formattedRate})*\n` +
               `• **Status:** ${status}\n` +
               `• **Seu Saldo:** **${formatCompactNumber(userHoldings)}** ${c.name}${desc}`
@@ -1657,14 +1693,449 @@ class PrefixCommandHandler {
           });
 
           embed.setDescription(
-            `As moedas de câmbio mantêm o mesmo valor total na sua carteira e no ranking, podendo ser enviadas, apostadas no cassino ou usadas automaticamente nas suas compras!\n\n` +
+            `As moedas de câmbio mantêm o mesmo valor total na sua carteira e no ranking, podendo ser enviadas, apostadas no cassino, emprestadas ou usadas nas suas compras!\n\n` +
             `👛 **Valor Total na Carteira:** ${balance.formattedCompactEffectiveWallet || balance.formattedCompactWallet} *(${(balance.effectiveWalletBalance ?? balance.walletBalance).toLocaleString('pt-BR')})*\n` +
             `🪙 **Moedas Comuns:** ${balance.formattedCompactWallet}\n\n` +
             lines.join('\n\n') +
-            `\n\n💡 **Como operar:**\n• \`+cambio comprar <código> [qtd|tudo]\`\n• \`+cambio vender <código> [qtd|tudo]\`\n• \`+cambio enviar @membro <código> [qtd|tudo]\``
+            `\n\n💡 **Como operar:**\n• \`+cambio comprar <código> [qtd|tudo]\`\n• \`+cambio vender <código> [qtd|tudo]\`\n• \`+cambio enviar @membro <código> [qtd|tudo]\`\n• \`+grafico <código>\` — Ver gráfico da Bolsa Stark`
           );
 
           await message.reply({ embeds: [embed] });
+          return true;
+        }
+
+        case 'grafico':
+        case 'bolsa':
+        case 'chart': {
+          const targetCode = args[0] || null;
+          try {
+            const { currency, history } = economyService.getCurrencyChartData(guild.id, targetCode);
+            const { generateStockChartCanvas } = require('../utils/stockChartGenerator');
+            const chartBuffer = generateStockChartCanvas({ currency, history, guildName: guild.name });
+            const attachment = new AttachmentBuilder(chartBuffer, { name: `grafico-${currency.code}.png` });
+            const sign = currency.changePercent >= 0 ? '📈 +' : '📉 ';
+
+            const embed = new EmbedBuilder()
+              .setColor(currency.changePercent >= 0 ? 0x00F59B : 0xFF3864)
+              .setTitle(`📊 Terminal da Bolsa Stark — ${currency.symbol} ${currency.name} (${currency.code.toUpperCase()})`)
+              .setDescription(
+                `• **Cotação Atual:** **${Number(currency.rate).toLocaleString('pt-BR')} moedas** *(${sign}${currency.changePercent}%)*\n` +
+                `• **Regime:** ${currency.isDynamic ? '📈 **Bolsa Dinâmica (Oferta & Demanda)**' : '🔒 **Cotação Estável (Fixa)**'}\n` +
+                `• **Faixa Operacional:** Piso de **${formatCompactNumber(currency.minRate)}** | Teto de **${formatCompactNumber(currency.maxRate)}**\n` +
+                `• **Operar:** \`+cambio comprar ${currency.code} <qtd|tudo>\` | \`+cambio vender ${currency.code} <qtd|tudo>\``
+              )
+              .setImage(`attachment://grafico-${currency.code}.png`)
+              .setFooter({ text: `${aiName} • Stark Stock Exchange` })
+              .setTimestamp();
+
+            await message.reply({ embeds: [embed], files: [attachment] });
+          } catch (err) {
+            await message.reply(`❌ ${err.message}`);
+          }
+          return true;
+        }
+
+        case 'duelo':
+        case 'x1':
+        case 'pvp': {
+          const opponent = await resolveUser(message, args[0]);
+          const amount = parseInt(args[1], 10);
+          if (!opponent || isNaN(amount) || amount <= 0) {
+            await message.reply(
+              '⚔️ **Arena de Duelos X1 (PvP):**\n' +
+              'Desafie outro membro valendo moedas ou Moedas de Câmbio!\n\n' +
+              '📌 **Uso:** `+duelo @membro <quantia> [moeda_de_cambio] [moeda|dado|roleta]`\n' +
+              '• `+duelo @usuario 5000` *(Cara ou Coroa X1 valendo 5.000 moedas)*\n' +
+              '• `+duelo @usuario 5000 dado` *(Dados 2d6 X1)*\n' +
+              '• `+duelo @usuario 5000 roleta` *(Roleta Russa Stark turno a turno!)*\n' +
+              '• `+duelo @usuario 2 ouro dado` *(Valendo 2x Barra de Ouro!)*'
+            );
+            return true;
+          }
+          if (opponent.bot) {
+            await message.reply('❌ Bots não participam de duelos PvP! Para apostar contra a banca, use `+coinflip`, `+dado` ou `+bj`.');
+            return true;
+          }
+
+          const modeKeywords = ['moeda', 'coinflip', 'cara', 'dado', 'dados', 'dice', 'roleta', 'russa', 'roulette'];
+          let mode = 'moeda';
+          let currencyCode = null;
+          for (const extra of args.slice(2)) {
+            const clean = String(extra).toLowerCase().trim();
+            if (modeKeywords.includes(clean)) {
+              mode = clean;
+            } else {
+              currencyCode = extra;
+            }
+          }
+
+          try {
+            const duel = economyService.createDuelChallenge(guild.id, author.id, opponent.id, amount, mode, currencyCode);
+            const modeLabels = {
+              moeda: '🪙 Cara ou Coroa X1',
+              dado: '🎲 Dados Maiores (2d6) X1',
+              roleta: '🔫 Roleta Russa Stark (6 Câmaras)'
+            };
+            const stakeStr = duel.currency
+              ? `**${formatCompactNumber(duel.amount)}x ${duel.currency.symbol} ${duel.currency.name}** *(Pote Total: ${formatCompactNumber(duel.amount * 2)}x ${duel.currency.name})*`
+              : `**${formatCompactNumber(duel.amount)} moedas** *(Pote Total: ${formatCompactNumber(duel.amount * 2)} moedas)*`;
+
+            const row = new ActionRowBuilder().addComponents(
+              new ButtonBuilder()
+                .setCustomId(`duel_accept_${duel.id}`)
+                .setLabel('⚔️ Aceitar Duelo')
+                .setStyle(ButtonStyle.Success),
+              new ButtonBuilder()
+                .setCustomId(`duel_decline_${duel.id}`)
+                .setLabel('🏳️ Recusar')
+                .setStyle(ButtonStyle.Danger)
+            );
+
+            const embed = new EmbedBuilder()
+              .setColor(0xFF3864)
+              .setTitle('⚔️ Desafio de Duelo X1 Lançado!')
+              .setDescription(
+                `<@${author.id}> desafiou <@${opponent.id}> para um duelo direto!\n\n` +
+                `🎮 **Modalidade:** ${modeLabels[duel.mode] || modeLabels.moeda}\n` +
+                `💰 **Aposta de Cada Jogador:** ${stakeStr}\n\n` +
+                `*<@${opponent.id}>, clique no botão abaixo para aceitar ou recusar a aposta!*`
+              )
+              .setFooter({ text: `${aiName} • Arena PvP Stark` })
+              .setTimestamp();
+
+            await message.reply({
+              content: `🔔 <@${opponent.id}>, você foi desafiado para um X1 por <@${author.id}>!`,
+              embeds: [embed],
+              components: [row]
+            });
+          } catch (err) {
+            await message.reply(`❌ ${err.message}`);
+          }
+          return true;
+        }
+
+        case 'empresa':
+        case 'empresas':
+        case 'company': {
+          const sub = (args[0] || '').toLowerCase();
+
+          if (sub === 'loja' || sub === 'catalogo' || sub === 'catálogo' || sub === 'shop') {
+            const catalog = economyService.listCompanyCatalog(guild.id, true);
+            const lines = catalog.map(c =>
+              `### ${c.emoji} **${c.name}** (ID: \`${c.id}\`)\n` +
+              `• **Preço de Fundação:** **${formatCompactNumber(c.price)} moedas**\n` +
+              `• **Renda Passiva Inicial:** **+${formatCompactNumber(c.hourlyIncome)} moedas / hora**\n` +
+              `• **Insumos que consome:** ${c.supplyEmoji} **${c.supplyName}** — ${formatCompactNumber(c.supplyUnitCost)} moedas/un. • ~${c.supplyBurnRate} un./hora\n` +
+              `• **Vagas de Funcionários:** até **${c.maxEmployees} membros** *(Bônus de +${Math.round(c.employeeWorkBonus * 100)}% no \`+work\`)*\n` +
+              (c.description ? `> *${c.description}*` : '')
+            );
+
+            const embed = new EmbedBuilder()
+              .setColor(0x00E5FF)
+              .setTitle(`🏢 Catálogo de Empresas & Empreendimentos — ${guild.name}`)
+              .setDescription(
+                `Funde sua própria empresa para gerar **renda passiva a cada hora** e contrate membros do servidor!\n\n` +
+                lines.join('\n\n') +
+                `\n\n💡 **Para comprar:** \`+empresa comprar <id_ou_nome> [moeda_de_cambio]\``
+              )
+              .setFooter({ text: `${aiName} • Stark Corporate Holdings` })
+              .setTimestamp();
+            await message.reply({ embeds: [embed] });
+            return true;
+          }
+
+          if (sub === 'comprar' || sub === 'fundar' || sub === 'buy') {
+            const typeInput = args[1];
+            const currencyArg = args[2] || null;
+            if (!typeInput) {
+              await message.reply('❓ Informe o ID ou nome da empresa que deseja comprar! Veja as opções com `+empresa loja`.\nExemplo: `+empresa comprar 1` ou `+empresa comprar 2 ouro`');
+              return true;
+            }
+            try {
+              const res = economyService.buyCompany(guild.id, author.id, typeInput, null, currencyArg);
+              const embed = new EmbedBuilder()
+                .setColor(0x57F287)
+                .setTitle(`🎉 Nova Empresa Fundada: ${res.company.emoji} ${res.company.name}!`)
+                .setDescription(
+                  `Parabéns, <@${author.id}>! Você agora é proprietário(a) de **${res.company.emoji} ${res.company.name}**!${res.convertedNotice || ''}\n\n` +
+                  `• **Lucro Passivo Atual:** **+${formatCompactNumber(res.company.effectiveHourlyIncome)} moedas / hora**\n` +
+                  `• **Vagas para Funcionários:** **0 / ${res.company.maxEmployees}**\n\n` +
+                  `💡 Use \`+empresa\` para abrir o painel da sua empresa, coletar lucros ou \`+empresa contratar @membro\`!`
+                )
+                .setFooter({ text: `${aiName} • Stark Corporate Holdings` })
+                .setTimestamp();
+              await message.reply({ embeds: [embed] });
+            } catch (err) {
+              await message.reply(`❌ ${err.message}`);
+            }
+            return true;
+          }
+
+          if (sub === 'falir' || sub === 'falencia' || sub === 'falência' || sub === 'bankrupt') {
+            try {
+              const prev = economyService.previewCompanyBankruptcy(guild.id, author.id, args[1] || null);
+              const c = prev.company;
+              const row = new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                  .setCustomId(`comp_bankrupt_yes_${author.id}_${c.id}`)
+                  .setLabel('☠️ Confirmar Falência')
+                  .setStyle(ButtonStyle.Danger),
+                new ButtonBuilder()
+                  .setCustomId(`comp_bankrupt_no_${author.id}_${c.id}`)
+                  .setLabel('Cancelar')
+                  .setStyle(ButtonStyle.Secondary)
+              );
+              const embed = new EmbedBuilder()
+                .setColor(0xED4245)
+                .setTitle(`☠️ Declarar Falência — ${c.emoji} ${c.name}`)
+                .setDescription(
+                  `O administrador do bot **comprará a empresa** e a recolocará à venda para outros jogadores.\n\n` +
+                  `• **Valor contábil:** ${formatCompactNumber(prev.bookValue)} moedas\n` +
+                  `• **Sua parte (${Math.round(companyRules.OWNER_PAYOUT_RATE * 100)}%):** ${formatCompactNumber(prev.grossShare)} moedas\n` +
+                  `• **Lucros pendentes no cofre:** +${formatCompactNumber(prev.claimable)} moedas\n` +
+                  `• **Dívidas com fornecedores:** -${formatCompactNumber(prev.debt)} moedas\n` +
+                  `• **Você receberá:** 💰 **${formatCompactNumber(prev.ownerPayout)} moedas**\n\n` +
+                  `⚠️ **Consequências:** você perde a empresa (nível ${c.level}), os funcionários humanos ficam desempregados e você **não poderá fundar nem assumir empresas por ${companyRules.FOUNDING_BAN_HOURS / 24} dias**.`
+                )
+                .setFooter({ text: `${aiName} • Stark Corporate Holdings` })
+                .setTimestamp();
+              await message.reply({ embeds: [embed], components: [row] });
+            } catch (err) {
+              await message.reply(`❌ ${err.message}`);
+            }
+            return true;
+          }
+
+          if (sub === 'leilao' || sub === 'leilão' || sub === 'falidas' || sub === 'venda' || sub === 'vendas') {
+            const list = economyService.listCompaniesForSale(guild.id);
+            if (list.length === 0) {
+              await message.reply('🏷️ Nenhuma empresa falida está à venda no momento. Use `+empresa loja` para fundar a sua!');
+              return true;
+            }
+            const lines = list.map(c =>
+              `### ${c.emoji} **${c.name}** — Nível ${c.level} (ID: \`${c.id}\`)\n` +
+              `• **Preço atual:** **${formatCompactNumber(c.askingPrice)} moedas** *(valoriza ${Math.round(companyRules.AUCTION_APPRECIATION_PER_DAY * 100)}% ao dia, teto ${formatCompactNumber(c.listCapPrice)})*\n` +
+              `• **Estoque de ${c.supplyEmoji} ${c.supplyName}:** ${c.stockProducts} / ${c.maxStock} un. *(mantido pelo administrador)*\n` +
+              `• **Renda Passiva:** +${formatCompactNumber(c.effectiveHourlyIncome)} moedas / hora • Equipe NPC: ${c.npcWorkers}\n` +
+              `• À venda há **${c.daysListed.toFixed(1)} dia(s)**`
+            );
+            const embed = new EmbedBuilder()
+              .setColor(0xFEE75C)
+              .setTitle(`🏷️ Empresas Falidas à Venda — ${guild.name}`)
+              .setDescription(
+                `Empresas que faliram e foram compradas pelo administrador do bot. O preço **sobe a cada dia** até alguém comprar!\n\n` +
+                lines.join('\n\n') +
+                `\n\n💡 **Para comprar:** \`+empresa assumir <id>\` *(o preço escala com o número de empresas que você já possui)*`
+              )
+              .setFooter({ text: `${aiName} • Stark Corporate Holdings` })
+              .setTimestamp();
+            await message.reply({ embeds: [embed] });
+            return true;
+          }
+
+          if (sub === 'assumir' || sub === 'arrematar' || sub === 'takeover') {
+            try {
+              const res = economyService.takeoverCompany(guild.id, author.id, args[1]);
+              await message.reply(
+                `🏷️ **Empresa Assumida com Sucesso!**\n` +
+                `Você comprou **${res.company.emoji} ${res.company.name}** (Nível ${res.company.level}, ID #${res.company.id}) do administrador por **${formatCompactNumber(res.scaledPrice)} moedas**!${res.convertedNotice || ''}\n` +
+                `• **Estoque atual:** ${res.company.stockProducts} / ${res.company.maxStock} ${res.company.supplyEmoji} ${res.company.supplyName}\n` +
+                `• **Renda Passiva:** +${formatCompactNumber(res.company.effectiveHourlyIncome)} moedas / hora\n` +
+                `• A equipe humana anterior foi dispensada: contrate gente nova com \`+empresa contratar @membro\` e ative o \`+empresa gerente\` para evitar nova crise!`
+              );
+            } catch (err) {
+              await message.reply(`❌ ${err.message}`);
+            }
+            return true;
+          }
+
+          if (sub === 'coletar' || sub === 'sacar' || sub === 'collect') {
+            try {
+              const res = economyService.collectCompanyProfits(guild.id, author.id, args[1] || null);
+              let details = `💰 **Lucros Coletados!** Você resgatou **${formatCompactNumber(res.totalCollected)} moedas** do cofre da sua empresa direto para a sua carteira!`;
+              details += describeAutoRestock(res);
+              await message.reply(details);
+            } catch (err) {
+              await message.reply(`❌ ${err.message}`);
+            }
+            return true;
+          }
+
+          if (sub === 'estoque' || sub === 'reabastecer' || sub === 'restock' || sub === 'stock') {
+            try {
+              const qtyArg = args[1] || 'max';
+              const companyIdArg = args[2] || null;
+              const res = economyService.restockCompany(guild.id, author.id, qtyArg, companyIdArg);
+              await message.reply(
+                `📦 **Estoque Reabastecido com Sucesso!**\n` +
+                `• Foram comprados **+${res.qtyAdded}x ${res.supplyEmoji} ${res.supplyName}** no atacado por **${formatCompactNumber(res.totalCost)} moedas** (${formatCompactNumber(res.unitCost)} cada)!\n` +
+                `• **Estoque Atual de ${res.company.emoji} ${res.company.name}:** **${res.newStock} / ${res.company.maxStock}** ${res.supplyEmoji} ${res.supplyName}.${res.convertedNotice || ''}\n` +
+                `• Sua empresa agora volta a gerar 100% de lucro passivo máximo!`
+              );
+            } catch (err) {
+              await message.reply(`❌ ${err.message}`);
+            }
+            return true;
+          }
+
+          if (sub === 'gerente' || sub === 'manager') {
+            try {
+              const res = economyService.toggleCompanyAutoRestock(guild.id, author.id, args[1] || null);
+              await message.reply(
+                `👔 **Gerente de Suprimentos:** ${res.isActive ? '🟢 **ATIVADO**' : '⚪ **DESATIVADO**'}!\n${res.notice}`
+              );
+            } catch (err) {
+              await message.reply(`❌ ${err.message}`);
+            }
+            return true;
+          }
+
+          if (sub === 'evoluir' || sub === 'upgrade' || sub === 'up') {
+            try {
+              const res = economyService.upgradeCompany(guild.id, author.id, args[1] || null);
+              await message.reply(
+                `🚀 **Empresa Expandida com Sucesso!**\n` +
+                `Sua empresa **${res.company.emoji} ${res.company.name}** subiu para o **Nível ${res.company.level}** (*${res.company.tierTitle}*)!${res.convertedNotice || ''}\n` +
+                `• **Nova Renda Passiva:** **+${formatCompactNumber(res.company.effectiveHourlyIncome)} moedas / hora**\n` +
+                `• **Teto de Estoque Expandido:** **${res.company.maxStock}** ${res.company.supplyEmoji} ${res.company.supplyName}\n` +
+                `• **Capacidade de Equipe:** **${res.company.maxEmployees} vagas**`
+              );
+            } catch (err) {
+              await message.reply(`❌ ${err.message}`);
+            }
+            return true;
+          }
+
+          if (sub === 'contratar' || sub === 'hire') {
+            if (args[1]?.toLowerCase() === 'npc' || args[1]?.toLowerCase() === 'funcionario') {
+              try {
+                const res = economyService.hireNpcWorker(guild.id, author.id, args[2] || null);
+                await message.reply(
+                  `👥 **Novo Funcionário Operacional Contratado!**\n` +
+                  `• Custo de Contratação: **${formatCompactNumber(res.hireCost)} moedas**\n` +
+                  `• Aumento de Produtividade: **+12% na receita por hora**\n` +
+                  `• Capacidade de Estoque ampliada para **${res.company.maxStock}** ${res.company.supplyEmoji} ${res.company.supplyName}!`
+                );
+              } catch (err) {
+                await message.reply(`❌ ${err.message}`);
+              }
+              return true;
+            }
+
+            const emp = await resolveUser(message, args[1]);
+            if (!emp || emp.bot) {
+              await message.reply('❌ Mencione um membro válido para contratar ou use `+empresa contratar npc` para contratar um funcionário operacional da IA!\nExemplo: `+empresa contratar @usuario` ou `+empresa contratar npc`');
+              return true;
+            }
+            try {
+              const res = economyService.hireCompanyEmployee(guild.id, author.id, emp.id, args[2] || null);
+              await message.reply(
+                `🤝 **Novo Funcionário Contratado!** <@${emp.id}> agora trabalha em **${res.company.emoji} ${res.company.name}**!\n` +
+                `• Sempre que <@${emp.id}> usar \`+work\`, ganhará **+${Math.round(res.company.employeeWorkBonus * 100)}% de bônus** e gerará comissão para o cofre da empresa!\n` +
+                `• Além disso, cada funcionário humano ativo aumenta a produção da empresa em **+10%**!`
+              );
+            } catch (err) {
+              await message.reply(`❌ ${err.message}`);
+            }
+            return true;
+          }
+
+          if (sub === 'demitir' || sub === 'fire') {
+            const emp = await resolveUser(message, args[1]);
+            if (!emp) {
+              await message.reply('❌ Mencione o funcionário que deseja desligar. Exemplo: `+empresa demitir @usuario`');
+              return true;
+            }
+            try {
+              economyService.fireCompanyEmployee(guild.id, author.id, emp.id, args[2] || null);
+              await message.reply(`📋 O membro <@${emp.id}> foi desligado do quadro de funcionários da sua empresa.`);
+            } catch (err) {
+              await message.reply(`❌ ${err.message}`);
+            }
+            return true;
+          }
+
+          // Default: +empresa painel
+          const status = economyService.getUserCompaniesStatus(guild.id, author.id);
+          if (status.companies.length === 0) {
+            const jobLine = status.job
+              ? `\n\n💼 **Seu Emprego Atual:** Você trabalha em **${status.job.emoji} ${status.job.companyName}** (de <@${status.job.ownerId}>) e recebe **+${Math.round(status.job.workBonusRate * 100)}%** de bônus em cada \`+work\`!`
+              : '';
+            await message.reply(
+              `🏢 Você ainda não possui nenhuma empresa fundada neste servidor!${jobLine}\n` +
+              `• Digite \`+empresa loja\` para ver os empreendimentos disponíveis e quanto cada um rende por hora!`
+            );
+            return true;
+          }
+
+          const compLines = status.companies.map(c => {
+            const empList = c.employees.length > 0
+              ? c.employees.map(e => `<@${e.userId}>`).join(', ')
+              : '*Nenhum membro do Discord contratado*';
+
+            const pct = Math.max(0, Math.min(100, Math.round((c.remainingStock / c.maxStock) * 100)));
+            const filled = Math.min(10, Math.floor(pct / 10));
+            const bar = '█'.repeat(filled) + '░'.repeat(10 - filled);
+
+            return (
+              `### ${c.emoji} **${c.name}** — Nível ${c.level} • *${c.tierTitle}* *(ID #${c.id})*\n` +
+              `• **Estoque de ${c.supplyEmoji} ${c.supplyName}:** [${bar}] **${c.remainingStock} / ${c.maxStock} un.** (${pct}%)${c.remainingStock <= 0 ? ' ⚠️ *(ZERADO! Renda reduzida a 10%)*' : ''}\n` +
+              `• **Consumo:** **${c.stockBurnRate} un./hora** × ${formatCompactNumber(c.supplyUnitCost)} moedas = **${formatCompactNumber(c.supplyHourlyCost)} moedas/hora** em insumos\n` +
+              (c.distressSince
+                ? `• 🚨 **RISCO DE FALÊNCIA:** sem estoque! A empresa falirá <t:${Math.floor(new Date(c.bankruptcyDeadline).getTime() / 1000)}:R> • Dívida atual: **${formatCompactNumber(economyService.calculateCompanyDebt(c))} moedas** — use \`+empresa estoque\`\n`
+                : '') +
+              `• **Renda Passiva Atual:** **+${formatCompactNumber(c.effectiveHourlyIncome)} moedas / hora**\n` +
+              `• **Gerente de Suprimentos:** ${c.autoRestock ? '🟢 **Ativo** (Auto-restock garantido)' : '⚪ Inativo (`+empresa gerente`)'}\n` +
+              `• **Equipe Total (${c.employees.length + c.npcWorkers}/${c.maxEmployees}):** ${c.npcWorkers} funcionário(s) operacional(is) | Membros: ${empList}\n` +
+              `• **Cofre Disponível:** 💰 **${formatCompactNumber(c.claimableTotal)} moedas**\n` +
+              `• **Faturamento Acumulado:** ${formatCompactNumber(c.totalEarned)} moedas\n` +
+              `• **Expansão para Nível ${c.level + 1} (${c.nextTierTitle}):** Custo ${formatCompactNumber(c.nextUpgradeCost)} moedas • Exige ${formatCompactNumber(c.minTurnoverRequired)} faturados (${c.canUpgradeByTurnover ? '✅ Pronto!' : '⏳ Falta faturamento'})`
+            );
+          });
+
+          const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+              .setCustomId(`comp_collect_${author.id}`)
+              .setLabel('💰 Coletar Lucros')
+              .setStyle(ButtonStyle.Success),
+            new ButtonBuilder()
+              .setCustomId(`comp_restock_${author.id}`)
+              .setLabel('📦 Reabastecer Estoque')
+              .setStyle(ButtonStyle.Primary),
+            new ButtonBuilder()
+              .setCustomId(`comp_manager_${author.id}`)
+              .setLabel('👔 Gerente Auto')
+              .setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder()
+              .setCustomId(`comp_npc_${author.id}`)
+              .setLabel('👥 Contratar NPC')
+              .setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder()
+              .setCustomId(`comp_upgrade_${author.id}`)
+              .setLabel('🚀 Evoluir Nível')
+              .setStyle(ButtonStyle.Primary)
+          );
+
+          const embed = new EmbedBuilder()
+            .setColor(0x00E5FF)
+            .setTitle(`🏢 Painel Corporativo — ${author.username}`)
+            .setDescription(
+              compLines.join('\n\n') +
+              (status.job ? `\n\n💼 **Vínculo de Trabalho:** Funcionário em **${status.job.emoji} ${status.job.companyName}** (+${Math.round(status.job.workBonusRate * 100)}% no \`+work\`)` : '') +
+              `\n\n💡 **Comandos Rápidos:**\n` +
+              `• \`+empresa estoque [qtd] [id_empresa]\` — Compra os insumos específicos da empresa no atacado\n` +
+              `• \`+empresa gerente\` — Contrata/ativa Gerente de Suprimentos\n` +
+              `• \`+empresa contratar npc\` — Contrata ajudante (+12% renda, +25 estoque)\n` +
+              `• \`+empresa contratar @membro\` — Contrata membros reais do servidor\n` +
+              `• \`+empresa evoluir\` — Expande a empresa de nível corporativo\n` +
+              `• \`+empresa falir [id]\` — Declara falência (o bot compra a empresa por uma parte do valor)\n` +
+              `• \`+empresa leilao\` — Lista empresas falidas à venda (preço sobe a cada dia)\n` +
+              `• \`+empresa assumir <id>\` — Compra uma empresa falida do administrador`
+            )
+            .setFooter({ text: `${aiName} • Stark Corporate Holdings` })
+            .setTimestamp();
+
+          await message.reply({ embeds: [embed], components: [row] });
           return true;
         }
 

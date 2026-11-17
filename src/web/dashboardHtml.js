@@ -20,8 +20,17 @@ function renderDashboardHtml({
   initialUptimeStr = 'Ativo',
   initialHeapUsedMb = '32 MB',
   initialMemberCount = '9',
-  initialServerId = 'Conectado'
+  initialServerId = 'Conectado',
+  botConfig = null
 }) {
+  const { botConfig: defaultBotConfigMgr } = require('../config/botConfig');
+  const activeConfig = botConfig || defaultBotConfigMgr.getConfig();
+  const defaultTitle = `${aiDisplayName} — Painel de Controle`;
+  const pageTitle = (activeConfig.panelBranding?.title && activeConfig.panelBranding.title !== 'J.A.R.V.I.S. — Painel de Controle')
+    ? activeConfig.panelBranding.title
+    : defaultTitle;
+  const brandBadge = activeConfig.panelBranding?.badge || 'TECH CORE v2.0';
+
   const renderedGuildOptions = Array.isArray(initialGuilds) && initialGuilds.length > 0
     ? initialGuilds.map(g => `<option value="${g.id}">${g.name}</option>`).join('')
     : '<option value="">Carregando servidores...</option>';
@@ -33,7 +42,7 @@ function renderDashboardHtml({
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${aiDisplayName} — Painel de Controle</title>
+  <title>${pageTitle}</title>
   <link rel="icon" type="image/png" sizes="128x128" href="${effectiveFavicon}">
   <link rel="icon" type="image/png" sizes="64x64" href="${effectiveFavicon}">
   <link rel="icon" type="image/png" sizes="32x32" href="${effectiveFavicon}">
@@ -46,35 +55,72 @@ function renderDashboardHtml({
         if (localStorage.getItem('jarvis_theme') === 'light') {
           document.documentElement.classList.add('theme-light');
         }
-        if (localStorage.getItem('jarvis_lang') === 'en') {
-          document.documentElement.lang = 'en';
-        }
+        document.documentElement.lang = 'pt-BR';
       } catch(e) {}
     })();
   </script>
   <style>
+    .discord-inline-emoji {
+      width: 1.3em;
+      height: 1.3em;
+      vertical-align: -0.22em;
+      object-fit: contain;
+      display: inline-block;
+    }
+    .coin-svg {
+      width: 1.15em;
+      height: 1.15em;
+      vertical-align: -0.2em;
+      display: inline-block;
+      margin-right: 3px;
+      filter: drop-shadow(0 0 2px rgba(254, 231, 92, 0.4));
+    }
+    .emoji-picker-btn {
+      background: rgba(255, 255, 255, 0.05) !important;
+      border: 1px solid rgba(255, 255, 255, 0.08) !important;
+      border-radius: 8px !important;
+      padding: 4px !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      cursor: pointer !important;
+      aspect-ratio: 1 / 1 !important;
+      transition: all 0.15s ease !important;
+    }
+    .emoji-picker-btn:hover {
+      background: rgba(0, 229, 255, 0.18) !important;
+      border-color: rgba(0, 229, 255, 0.45) !important;
+      transform: scale(1.12) !important;
+    }
+    .emoji-picker-btn img {
+      width: 34px !important;
+      height: 34px !important;
+      object-fit: contain !important;
+      background: transparent !important;
+    }
     :root {
-      --bg-page: #0B0F19;
-      --bg-header: #0F172A;
+      color-scheme: dark;
+      --bg-page: ${activeConfig.theme?.panel?.bgPage || '#0B0F19'};
+      --bg-header: ${activeConfig.theme?.panel?.bgHeader || '#0F172A'};
       --bg-header-nav: #131D31;
-      --bg-surface: #1E293B;
+      --bg-surface: ${activeConfig.theme?.panel?.bgSurface || '#1E293B'};
       --bg-surface-hover: #243248;
-      --bg-input: #0F172A;
-      --border-subtle: rgba(255, 255, 255, 0.08);
+      --bg-input: ${activeConfig.theme?.panel?.bgInput || '#0F172A'};
+      --border-subtle: ${activeConfig.theme?.panel?.borderColor || 'rgba(255, 255, 255, 0.08)'};
       --border-hover: rgba(255, 255, 255, 0.16);
-      --border-focus: #38BDF8;
+      --border-focus: ${activeConfig.theme?.panel?.accent || '#38BDF8'};
 
-      --primary: #6366F1;
-      --primary-hover: #4F46E5;
+      --primary: ${activeConfig.theme?.panel?.primary || '#6366F1'};
+      --primary-hover: ${activeConfig.theme?.panel?.primaryHover || '#4F46E5'};
       --primary-active: #4338CA;
       --primary-light: rgba(99, 102, 241, 0.15);
 
-      --cyan: #38BDF8;
+      --cyan: ${activeConfig.theme?.panel?.accent || '#38BDF8'};
       --cyan-hover: #0EA5E9;
       --cyan-light: rgba(56, 189, 248, 0.12);
 
-      --text-main: #F8FAFC;
-      --text-muted: #94A3B8;
+      --text-main: ${activeConfig.theme?.panel?.textMain || '#F8FAFC'};
+      --text-muted: ${activeConfig.theme?.panel?.textMuted || '#94A3B8'};
       --text-subtle: #64748B;
 
       --success: #10B981;
@@ -124,7 +170,7 @@ function renderDashboardHtml({
       top: 0;
       z-index: 1000;
       height: 60px;
-      background: rgba(15, 23, 42, 0.92);
+      background: var(--bg-header);
       backdrop-filter: blur(14px);
       -webkit-backdrop-filter: blur(14px);
       border-bottom: 1px solid var(--border-subtle);
@@ -133,7 +179,7 @@ function renderDashboardHtml({
       justify-content: space-between;
       padding: 0 24px;
       box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
-      transition: margin-left 0.25s ease;
+      transition: margin-left 0.25s ease, background 0.3s ease;
     }
 
     @media (min-width: 1024px) {
@@ -301,30 +347,34 @@ function renderDashboardHtml({
     .meli-guild-card {
       display: flex;
       align-items: center;
-      gap: 6px;
-      background: rgba(255, 255, 255, 0.04);
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.05);
       border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-pill);
-      padding: 3px 8px 3px 5px;
-      height: 28px;
-      transition: border-color 0.15s;
+      border-radius: 24px;
+      padding: 4px 14px 4px 6px;
+      min-height: 38px;
+      transition: all 0.2s ease;
     }
 
     .meli-guild-card:hover {
-      border-color: var(--border-hover);
+      background: rgba(255, 255, 255, 0.08);
+      border-color: var(--cyan);
     }
 
     .meli-guild-icon {
-      width: 24px;
-      height: 24px;
+      width: 28px;
+      height: 28px;
       border-radius: 50%;
       object-fit: cover;
+      border: 1px solid var(--border-subtle);
+      box-shadow: 0 0 6px rgba(0, 0, 0, 0.3);
     }
 
     .meli-guild-meta {
       display: flex;
       flex-direction: column;
-      line-height: 1.1;
+      justify-content: center;
+      gap: 1px;
     }
 
     .meli-guild-label {
@@ -332,20 +382,22 @@ function renderDashboardHtml({
       font-weight: 700;
       color: var(--text-muted);
       text-transform: uppercase;
-      letter-spacing: 0.4px;
+      letter-spacing: 0.6px;
+      line-height: 1;
     }
 
     .meli-guild-select {
       background: transparent !important;
       border: none !important;
       color: var(--text-main) !important;
-      font-size: 0.82rem;
+      font-size: 0.88rem;
       font-weight: 700;
       padding: 0 !important;
       margin: 0 !important;
       cursor: pointer;
       outline: none;
       box-shadow: none !important;
+      line-height: 1.2;
     }
 
     .meli-guild-select option {
@@ -1116,6 +1168,35 @@ function renderDashboardHtml({
     input:focus, select:focus, textarea:focus {
       border-color: var(--cyan);
       box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.18);
+    }
+
+    select {
+      color-scheme: dark;
+    }
+
+    html.theme-light select {
+      color-scheme: light;
+    }
+
+    select option, select optgroup {
+      background: var(--bg-surface, #1E293B) !important;
+      color: var(--text-main, #F8FAFC) !important;
+      padding: 8px 12px;
+    }
+
+    html.theme-light select option, html.theme-light select optgroup {
+      background: #FFFFFF !important;
+      color: #0F172A !important;
+    }
+
+    ::selection {
+      background: var(--primary, #6366F1) !important;
+      color: #FFFFFF !important;
+    }
+
+    ::-moz-selection {
+      background: var(--primary, #6366F1) !important;
+      color: #FFFFFF !important;
     }
 
     input[readonly] {
@@ -2452,7 +2533,7 @@ function renderDashboardHtml({
         </div>
         <div>
           <div class="brand-title"><span id="headerAiName">${aiDisplayName}</span></div>
-          <div class="brand-badge">TECH CORE v2.0</div>
+          <div class="brand-badge">${brandBadge}</div>
         </div>
       </div>
       <button class="sidebar-close-btn" id="sidebarCloseBtn" aria-label="Fechar menu">✕</button>
@@ -2565,6 +2646,14 @@ function renderDashboardHtml({
         <span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span>
         <span class="nav-label">Música & Voz</span>
       </button>
+
+      <!-- HUB 6: SISTEMA & CONFIGURAÇÕES -->
+      <div class="menu-group-title">SISTEMA & CONFIGURAÇÕES</div>
+      <button class="nav-item" data-tab="tab-settings">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
+        <span class="nav-label">Configurações do Bot</span>
+        <span class="nav-badge-pill" style="color: var(--primary); border-color: var(--primary);">Base</span>
+      </button>
     </nav>
 
     <div class="sidebar-footer">
@@ -2583,7 +2672,7 @@ function renderDashboardHtml({
     <div class="topbar-left">
       <button class="topbar-mobile-toggle" id="mobileToggleBtn" aria-label="Abrir navegação">☰</button>
       <div class="topbar-breadcrumb">
-        <span class="breadcrumb-root">J.A.R.V.I.S.</span>
+        <span class="breadcrumb-root" id="topHeaderBreadcrumbRoot">${activeConfig.identity?.name || aiDisplayName}</span>
         <span class="breadcrumb-sep">/</span>
         <span class="breadcrumb-current" id="topHeaderActiveTabTitle">Visão Geral</span>
       </div>
@@ -2625,16 +2714,6 @@ function renderDashboardHtml({
           <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.19"/>
         </svg>
         <span id="syncBtnText">Sincronizar</span>
-      </button>
-
-      <button class="meli-sync-btn" id="themeToggleBtn" title="Alternar Modo Claro / Escuro">
-        <span id="themeToggleIcon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg></span>
-        <span id="themeToggleText">Claro</span>
-      </button>
-
-      <button class="meli-sync-btn" id="langToggleBtn" title="Switch Language / Alternar Idioma">
-        <span id="langToggleIcon" style="font-size:0.8rem; font-weight:700;">🌐</span>
-        <span id="langToggleText">EN</span>
       </button>
 
       <button class="meli-sync-btn" id="lockPanelBtn" title="Bloquear Painel (Requer Senha 1598)">
@@ -3210,7 +3289,7 @@ function renderDashboardHtml({
           <p>Veja em tempo real exatamente como o painel aparecerá no chat do Discord:</p>
 
           <div class="discord-preview-box">
-            <div class="preview-header-tag">Discord Chat Preview</div>
+            <div class="preview-header-tag">Prévia do Chat do Discord</div>
             
             <div class="discord-msg-row">
               <img src="${botAvatarUrl}" class="discord-avatar-img" id="ticketBotAvatar" alt="Avatar" onerror="if(this.src!=='/api/bot/avatar'){this.src='/api/bot/avatar';}">
@@ -3517,7 +3596,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
 
           <!-- Preview Boas-Vindas -->
           <div class="discord-preview-box" style="margin-top: 0.75rem; margin-bottom: 0.75rem;">
-            <div class="preview-header-tag">Live Preview (Entrada)</div>
+            <div class="preview-header-tag">Prévia em Tempo Real (Entrada)</div>
             <div class="discord-msg-row">
               <img src="/api/bot/avatar" class="discord-avatar-img" id="welcomeBotAvatar" alt="Avatar" onerror="this.src='/api/bot/avatar'">
               <div class="discord-msg-body">
@@ -3566,7 +3645,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
 
           <!-- Preview Despedida -->
           <div class="discord-preview-box" style="margin-top: 0.75rem; margin-bottom: 0.75rem;">
-            <div class="preview-header-tag">Live Preview (Saída)</div>
+            <div class="preview-header-tag">Prévia em Tempo Real (Saída)</div>
             <div class="discord-msg-row">
               <img src="/api/bot/avatar" class="discord-avatar-img" alt="Avatar" onerror="this.src='/api/bot/avatar'">
               <div class="discord-msg-body">
@@ -3879,43 +3958,72 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           </div>
         </div>
 
-        <!-- CARD CÂMBIO & MOEDAS DE PRESTÍGIO -->
+        <!-- CARD CÂMBIO & BOLSA DE VALORES STARK -->
         <div class="card" style="grid-column: 1 / -1;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.75rem;">
             <div>
-              <h2 style="margin: 0;">💱 Mercado de Câmbio & Moedas de Prestígio</h2>
+              <h2 style="margin: 0;">💱 Mercado de Câmbio & Bolsa de Valores Stark (+cambio / +grafico)</h2>
               <p style="margin: 0.25rem 0 0 0; color: var(--text-muted); font-size: 0.85rem;">
-                Crie moedas de alto valor (como Barra de Ouro, Gema Cósmica, Diamante) com cotações personalizadas. Isso protege o <code>+perfil</code> e <code>+saldo</code> contra números gigantescos que quebram embeds e dá prestígio aos membros mais ricos!
+                Gerencie Moedas Superiores com cotação fixa ou ative o <strong>Modo Bolsa Dinâmica</strong> (oscilação por oferta/demanda com gráfico em tempo real no comando <code>+grafico &lt;moeda&gt;</code>)!
               </p>
             </div>
-            <button class="primary-btn" id="openCreateCurrencyBtn" style="white-space: nowrap;">➕ Nova Moeda de Câmbio</button>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+              <span style="font-size: 0.8rem; background: rgba(0, 245, 155, 0.1); border: 1px solid rgba(0, 245, 155, 0.3); color: #00F59B; padding: 0.45rem 0.75rem; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px;">
+                <span style="width: 8px; height: 8px; background: #00F59B; border-radius: 50%; box-shadow: 0 0 6px #00F59B;"></span>
+                Ciclo Diário Automático: <strong>Ativo (24h)</strong>
+              </span>
+              <button type="button" class="secondary-btn" id="simulateStockMarketBtn" style="background: rgba(0, 245, 155, 0.14); border: 1px solid rgba(0, 245, 155, 0.4); color: #00F59B; font-weight: 600; padding: 0.5rem 0.95rem; border-radius: 6px; cursor: pointer;">📈 Rodar Ciclo Agora</button>
+              <button type="button" class="primary-btn" id="openCreateCurrencyBtn" style="white-space: nowrap;">➕ Nova Moeda de Câmbio</button>
+            </div>
           </div>
 
-          <!-- Formulário Criar Moeda de Câmbio (oculto por padrão) -->
+          <!-- Formulário Criar/Editar Moeda de Câmbio (oculto por padrão) -->
           <div id="currencyFormBox" style="display: none; background: rgba(0, 229, 255, 0.04); border: 1px solid rgba(0, 229, 255, 0.2); border-radius: 8px; padding: 1rem; margin-bottom: 1.25rem;">
+            <input type="hidden" id="currencyEditId" value="">
             <h3 id="currencyFormTitle" style="margin: 0 0 0.75rem 0; font-size: 1rem; color: #00E5FF;">➕ Cadastrar Nova Moeda de Câmbio</h3>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0.75rem;">
               <div class="form-group" style="margin-bottom: 0.5rem;">
                 <label>Nome da Moeda</label>
-                <input type="text" id="currencyNameInput" placeholder="Ex: Barra de Ouro, Gema Cósmica">
+                <input type="text" id="currencyNameInput" placeholder="Ex: Barra de Ouro, Ação Stark">
               </div>
               <div class="form-group" style="margin-bottom: 0.5rem;">
-                <label>Código / Atalho do Comando</label>
-                <input type="text" id="currencyCodeInput" placeholder="Ex: ouro, gema, diamante">
-                <small style="color: var(--text-muted); font-size: 0.75rem;">Usado em +cambio comprar &lt;código&gt;</small>
+                <label>Código / Atalho</label>
+                <input type="text" id="currencyCodeInput" placeholder="Ex: ouro, stark, btc">
+                <small style="color: var(--text-muted); font-size: 0.75rem;">Usado em +cambio e +grafico</small>
               </div>
               <div class="form-group" style="margin-bottom: 0.5rem;">
                 <label>Símbolo / Emoji</label>
-                <input type="text" id="currencySymbolInput" placeholder="Ex: 🏆, 💎, 👑" value="💎">
+                <div style="display: flex; gap: 0.4rem; align-items: center;">
+                  <input type="text" id="currencySymbolInput" placeholder="Ex: 🏆, 💎, <:ouro:123...>" value="💎" style="flex: 1;">
+                  <button type="button" class="secondary-btn" onclick="openEmojiPicker('currencySymbolInput')" title="Escolher Emoji do Servidor" style="padding: 0.45rem 0.65rem; background: rgba(0,229,255,0.12); border: 1px solid rgba(0,229,255,0.4); color: #00E5FF; border-radius: 6px; cursor: pointer; white-space: nowrap; font-size: 0.78rem;">😀 Emojis do Servidor</button>
+                </div>
               </div>
               <div class="form-group" style="margin-bottom: 0.5rem;">
-                <label>Cotação em Moedas Base (Valor)</label>
-                <input type="number" id="currencyRateInput" placeholder="Ex: 1000000" min="1" value="1000000">
-                <small style="color: var(--text-muted); font-size: 0.75rem;">Quantas moedas normais vale 1 unidade</small>
+                <label>Cotação Inicial (Moedas)</label>
+                <input type="number" id="currencyRateInput" placeholder="Ex: 10000" min="1" value="10000">
+              </div>
+              <div class="form-group" style="margin-bottom: 0.5rem;">
+                <label>Regime de Cotação</label>
+                <select id="currencyDynamicSelect">
+                  <option value="false">🔒 Estável (Cotação Fixa)</option>
+                  <option value="true">📈 Bolsa Dinâmica (Variável)</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin-bottom: 0.5rem;">
+                <label>Piso Mínimo (Bolsa)</label>
+                <input type="number" id="currencyMinRateInput" placeholder="Ex: 2000" min="1" value="2000">
+              </div>
+              <div class="form-group" style="margin-bottom: 0.5rem;">
+                <label>Teto Máximo (Bolsa)</label>
+                <input type="number" id="currencyMaxRateInput" placeholder="Ex: 50000" min="1" value="50000">
+              </div>
+              <div class="form-group" style="margin-bottom: 0.5rem;">
+                <label>Volatilidade por Ciclo (%)</label>
+                <input type="number" id="currencyVolatilityInput" placeholder="Ex: 5" min="1" max="50" value="5">
               </div>
               <div class="form-group" style="margin-bottom: 0.5rem; grid-column: 1 / -1;">
                 <label>Descrição (Opcional)</label>
-                <input type="text" id="currencyDescInput" placeholder="Ex: Ativo de reserva de valor de alto prestígio">
+                <input type="text" id="currencyDescInput" placeholder="Ex: Ativo de alto valor negociado na Bolsa Stark">
               </div>
             </div>
             <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
@@ -3932,14 +4040,116 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
                   <th style="padding: 0.6rem 0.5rem;">Símbolo</th>
                   <th style="padding: 0.6rem 0.5rem;">Nome da Moeda</th>
                   <th style="padding: 0.6rem 0.5rem;">Código</th>
-                  <th style="padding: 0.6rem 0.5rem;">Cotação Base</th>
+                  <th style="padding: 0.6rem 0.5rem;">Cotação Atual</th>
+                  <th style="padding: 0.6rem 0.5rem;">Regime / Bolsa</th>
                   <th style="padding: 0.6rem 0.5rem;">Status</th>
-                  <th style="padding: 0.6rem 0.5rem; text-align: right;">Ações</th>
+                  <th style="padding: 0.6rem 0.5rem; text-align: right;">Ações & Mercado</th>
                 </tr>
               </thead>
               <tbody id="exchangeCurrenciesTableBody">
                 <tr>
-                  <td colspan="6" style="padding: 1.5rem; text-align: center; color: var(--text-muted);">Nenhuma moeda de câmbio cadastrada.</td>
+                  <td colspan="7" style="padding: 1.5rem; text-align: center; color: var(--text-muted);">Nenhuma moeda de câmbio cadastrada.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- CARD EMPRESAS, IMÓVEIS & RENDA PASSIVA (+empresa) -->
+        <div class="card" style="grid-column: 1 / -1;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.75rem;">
+            <div>
+              <h2 style="margin: 0;">🏢 Catálogo de Empresas & Renda Passiva (+empresa)</h2>
+              <p style="margin: 0.25rem 0 0 0; color: var(--text-muted); font-size: 0.85rem;">
+                Configure os empreendimentos que os membros podem comprar com <code>+empresa comprar</code> para gerar renda passiva por hora e contratar funcionários!
+              </p>
+            </div>
+            <button type="button" class="primary-btn" id="openCreateCompanyBtn" style="white-space: nowrap;">➕ Nova Empresa no Catálogo</button>
+          </div>
+
+          <div id="companyFormBox" style="display: none; background: rgba(56, 189, 248, 0.05); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 8px; padding: 1rem; margin-bottom: 1.25rem;">
+            <input type="hidden" id="compTypeEditId" value="">
+            <h3 id="companyFormTitle" style="margin: 0 0 0.75rem 0; font-size: 1rem; color: #38bdf8;">➕ Cadastrar Novo Tipo de Empresa</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(185px, 1fr)); gap: 0.75rem;">
+              <div class="form-group" style="margin-bottom: 0.5rem;">
+                <label>Nome da Empresa</label>
+                <input type="text" id="compTypeNameInput" placeholder="Ex: Fábrica de Reatores">
+              </div>
+              <div class="form-group" style="margin-bottom: 0.5rem;">
+                <label>Emoji / Ícone</label>
+                <div style="display: flex; gap: 0.4rem; align-items: center;">
+                  <input type="text" id="compTypeEmojiInput" value="🏢" placeholder="Ex: 🏢, ⛏️, <:empresa:123...>" style="flex: 1;">
+                  <button type="button" class="secondary-btn" onclick="openEmojiPicker('compTypeEmojiInput')" title="Escolher Emoji do Servidor" style="padding: 0.45rem 0.65rem; background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.4); color: #38bdf8; border-radius: 6px; cursor: pointer; white-space: nowrap; font-size: 0.78rem;">😀 Emojis do Servidor</button>
+                </div>
+              </div>
+              <div class="form-group" style="margin-bottom: 0.5rem;">
+                <label>Preço de Compra (Moedas)</label>
+                <input type="number" id="compTypePriceInput" value="50000" min="1">
+              </div>
+              <div class="form-group" style="margin-bottom: 0.5rem;">
+                <label>Lucro Passivo / Hora</label>
+                <input type="number" id="compTypeHourlyInput" value="2500" min="1">
+              </div>
+              <div class="form-group" style="margin-bottom: 0.5rem;">
+                <label>Vagas de Funcionários</label>
+                <input type="number" id="compTypeMaxEmpInput" value="4" min="1" max="50">
+              </div>
+              <div class="form-group" style="margin-bottom: 0.5rem;">
+                <label>Custo Base de Upgrade</label>
+                <input type="number" id="compTypeUpgradeInput" value="25000" min="1">
+              </div>
+              <div class="form-group" style="margin-bottom: 0.5rem;">
+                <label>Bônus no +work (%)</label>
+                <input type="number" id="compTypeBonusInput" value="15" min="1" max="100">
+              </div>
+              <div class="form-group" style="margin-bottom: 0.5rem; grid-column: 1 / -1; border-top: 1px dashed rgba(255,255,255,0.12); padding-top: 0.6rem;">
+                <label style="color: #38bdf8; font-weight: 700;">📦 Estoque desta empresa (cada negócio consome o seu próprio insumo)</label>
+              </div>
+              <div class="form-group" style="margin-bottom: 0.5rem;">
+                <label>Nome do Insumo</label>
+                <input type="text" id="compTypeSupplyNameInput" value="Insumos Gerais" placeholder="Ex: Grãos de Café, Componentes, Fichas">
+              </div>
+              <div class="form-group" style="margin-bottom: 0.5rem;">
+                <label>Emoji do Insumo</label>
+                <div style="display: flex; gap: 0.4rem; align-items: center;">
+                  <input type="text" id="compTypeSupplyEmojiInput" value="📦" style="flex: 1;">
+                  <button type="button" class="secondary-btn" onclick="openEmojiPicker('compTypeSupplyEmojiInput')" title="Escolher Emoji do Servidor" style="padding: 0.45rem 0.65rem; background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.4); color: #38bdf8; border-radius: 6px; cursor: pointer; white-space: nowrap; font-size: 0.78rem;">😀</button>
+                </div>
+              </div>
+              <div class="form-group" style="margin-bottom: 0.5rem;">
+                <label>Consumo (unidades / hora no Nível 1)</label>
+                <input type="number" id="compTypeSupplyBurnInput" value="3" min="1" max="200">
+              </div>
+              <div class="form-group" style="margin-bottom: 0.5rem;">
+                <label>Custo por Unidade (0 = automático)</label>
+                <input type="number" id="compTypeSupplyCostInput" value="0" min="0">
+              </div>
+              <div class="form-group" style="margin-bottom: 0.5rem; grid-column: 1 / -1;">
+                <label>Descrição</label>
+                <input type="text" id="compTypeDescInput" placeholder="Descrição exibida em +empresa loja">
+              </div>
+            </div>
+            <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
+              <button type="button" class="primary-btn" id="saveCompanyTypeBtn">💾 Salvar Empresa</button>
+              <button type="button" class="secondary-btn" id="cancelCompanyTypeBtn" style="background: rgba(255,255,255,0.08); color: white; border: none; border-radius: 6px; padding: 0.5rem 1rem; cursor: pointer;">Cancelar</button>
+            </div>
+          </div>
+
+          <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.88rem;">
+              <thead>
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.1); color: var(--text-muted);">
+                  <th style="padding: 0.6rem 0.5rem;">ID</th>
+                  <th style="padding: 0.6rem 0.5rem;">Empresa</th>
+                  <th style="padding: 0.6rem 0.5rem;">Preço de Compra</th>
+                  <th style="padding: 0.6rem 0.5rem;">Renda / Hora</th>
+                  <th style="padding: 0.6rem 0.5rem;">Vagas & Bônus</th>
+                  <th style="padding: 0.6rem 0.5rem; text-align: right;">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="companyTypesTableBody">
+                <tr>
+                  <td colspan="6" style="padding: 1.5rem; text-align: center; color: var(--text-muted);">Carregando catálogo de empresas...</td>
                 </tr>
               </tbody>
             </table>
@@ -4076,7 +4286,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin-top: 0.75rem;">
             <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 0.85rem;">
               <h4 style="margin: 0 0 0.4rem 0; color: #00E5FF; font-size: 0.92rem;">💰 Nome & Símbolo da Moeda</h4>
-              <p style="margin: 0; font-size: 0.82rem; color: #949ba4;">Personalize o nome da moeda (ex: Stark Coins, Gemas) e o símbolo (🪙, 💎) para imersão total com a comunidade.</p>
+              <p style="margin: 0; font-size: 0.82rem; color: #949ba4;">Personalize o nome da moeda (ex: Stark Coins, Gemas) e o símbolo para imersão total com a comunidade.</p>
             </div>
             <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 0.85rem;">
               <h4 style="margin: 0 0 0.4rem 0; color: #00E5FF; font-size: 0.92rem;">💼 Trabalho & Cooldowns</h4>
@@ -4509,7 +4719,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
 
         <!-- CARD 4: DADO DA SORTE & COINFLIP -->
         <div class="card">
-          <h2>🎲 Dado da Sorte & 🪙 Cara ou Coroa</h2>
+          <h2>🎲 Dado da Sorte & <svg class="coin-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="#f59e0b" stroke-width="2" fill="#ffd700"/><text x="12" y="16.5" font-size="13" font-weight="900" fill="#78350f" text-anchor="middle">$</text></svg> Cara ou Coroa</h2>
           <p>Apostas rápidas com probabilidade customizada.</p>
           
           <div style="background: rgba(0,0,0,0.25); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 1rem; margin-bottom: 1rem;">
@@ -4538,7 +4748,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           </div>
 
           <div style="background: rgba(0,0,0,0.25); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 1rem;">
-            <div style="font-weight: 700; color: #fff; margin-bottom: 0.5rem;">🪙 Cara ou Coroa (+coinflip &lt;quantia&gt; &lt;cara|coroa&gt;)</div>
+            <div style="font-weight: 700; color: #fff; margin-bottom: 0.5rem;"><svg class="coin-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="#f59e0b" stroke-width="2" fill="#ffd700"/><text x="12" y="16.5" font-size="13" font-weight="900" fill="#78350f" text-anchor="middle">$</text></svg> Cara ou Coroa (+coinflip &lt;quantia&gt; &lt;cara|coroa&gt;)</div>
             <div class="form-group">
               <label>Status do Coinflip</label>
               <select id="casinoCoinflipEnabledSelect">
@@ -5867,6 +6077,415 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         </div>
       </div>
     </div>
+
+    <!-- TAB 21: CONFIGURAÇÕES GERAIS (WHITE-LABEL ENGINE) -->
+    <div id="tab-settings" class="tab-content">
+      <!-- Header Banner / Resumo -->
+      <div class="card" style="margin-bottom: 1.5rem; background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(56, 189, 248, 0.08)); border: 1px solid var(--border-hover);">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+          <div>
+            <h2 style="margin: 0 0 0.4rem 0; display: flex; align-items: center; gap: 0.5rem;">
+              <span>⚙️</span> Personalização Total do Bot & Painel Web
+            </h2>
+            <p style="margin: 0; color: var(--text-muted); font-size: 0.88rem;">
+              Transforme este projeto na <strong>base customizável (White-Label)</strong> para criar qualquer bot. Modifique a identidade, a persona da IA, as cores do painel, os embeds e os módulos ativos.
+            </p>
+          </div>
+          <div style="display: flex; gap: 0.6rem; align-items: center;">
+            <button type="button" class="secondary-btn" id="resetConfigBtn" style="padding: 0.55rem 1rem;">🔄 Restaurar Padrões</button>
+            <button type="button" class="primary-btn" id="saveGlobalConfigBtn" style="padding: 0.55rem 1.35rem; font-weight: 700;">💾 Salvar Tudo</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 1.5rem;">
+
+        <!-- 0. MODO DE EXIBIÇÃO & IDIOMA DO PAINEL -->
+        <div class="card" style="grid-column: 1 / -1; background: linear-gradient(135deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01)); border: 1px solid var(--border-color);">
+          <h2 style="display: flex; align-items: center; gap: 8px;">
+            <span>🌓</span> Modo de Exibição & Idioma do Painel
+          </h2>
+          <p>Configure a preferência visual de contraste do painel (Claro ou Escuro) e o idioma da interface.</p>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem; margin-top: 1rem;">
+            <!-- Contraste do Painel (Claro / Escuro) -->
+            <div id="themeToggleContainer" style="background: rgba(0,0,0,0.22); padding: 1rem 1.25rem; border-radius: 10px; border: 1px solid var(--border-color);">
+              <label style="display: block; font-weight: 700; margin-bottom: 0.6rem; color: var(--text-main); font-size: 0.9rem;">
+                Contraste Visual (Tema)
+              </label>
+              <div id="themeToggleBtn" style="display: flex; gap: 0.6rem;">
+                <button type="button" id="cfgThemeDarkBtn" class="secondary-btn" style="flex: 1; padding: 0.65rem; font-weight: 700; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; transition: all 0.2s ease;">
+                  <span>🌙</span> Modo Escuro
+                </button>
+                <button type="button" id="cfgThemeLightBtn" class="secondary-btn" style="flex: 1; padding: 0.65rem; font-weight: 700; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; transition: all 0.2s ease;">
+                  <span>☀️</span> Modo Claro
+                </button>
+              </div>
+              <small style="display: block; margin-top: 0.5rem; color: var(--text-muted); font-size: 0.76rem;">Alternar entre o tema escuro tradicional e o tema claro.</small>
+            </div>
+
+            <!-- Idioma da Interface -->
+            <div id="langToggleContainer" style="background: rgba(0,0,0,0.22); padding: 1rem 1.25rem; border-radius: 10px; border: 1px solid var(--border-color);">
+              <label style="display: block; font-weight: 700; margin-bottom: 0.6rem; color: var(--text-main); font-size: 0.9rem;">
+                Idioma do Painel
+              </label>
+              <div id="langToggleBtn" style="display: flex; gap: 0.6rem;">
+                <button type="button" id="cfgLangPtBtn" class="secondary-btn" style="flex: 1; padding: 0.65rem; font-weight: 700; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; transition: all 0.2s ease;">
+                  <span>🇧🇷</span> Português (BR)
+                </button>
+                <button type="button" id="cfgLangEnBtn" class="secondary-btn" style="flex: 1; padding: 0.65rem; font-weight: 700; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; transition: all 0.2s ease;">
+                  <span>🇺🇸</span> English (US)
+                </button>
+              </div>
+              <small style="display: block; margin-top: 0.5rem; color: var(--text-muted); font-size: 0.76rem;">Defina o idioma principal de todos os textos, botões e abas.</small>
+            </div>
+          </div>
+        </div>
+
+        <!-- 1. IDENTIDADE DO BOT NO DISCORD -->
+        <div class="card">
+          <h2>🤖 Identidade do Bot no Discord</h2>
+          <p>Altere o nome oficial, o prefixo de comandos e como o bot reage no chat.</p>
+
+          <div class="form-group">
+            <label>Nome Oficial do Bot (Identidade)</label>
+            <input type="text" id="cfgBotName" placeholder="Ex: J.A.R.V.I.S., Midas, Athena">
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 0.75rem;">
+            <div class="form-group">
+              <label>Prefixo de Comandos</label>
+              <input type="text" id="cfgBotPrefix" placeholder="Ex: +, !, .">
+            </div>
+            <div class="form-group">
+              <label>Gatilhos de Nome no Chat</label>
+              <input type="text" id="cfgTriggerNames" placeholder="Ex: Jarvis, J.A.R.V.I.S, Cell">
+              <small style="color: var(--text-subtle); font-size: 0.75rem;">Separados por vírgula. Responde sem precisar de @menção.</small>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 0.5rem;">
+            <div class="form-group">
+              <label>Status no Discord</label>
+              <select id="cfgBotPresenceStatus">
+                <option value="online">🟢 Online</option>
+                <option value="idle">🟡 Ausente (Idle)</option>
+                <option value="dnd">🔴 Não Perturbe (DND)</option>
+                <option value="invisible">⚪ Invisível</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Tipo de Atividade</label>
+              <select id="cfgBotPresenceType">
+                <option value="Custom">💬 Personalizado</option>
+                <option value="Playing">🎮 Jogando</option>
+                <option value="Listening">🎧 Ouvindo</option>
+                <option value="Watching">📺 Assistindo</option>
+                <option value="Competing">🏆 Competindo</option>
+                <option value="Streaming">🔴 Transmitindo</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Texto da Atividade / Presença</label>
+            <input type="text" id="cfgBotPresenceText" placeholder="Ex: Protocolos ativos | +help">
+          </div>
+        </div>
+
+        <!-- 2. PERSONALIDADE DA IA (SYSTEM PROMPT) -->
+        <div class="card">
+          <h2>🧠 Personalidade & Diretrizes da IA</h2>
+          <p>Mude quem a inteligência artificial é. Funciona com Gemini Flash e Pro.</p>
+
+          <div class="form-group">
+            <label>Papel Principal (Função / Persona)</label>
+            <input type="text" id="cfgAiRole" placeholder="Ex: Inteligência artificial central e assistente pessoal.">
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+            <div class="form-group">
+              <label>Forma de Tratamento</label>
+              <input type="text" id="cfgAiSalutation" placeholder="Ex: Senhor / Senhora, Mestre">
+            </div>
+            <div class="form-group">
+              <label>Modelo Gemini Padrão</label>
+              <select id="cfgAiModel">
+                <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite (Recomendado - Ultrarrápido & Leve)</option>
+                <option value="gemini-3.5-flash">Gemini 3.5 Flash (Alta Performance)</option>
+                <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
+                <option value="gemini-flash-lite-latest">Gemini Flash Lite (Latest)</option>
+                <option value="gemini-flash-latest">Gemini Flash (Latest)</option>
+                <option value="gemini-3.8-flash">Gemini 3.8 Flash (Nova Geração)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Tom de Voz (Estilo)</label>
+            <input type="text" id="cfgAiTone" placeholder="Ex: Aristocrático, mordomo inglês, humor seco e refinado.">
+          </div>
+
+          <div class="form-group">
+            <label>Diretrizes de Personalidade (Uma por linha)</label>
+            <textarea id="cfgAiGuidelines" rows="3" placeholder="Insira as regras de personalidade da IA..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label style="display: flex; justify-content: space-between; align-items: center;">
+              <span>Temperatura / Criatividade</span>
+              <strong id="cfgAiTempDisplay">0.65</strong>
+            </label>
+            <input type="range" id="cfgAiTemp" min="0" max="1" step="0.05" value="0.65" style="width: 100%;">
+          </div>
+        </div>
+
+        <!-- 3. TEMA VISUAL DO PAINEL WEB (COLOR PALETTE + PRESETS) -->
+        <div class="card" style="grid-column: 1 / -1;">
+          <h2>🎨 Cores & Tema Visual do Painel Web</h2>
+          <p>Personalize 100% da paleta visual da interface web. As alterações são aplicadas instantaneamente!</p>
+
+          <!-- Presets de Cores em 1 Clique -->
+          <div style="margin-bottom: 1.25rem;">
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.82rem; color: var(--text-muted); text-transform: uppercase;">Presets Prontos de Tema (1 Clique)</label>
+            <div style="display: flex; flex-wrap: wrap; gap: 0.6rem;">
+              <button type="button" class="preset-theme-btn" data-preset="stark" style="background: #1e1b4b; border: 1px solid #6366f1; color: #c7d2fe; padding: 0.45rem 0.85rem; border-radius: 8px; cursor: pointer; font-size: 0.84rem; display: flex; align-items: center; gap: 6px;">
+                <span style="width: 12px; height: 12px; border-radius: 50%; background: #6366F1; display: inline-block;"></span>
+                Stark Violet (Padrão)
+              </button>
+              <button type="button" class="preset-theme-btn" data-preset="midas" style="background: #1c1917; border: 1px solid #f59e0b; color: #fde68a; padding: 0.45rem 0.85rem; border-radius: 8px; cursor: pointer; font-size: 0.84rem; display: flex; align-items: center; gap: 6px;">
+                <span style="width: 12px; height: 12px; border-radius: 50%; background: #F59E0B; display: inline-block;"></span>
+                Midas Gold (Ouro & Preto)
+              </button>
+              <button type="button" class="preset-theme-btn" data-preset="crimson" style="background: #200d11; border: 1px solid #ef4444; color: #fecaca; padding: 0.45rem 0.85rem; border-radius: 8px; cursor: pointer; font-size: 0.84rem; display: flex; align-items: center; gap: 6px;">
+                <span style="width: 12px; height: 12px; border-radius: 50%; background: #EF4444; display: inline-block;"></span>
+                Crimson Iron (Vermelho)
+              </button>
+              <button type="button" class="preset-theme-btn" data-preset="matrix" style="background: #061a14; border: 1px solid #10b981; color: #a7f3d0; padding: 0.45rem 0.85rem; border-radius: 8px; cursor: pointer; font-size: 0.84rem; display: flex; align-items: center; gap: 6px;">
+                <span style="width: 12px; height: 12px; border-radius: 50%; background: #10B981; display: inline-block;"></span>
+                Matrix Emerald (Verde Cyber)
+              </button>
+              <button type="button" class="preset-theme-btn" data-preset="ocean" style="background: #081d30; border: 1px solid #0ea5e9; color: #bae6fd; padding: 0.45rem 0.85rem; border-radius: 8px; cursor: pointer; font-size: 0.84rem; display: flex; align-items: center; gap: 6px;">
+                <span style="width: 12px; height: 12px; border-radius: 50%; background: #0EA5E9; display: inline-block;"></span>
+                Deep Ocean (Azul Elétrico)
+              </button>
+              <button type="button" class="preset-theme-btn" data-preset="midnight" style="background: #111827; border: 1px solid #a855f7; color: #e9d5ff; padding: 0.45rem 0.85rem; border-radius: 8px; cursor: pointer; font-size: 0.84rem; display: flex; align-items: center; gap: 6px;">
+                <span style="width: 12px; height: 12px; border-radius: 50%; background: #A855F7; display: inline-block;"></span>
+                Midnight Purple (Roxo Neon)
+              </button>
+            </div>
+          </div>
+
+          <!-- Color Pickers Grid -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+            <div class="form-group">
+              <label>Cor Primária (Botões & Realces)</label>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <input type="color" id="cfgColorPrimaryPicker" style="width: 44px; height: 38px; border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; background: transparent; padding: 2px;">
+                <input type="text" id="cfgColorPrimary" placeholder="#6366F1" style="flex: 1;">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Cor de Destaque (Acento / Neon)</label>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <input type="color" id="cfgColorAccentPicker" style="width: 44px; height: 38px; border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; background: transparent; padding: 2px;">
+                <input type="text" id="cfgColorAccent" placeholder="#38BDF8" style="flex: 1;">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Fundo da Página (Background)</label>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <input type="color" id="cfgColorBgPagePicker" style="width: 44px; height: 38px; border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; background: transparent; padding: 2px;">
+                <input type="text" id="cfgColorBgPage" placeholder="#0B0F19" style="flex: 1;">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Fundo dos Cards (Superfície)</label>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <input type="color" id="cfgColorBgSurfacePicker" style="width: 44px; height: 38px; border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; background: transparent; padding: 2px;">
+                <input type="text" id="cfgColorBgSurface" placeholder="#1E293B" style="flex: 1;">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Fundo do Topo / Barra de Navegação</label>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <input type="color" id="cfgColorBgHeaderPicker" style="width: 44px; height: 38px; border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; background: transparent; padding: 2px;">
+                <input type="text" id="cfgColorBgHeader" placeholder="#0F172A" style="flex: 1;">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Cor do Texto Principal</label>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <input type="color" id="cfgColorTextMainPicker" style="width: 44px; height: 38px; border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; background: transparent; padding: 2px;">
+                <input type="text" id="cfgColorTextMain" placeholder="#F8FAFC" style="flex: 1;">
+              </div>
+            </div>
+          </div>
+
+          <!-- Live Theme Preview Box -->
+          <div id="themeLivePreviewCard" style="margin-top: 1.25rem; padding: 1.25rem; border-radius: 12px; border: 1px solid var(--border-hover); background: var(--bg-surface); transition: all 0.3s ease;">
+            <div style="font-weight: 700; font-size: 0.88rem; margin-bottom: 0.6rem; color: var(--text-muted); text-transform: uppercase;">Pré-visualização em Tempo Real do Tema</div>
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+              <div>
+                <h3 id="previewTitleText" style="margin: 0; color: var(--text-main); font-size: 1.15rem;">J.A.R.V.I.S. Core Engine</h3>
+                <p id="previewSubtitleText" style="margin: 0.2rem 0 0 0; color: var(--text-muted); font-size: 0.85rem;">Assim é como seus cartões, botões e textos aparecerão no painel.</p>
+              </div>
+              <div style="display: flex; gap: 0.6rem; align-items: center;">
+                <span id="previewBadge" style="padding: 0.35rem 0.75rem; border-radius: 20px; font-size: 0.8rem; font-weight: 700; background: rgba(56, 189, 248, 0.15); color: var(--cyan); border: 1px solid var(--cyan);">Acento Neon</span>
+                <button type="button" id="previewBtn" style="padding: 0.5rem 1.1rem; border-radius: 8px; font-weight: 700; border: none; background: var(--primary); color: #fff; cursor: default;">Botão Primário</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. EMBLEMAS & CORES NO DISCORD -->
+        <div class="card">
+          <h2>📜 Estilo dos Embeds no Discord</h2>
+          <p>Configure as cores das mensagens enviadas pelo bot nos canais do Discord.</p>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+            <div class="form-group">
+              <label>Cor Primária do Embed</label>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <input type="color" id="cfgEmbedPrimaryPicker" style="width: 44px; height: 38px; border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; background: transparent; padding: 2px;">
+                <input type="text" id="cfgEmbedPrimary" placeholder="#6366F1" style="flex: 1;">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Cor de Sucesso (Verde)</label>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <input type="color" id="cfgEmbedSuccessPicker" style="width: 44px; height: 38px; border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; background: transparent; padding: 2px;">
+                <input type="text" id="cfgEmbedSuccess" placeholder="#10B981" style="flex: 1;">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Cor de Aviso (Amarelo)</label>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <input type="color" id="cfgEmbedWarningPicker" style="width: 44px; height: 38px; border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; background: transparent; padding: 2px;">
+                <input type="text" id="cfgEmbedWarning" placeholder="#F59E0B" style="flex: 1;">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Cor de Erro (Vermelho)</label>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <input type="color" id="cfgEmbedErrorPicker" style="width: 44px; height: 38px; border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; background: transparent; padding: 2px;">
+                <input type="text" id="cfgEmbedError" placeholder="#EF4444" style="flex: 1;">
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Texto de Rodapé dos Embeds (Rodapé)</label>
+            <input type="text" id="cfgEmbedFooter" placeholder="Ex: J.A.R.V.I.S. • Sistemas Centrais">
+          </div>
+        </div>
+
+        <!-- 5. BRANDING & TEXTOS DO PAINEL -->
+        <div class="card">
+          <h2>🏷️ Branding & Textos do Painel Web</h2>
+          <p>Títulos, insígnias e rodapé exibidos no navegador.</p>
+
+          <div class="form-group">
+            <label>Título da Aba do Navegador</label>
+            <input type="text" id="cfgPanelTitle" placeholder="Ex: J.A.R.V.I.S. — Painel de Controle">
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+            <div class="form-group">
+              <label>Insígnia / Badge do Topo</label>
+              <input type="text" id="cfgPanelBadge" placeholder="Ex: TECH CORE v2.0">
+            </div>
+            <div class="form-group">
+              <label>Subtítulo do Painel</label>
+              <input type="text" id="cfgPanelSubtitle" placeholder="Ex: Sistemas Centrais">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Texto de Direitos Autorais / Rodapé</label>
+            <input type="text" id="cfgPanelFooter" placeholder="Ex: © 2026 Stark Industries...">
+          </div>
+        </div>
+
+        <!-- 6. MÓDULOS & RECURSOS ATIVOS (FEATURE FLAGS) -->
+        <div class="card" style="grid-column: 1 / -1;">
+          <h2>⚡ Módulos & Recursos Ativos do Sistema</h2>
+          <p>Ative ou desative subsistemas inteiros conforme a proposta do seu bot.</p>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin-top: 0.75rem;">
+            <label style="display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.2); padding: 0.85rem 1.15rem; border-radius: 8px; border: 1px solid var(--border-color); cursor: pointer;">
+              <div>
+                <div style="font-weight: 700; color: var(--text-main);">🤖 Chat com IA & Ferramentas</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">Processamento autônomo com Gemini</div>
+              </div>
+              <input type="checkbox" id="cfgModAiChat" style="width: 20px; height: 20px; accent-color: var(--primary);">
+            </label>
+
+            <label style="display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.2); padding: 0.85rem 1.15rem; border-radius: 8px; border: 1px solid var(--border-color); cursor: pointer;">
+              <div>
+                <div style="font-weight: 700; color: var(--text-main);">🎵 Música & Voz</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">Player de YouTube, filas e rádios</div>
+              </div>
+              <input type="checkbox" id="cfgModMusic" style="width: 20px; height: 20px; accent-color: var(--primary);">
+            </label>
+
+            <label style="display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.2); padding: 0.85rem 1.15rem; border-radius: 8px; border: 1px solid var(--border-color); cursor: pointer;">
+              <div>
+                <div style="font-weight: 700; color: var(--text-main);">💰 Economia & Banco</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">Trabalho, banco, cassino e bolsa</div>
+              </div>
+              <input type="checkbox" id="cfgModEconomy" style="width: 20px; height: 20px; accent-color: var(--primary);">
+            </label>
+
+            <label style="display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.2); padding: 0.85rem 1.15rem; border-radius: 8px; border: 1px solid var(--border-color); cursor: pointer;">
+              <div>
+                <div style="font-weight: 700; color: var(--text-main);">🏆 Níveis & Recompensas de XP</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">Leveling em mensagens e cargos</div>
+              </div>
+              <input type="checkbox" id="cfgModXp" style="width: 20px; height: 20px; accent-color: var(--primary);">
+            </label>
+
+            <label style="display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.2); padding: 0.85rem 1.15rem; border-radius: 8px; border: 1px solid var(--border-color); cursor: pointer;">
+              <div>
+                <div style="font-weight: 700; color: var(--text-main);">🛡️ Moderação & Anti-Spam</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">Proteção contra flood, ban e mute</div>
+              </div>
+              <input type="checkbox" id="cfgModModeration" style="width: 20px; height: 20px; accent-color: var(--primary);">
+            </label>
+
+            <label style="display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.2); padding: 0.85rem 1.15rem; border-radius: 8px; border: 1px solid var(--border-color); cursor: pointer;">
+              <div>
+                <div style="font-weight: 700; color: var(--text-main);">🎫 Central de Tickets</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">Canais de suporte e transcrições</div>
+              </div>
+              <input type="checkbox" id="cfgModTickets" style="width: 20px; height: 20px; accent-color: var(--primary);">
+            </label>
+
+            <label style="display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.2); padding: 0.85rem 1.15rem; border-radius: 8px; border: 1px solid var(--border-color); cursor: pointer;">
+              <div>
+                <div style="font-weight: 700; color: var(--text-main);">🎯 Quiz Arena</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">Desafios de perguntas e ranking</div>
+              </div>
+              <input type="checkbox" id="cfgModQuiz" style="width: 20px; height: 20px; accent-color: var(--primary);">
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Floating Action Bar -->
+      <div style="margin-top: 2rem; display: flex; justify-content: flex-end; gap: 1rem; padding: 1.25rem; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 12px; position: sticky; bottom: 1rem; z-index: 50; box-shadow: var(--shadow-lg);">
+        <button type="button" class="secondary-btn" id="resetConfigBtnBottom">🔄 Restaurar Padrões</button>
+        <button type="button" class="primary-btn" id="saveGlobalConfigBtnBottom" style="padding: 0.65rem 2rem; font-weight: 700; font-size: 0.95rem;">💾 Salvar Todas as Configurações</button>
+      </div>
+    </div>
   </main>
   </div> <!-- .main-wrapper -->
   </div> <!-- .app-layout -->
@@ -5928,8 +6547,8 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
 
   <script>
     let isPanelUnlocked = ${Boolean(isUnlocked)};
-    const csrfToken = '${csrfToken}';
-    var currentCsrfToken = csrfToken;
+    let csrfToken = '${csrfToken}';
+    let currentCsrfToken = csrfToken;
     window.csrfToken = csrfToken;
     window.currentCsrfToken = csrfToken;
 
@@ -5941,6 +6560,23 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
+    }
+
+    function authFetch(url, options = {}) {
+      const activeCsrf = window.csrfToken || currentCsrfToken || csrfToken;
+      const headers = {
+        'X-CSRF-Token': activeCsrf,
+        'X-Panel-Password': '1598',
+        ...(options.headers || {})
+      };
+      if (options.body && typeof options.body === 'string' && !headers['Content-Type']) {
+        headers['Content-Type'] = 'application/json';
+      }
+      return fetch(url, {
+        credentials: 'same-origin',
+        ...options,
+        headers
+      });
     }
 
     // Categories dropdown toggle in J.A.R.V.I.S. header
@@ -6162,7 +6798,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
     }
   
     
-    let currentGuildId = null;
+    let currentGuildId = '${initialServerId || ''}' || null;
     let currentChannels = [];
     let currentRoles = [];
 
@@ -6216,7 +6852,8 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       'tab-economy': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f4b0.png" class="nav-photo-icon" alt=""> Economia & Banco',
       'tab-casino': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f3b0.png" class="nav-photo-icon" alt=""> Cassino & Apostas',
       'tab-music': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f3b5.png" class="nav-photo-icon" alt=""> Música & Streaming',
-      'tab-tickets': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f3ab.png" class="nav-photo-icon" alt=""> Central de Tickets'
+      'tab-tickets': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f3ab.png" class="nav-photo-icon" alt=""> Central de Tickets',
+      'tab-settings': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/2699.png" class="nav-photo-icon" alt=""> Configurações Gerais & Base'
     };
 
     // Sidebar Real-Time Search Filter
@@ -6318,6 +6955,9 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       }
       if (tabId === 'tab-reviews') {
         if (typeof loadReviewsData === 'function') loadReviewsData();
+      }
+      if (tabId === 'tab-settings') {
+        if (typeof loadBotConfigTab === 'function') loadBotConfigTab();
       }
     }
 
@@ -6785,6 +7425,9 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           if (typeof renderLoanConfig === 'function') {
             renderLoanConfig(mods.economy.loanConfig || null);
           }
+          if (typeof renderCompanyTypes === 'function') {
+            renderCompanyTypes(mods.economy.companyTypes || []);
+          }
         }
 
         // Casino & Bets
@@ -7053,39 +7696,61 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
 
     // Save Module Helper
     async function saveModule(moduleName, payload) {
+      if (!currentGuildId) {
+        currentGuildId = document.getElementById('guildSelector')?.value || '${initialServerId || ''}' || null;
+      }
       if (!currentGuildId) return showToast('Selecione um servidor primeiro no topo.', 'warning', 'Atenção');
       const moduleNamesMap = {
         'custom_commands': 'Comandos Personalizados',
         'economy': 'Economia',
         'moderation': 'Moderação',
         'welcome': 'Boas-Vindas & AutoRole',
+        'autorole': 'AutoRole de Entrada',
         'music': 'Player de Música',
         'tickets': 'Central de Tickets',
         'casino': 'Cassino & Apostas',
         'social': 'Social & Romance',
         'reviews': 'Avaliações',
         'starboard': 'Starboard',
-        'ai_memory': 'Memórias IA'
+        'ai_memory': 'Memórias IA',
+        'aimemory': 'Memórias IA',
+        'bot_presence': 'Presença & Status do Bot',
+        'briefing': 'Briefing Diário',
+        'audit': 'Canal de Auditoria',
+        'xp': 'Sistema de Níveis & XP',
+        'quiz': 'Quiz & Perguntas'
       };
       const friendlyName = moduleNamesMap[moduleName] || moduleName;
 
       try {
+        const activeCsrf = window.csrfToken || currentCsrfToken || csrfToken;
         const res = await fetch('/api/guilds/' + currentGuildId + '/modules/' + moduleName, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
-            'X-CSRF-Token': csrfToken
+            'X-CSRF-Token': activeCsrf,
+            'X-Panel-Password': '1598'
           },
+          credentials: 'same-origin',
           body: JSON.stringify(payload)
         });
         if (res.ok) {
+          const resJson = await res.json().catch(() => null);
+          if (resJson && resJson.csrfToken) {
+            csrfToken = resJson.csrfToken;
+            window.csrfToken = resJson.csrfToken;
+            currentCsrfToken = resJson.csrfToken;
+          }
           showToast('Configurações de ' + friendlyName + ' salvas e sincronizadas.', 'success', 'Salvo com Sucesso!');
+          return resJson;
         } else {
-          const err = await res.json();
+          const err = await res.json().catch(() => ({}));
           showToast(err.error || 'Falha ao salvar configurações', 'error', 'Erro ao Salvar');
+          return null;
         }
       } catch (err) {
         showToast('Erro de conexão ao salvar: ' + err.message, 'error', 'Erro no Servidor');
+        return null;
       }
     }
 
@@ -7430,26 +8095,36 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       }
     }
 
+    function renderCoinSvg() {
+      return '<svg class="coin-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="#f59e0b" stroke-width="2" fill="#ffd700"/><text x="12" y="16.5" font-size="13" font-weight="900" fill="#78350f" text-anchor="middle">$</text></svg>';
+    }
+
     function renderDiscordCustomEmojis(html) {
       if (!html) return '';
-      // 1. Resolve <:name:id> or <a:name:id> (both escaped &lt;...&gt; and raw)
-      let out = html.replace(/(?:&lt;|<)(a)?:([a-zA-Z0-9_~]+):(\d+)(?:&gt;|>)/g, (match, anim, name, id) => {
-        const ext = anim ? 'gif' : 'png';
-        return '<img src="https://cdn.discordapp.com/emojis/' + id + '.' + ext + '?size=48" class="discord-inline-emoji" alt=":' + name + ':" title=":' + name + '">';
+
+      // 1. Resolve full Discord custom emoji tags <:name:id> or <a:name:id> (both escaped &lt;...&gt; and raw)
+      var out = html.replace(/(?:&lt;|<)\\s*(a)?\\s*:\\s*([a-zA-Z0-9_~-]+)\\s*:\\s*([0-9]+)\\s*(?:&gt;|>)/gi, function(match, anim, name, id) {
+        var ext = anim ? 'gif' : 'png';
+        return '<img src="https://cdn.discordapp.com/emojis/' + id + '.' + ext + '?size=48&quality=lossless" class="discord-inline-emoji" alt="' + name + '" title="' + name + '">';
       });
 
-      // 2. Resolve shorthand :name: if present in emojiCatalog
+      // 2. Resolve shorthand :name: only when emojiCatalog is loaded and it is NOT part of an existing Discord tag
       if (window.emojiCatalog) {
-        const list = [...(window.emojiCatalog.currentGuild || []), ...(window.emojiCatalog.otherGuilds || [])];
+        var list = (window.emojiCatalog.currentGuild || []).concat(window.emojiCatalog.otherGuilds || []);
         if (list.length > 0) {
-          const map = new Map();
-          list.forEach(e => {
+          var map = new Map();
+          list.forEach(function(e) {
             if (!map.has(e.name.toLowerCase())) map.set(e.name.toLowerCase(), e);
           });
-          out = out.replace(/:([a-zA-Z0-9_~]{2,32}):/g, (match, name) => {
-            const found = map.get(name.toLowerCase());
+          out = out.replace(/:([a-zA-Z0-9_~-]{2,32}):/g, function(match, name, offset, fullStr) {
+            var before = fullStr.substring(Math.max(0, offset - 15), offset);
+            var after = fullStr.substring(offset + match.length, offset + match.length + 35);
+            if (/(?:<|&lt;)(?:a)?$/i.test(before) || /^[ \\t]*[0-9]+(?:>|&gt;)/i.test(after)) {
+              return match;
+            }
+            var found = map.get(name.toLowerCase());
             if (found) {
-              return '<img src="' + found.url + '" class="discord-inline-emoji" alt=":' + found.name + ':" title=":' + found.name + '">';
+              return '<img src="' + found.url + '" class="discord-inline-emoji" alt="' + found.name + '" title="' + found.name + '">';
             }
             return match;
           });
@@ -7569,11 +8244,18 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       const target = document.getElementById(window.emojiTargetInputId);
       if (!target) return;
 
-      const start = target.selectionStart || target.value.length;
-      const end = target.selectionEnd || target.value.length;
-      const val = target.value;
-      target.value = val.substring(0, start) + ' ' + tag + ' ' + val.substring(end);
-      target.selectionStart = target.selectionEnd = start + tag.length + 2;
+      const cleanTag = tag.trim();
+      const isSingleEmojiField = target.id === 'currencySymbolInput' || target.id === 'compTypeEmojiInput' || target.id === 'compTypeSupplyEmojiInput';
+
+      if (isSingleEmojiField) {
+        target.value = cleanTag;
+      } else {
+        const start = target.selectionStart || target.value.length;
+        const end = target.selectionEnd || target.value.length;
+        const val = target.value;
+        target.value = val.substring(0, start) + ' ' + cleanTag + ' ' + val.substring(end);
+        target.selectionStart = target.selectionEnd = start + cleanTag.length + 2;
+      }
       target.focus();
 
       // Trigger input event to update live preview
@@ -7582,8 +8264,11 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
 
       const info = document.getElementById('emojiSelectedInfo');
       if (info) {
-        info.innerText = 'Inserido: ' + tag;
-        setTimeout(() => { if (info.innerText === 'Inserido: ' + tag) info.innerText = 'Pronto'; }, 2000);
+        info.innerText = 'Inserido: ' + cleanTag;
+        setTimeout(() => { if (info.innerText === 'Inserido: ' + cleanTag) info.innerText = 'Pronto'; }, 2000);
+      }
+      if (isSingleEmojiField) {
+        setTimeout(closeEmojiPicker, 300);
       }
     }
 
@@ -8636,7 +9321,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           '</td>' +
           '<td style="padding: 0.55rem 0.5rem;">' +
             '<div style="display: flex; align-items: center; gap: 0.4rem;">' +
-              '<span style="color: #FEE75C; font-size: 0.88rem;">🪙</span>' +
+              '<span style="color: #FEE75C; font-size: 0.88rem; display: inline-flex; align-items: center;">' + renderCoinSvg() + '</span>' +
               '<input type="number" class="loan-tier-max-input" data-idx="' + idx + '" value="' + Number(t.maxLoan || 500) + '" min="1" step="100" style="max-width: 220px; padding: 0.35rem 0.5rem; font-weight: 600; color: #57F287;">' +
             '</div>' +
           '</td>' +
@@ -8647,6 +9332,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           '</td>' +
         '</tr>';
       }).join('');
+      applyTwemoji(tbody);
 
       tbody.querySelectorAll('.loan-tier-level-input').forEach(inp => {
         inp.addEventListener('change', (e) => {
@@ -8831,38 +9517,113 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       }
     };
 
-    // Exchange Currencies / Moedas de Câmbio
+    // Coin SVG Icon (Never missing glyphs or boxes like ▯)
+    function renderCoinSvg() {
+      return '<svg class="coin-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="#f59e0b" stroke-width="2" fill="#ffd700"/><text x="12" y="16.5" font-size="13" font-weight="900" fill="#78350f" text-anchor="middle">$</text></svg>';
+    }
+
+    // Exchange Currencies / Moedas de Câmbio & Bolsa Stark
     function renderExchangeCurrencies(currencies = []) {
       const tbody = document.getElementById('exchangeCurrenciesTableBody');
       if (!tbody) return;
+      window.cachedExchangeCurrencies = currencies || [];
 
       if (!currencies || currencies.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="padding: 1.5rem; text-align: center; color: var(--text-muted);">Nenhuma moeda de câmbio cadastrada.<br>Clique em "➕ Nova Moeda de Câmbio" para criar ouro, gemas ou diamantes!</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="padding: 1.5rem; text-align: center; color: var(--text-muted);">Nenhuma moeda de câmbio cadastrada.<br>Clique em "➕ Nova Moeda de Câmbio" para criar ouro, gemas ou ações da Bolsa Stark!</td></tr>';
         return;
       }
 
       tbody.innerHTML = currencies.map(c => {
         const rateFormatted = Number(c.rate).toLocaleString('pt-BR');
+        const changePct = Number(c.changePercent || 0);
+        const changeColor = changePct >= 0 ? '#00F59B' : '#FF3864';
+        const changeSign = changePct >= 0 ? '+' : '';
+        const modeBadge = c.isDynamic
+          ? '<span style="color: #00E5FF; font-weight: 600;">📈 Bolsa (' + changeSign + changePct + '%)</span>'
+          : '<span style="color: #94a3b8;">🔒 Fixa</span>';
         const statusBadge = c.isActive
           ? '<span style="color: #57F287; font-weight: 600;">🟢 Ativo</span>'
           : '<span style="color: #ED4245; font-weight: 600;">🔴 Pausado</span>';
 
         return '<tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">' +
-          '<td style="padding: 0.75rem 0.5rem; font-size: 1.25rem;">' + (c.symbol || '💎') + '</td>' +
-          '<td style="padding: 0.75rem 0.5rem; font-weight: 600; color: #fff;">' + escapeHtml(c.name) + '</td>' +
+          '<td style="padding: 0.75rem 0.5rem; font-size: 1.25rem;">' + renderDiscordCustomEmojis(escapeHtml(c.symbol || '💎')) + '</td>' +
+          '<td style="padding: 0.75rem 0.5rem; font-weight: 600; color: #fff;">' + renderDiscordCustomEmojis(escapeHtml(c.name)) + '</td>' +
           '<td style="padding: 0.75rem 0.5rem;"><code style="background: rgba(255,255,255,0.08); padding: 0.2rem 0.4rem; border-radius: 4px;">' + escapeHtml(c.code) + '</code></td>' +
-          '<td style="padding: 0.75rem 0.5rem; color: #FEE75C; font-weight: 600;">🪙 ' + rateFormatted + '</td>' +
+          '<td style="padding: 0.75rem 0.5rem; color: #FEE75C; font-weight: 600; white-space: nowrap;">' + renderCoinSvg() + rateFormatted + '</td>' +
+          '<td style="padding: 0.75rem 0.5rem;">' + modeBadge + '</td>' +
           '<td style="padding: 0.75rem 0.5rem;">' + statusBadge + '</td>' +
           '<td style="padding: 0.75rem 0.5rem; text-align: right; white-space: nowrap;">' +
-            '<button class="toggle-currency-btn" data-id="' + c.id + '" data-active="' + c.isActive + '" style="background: rgba(255,255,255,0.08); color: white; border: none; padding: 0.35rem 0.7rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem; margin-right: 0.35rem;">' +
-              (c.isActive ? '⏸️ Pausar' : '▶️ Ativar') +
+            '<button class="edit-currency-btn" data-id="' + c.id + '" title="Editar Moeda" style="background: rgba(254,231,92,0.15); color: #FEE75C; border: 1px solid rgba(254,231,92,0.3); padding: 0.3rem 0.55rem; border-radius: 4px; cursor: pointer; font-size: 0.78rem; margin-right: 0.25rem;">✏️</button>' +
+            '<button class="bump-currency-btn" data-id="' + c.id + '" data-delta="5" title="Subir +5%" style="background: rgba(0,245,155,0.14); color: #00F59B; border: 1px solid rgba(0,245,155,0.3); padding: 0.3rem 0.55rem; border-radius: 4px; cursor: pointer; font-size: 0.78rem; margin-right: 0.25rem;">📈 +5%</button>' +
+            '<button class="bump-currency-btn" data-id="' + c.id + '" data-delta="-5" title="Cair -5%" style="background: rgba(255,56,100,0.14); color: #FF3864; border: 1px solid rgba(255,56,100,0.3); padding: 0.3rem 0.55rem; border-radius: 4px; cursor: pointer; font-size: 0.78rem; margin-right: 0.25rem;">📉 -5%</button>' +
+            '<button class="toggle-dynamic-currency-btn" data-id="' + c.id + '" data-dyn="' + Boolean(c.isDynamic) + '" style="background: rgba(0,229,255,0.12); color: #00E5FF; border: 1px solid rgba(0,229,255,0.3); padding: 0.3rem 0.55rem; border-radius: 4px; cursor: pointer; font-size: 0.78rem; margin-right: 0.25rem;">' +
+              (c.isDynamic ? '🔒 Fixar' : '📈 Modo Bolsa') +
             '</button>' +
-            '<button class="delete-currency-btn" data-id="' + c.id + '" data-name="' + escapeHtml(c.name) + '" style="background: rgba(237,66,69,0.15); color: #ED4245; border: 1px solid rgba(237,66,69,0.3); padding: 0.35rem 0.7rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">' +
-              '🗑️ Excluir' +
+            '<button class="toggle-currency-btn" data-id="' + c.id + '" data-active="' + c.isActive + '" style="background: rgba(255,255,255,0.08); color: white; border: none; padding: 0.3rem 0.6rem; border-radius: 4px; cursor: pointer; font-size: 0.78rem; margin-right: 0.25rem;">' +
+              (c.isActive ? '⏸️' : '▶️') +
+            '</button>' +
+            '<button class="delete-currency-btn" data-id="' + c.id + '" data-name="' + escapeHtml(c.name) + '" style="background: rgba(237,66,69,0.15); color: #ED4245; border: 1px solid rgba(237,66,69,0.3); padding: 0.3rem 0.6rem; border-radius: 4px; cursor: pointer; font-size: 0.78rem;">' +
+              '🗑️' +
             '</button>' +
           '</td>' +
         '</tr>';
       }).join('');
+      applyTwemoji(tbody);
+
+      // Editar Moeda de Câmbio
+      tbody.querySelectorAll('.edit-currency-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = Number(btn.getAttribute('data-id'));
+          const c = (window.cachedExchangeCurrencies || []).find(x => Number(x.id) === id);
+          if (!c) return;
+          const box = document.getElementById('currencyFormBox');
+          if (box) box.style.display = 'block';
+
+          document.getElementById('currencyEditId').value = String(c.id);
+          document.getElementById('currencyNameInput').value = c.name || '';
+          document.getElementById('currencyCodeInput').value = c.code || '';
+          document.getElementById('currencySymbolInput').value = c.symbol || '💎';
+          document.getElementById('currencyRateInput').value = c.rate || 1;
+          document.getElementById('currencyDynamicSelect').value = String(Boolean(c.isDynamic));
+          document.getElementById('currencyMinRateInput').value = c.minRate || 1;
+          document.getElementById('currencyMaxRateInput').value = c.maxRate || 50000;
+          document.getElementById('currencyVolatilityInput').value = Math.round((c.volatility || 0.05) * 100);
+          document.getElementById('currencyDescInput').value = c.description || '';
+
+          const title = document.getElementById('currencyFormTitle');
+          if (title) title.innerHTML = '✏️ Editar Moeda de Câmbio: <span style="color: #fff;">' + escapeHtml(c.name) + '</span>';
+          const saveBtn = document.getElementById('saveCurrencyBtn');
+          if (saveBtn) saveBtn.innerText = '💾 Salvar Alterações';
+
+          box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        });
+      });
+
+      tbody.querySelectorAll('.bump-currency-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = Number(btn.getAttribute('data-id'));
+          const deltaPct = Number(btn.getAttribute('data-delta'));
+          await saveModule('economy', {
+            exchangeAction: 'SIMULATE',
+            currencyData: { id, deltaPct, reason: (deltaPct > 0 ? 'Impulso de alta pelo Painel Web' : 'Correção pelo Painel Web') }
+          });
+          loadGuildData(currentGuildId);
+          showToast('Cotação ajustada em ' + (deltaPct > 0 ? '+' : '') + deltaPct + '%!');
+        });
+      });
+
+      tbody.querySelectorAll('.toggle-dynamic-currency-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = Number(btn.getAttribute('data-id'));
+          const isDyn = btn.getAttribute('data-dyn') === 'true';
+          await saveModule('economy', {
+            exchangeAction: 'UPDATE',
+            currencyData: { id, isDynamic: !isDyn }
+          });
+          loadGuildData(currentGuildId);
+          showToast(!isDyn ? 'Modo Bolsa Dinâmica ativado!' : 'Cotação fixada!');
+        });
+      });
 
       tbody.querySelectorAll('.toggle-currency-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
@@ -8892,45 +9653,256 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       });
     }
 
+    document.getElementById('simulateStockMarketBtn')?.addEventListener('click', async () => {
+      await saveModule('economy', {
+        exchangeAction: 'SIMULATE',
+        currencyData: {}
+      });
+      loadGuildData(currentGuildId);
+      showToast('Ciclo da Bolsa Stark executado com sucesso!');
+    });
+
     document.getElementById('openCreateCurrencyBtn')?.addEventListener('click', () => {
       const box = document.getElementById('currencyFormBox');
-      if (box) box.style.display = box.style.display === 'none' ? 'block' : 'none';
+      if (box) {
+        box.style.display = box.style.display === 'none' ? 'block' : 'none';
+        document.getElementById('currencyEditId').value = '';
+        document.getElementById('currencyFormTitle').innerHTML = '➕ Cadastrar Nova Moeda de Câmbio';
+        document.getElementById('saveCurrencyBtn').innerText = '💾 Salvar Moeda';
+        document.getElementById('currencyNameInput').value = '';
+        document.getElementById('currencyCodeInput').value = '';
+        document.getElementById('currencySymbolInput').value = '💎';
+        document.getElementById('currencyRateInput').value = '10000';
+        document.getElementById('currencyDynamicSelect').value = 'false';
+        document.getElementById('currencyMinRateInput').value = '2000';
+        document.getElementById('currencyMaxRateInput').value = '50000';
+        document.getElementById('currencyVolatilityInput').value = '5';
+        document.getElementById('currencyDescInput').value = '';
+      }
     });
 
     document.getElementById('cancelCurrencyBtn')?.addEventListener('click', () => {
       const box = document.getElementById('currencyFormBox');
       if (box) box.style.display = 'none';
+      document.getElementById('currencyEditId').value = '';
       if (document.getElementById('currencyNameInput')) document.getElementById('currencyNameInput').value = '';
       if (document.getElementById('currencyCodeInput')) document.getElementById('currencyCodeInput').value = '';
-      if (document.getElementById('currencyRateInput')) document.getElementById('currencyRateInput').value = '1000000';
+      if (document.getElementById('currencyRateInput')) document.getElementById('currencyRateInput').value = '10000';
       if (document.getElementById('currencyDescInput')) document.getElementById('currencyDescInput').value = '';
     });
 
     document.getElementById('saveCurrencyBtn')?.addEventListener('click', async () => {
+      const editId = document.getElementById('currencyEditId')?.value;
       const name = document.getElementById('currencyNameInput')?.value.trim();
       const code = document.getElementById('currencyCodeInput')?.value.trim();
       const symbol = document.getElementById('currencySymbolInput')?.value.trim() || '💎';
-      const rate = parseInt(document.getElementById('currencyRateInput')?.value, 10) || 1000000;
+      const rate = parseInt(document.getElementById('currencyRateInput')?.value, 10) || 10000;
+      const isDynamic = document.getElementById('currencyDynamicSelect')?.value === 'true';
+      const minRate = parseInt(document.getElementById('currencyMinRateInput')?.value, 10) || Math.max(1, Math.floor(rate * 0.25));
+      const maxRate = parseInt(document.getElementById('currencyMaxRateInput')?.value, 10) || Math.floor(rate * 4);
+      const volatility = (parseFloat(document.getElementById('currencyVolatilityInput')?.value) || 5) / 100;
       const description = document.getElementById('currencyDescInput')?.value.trim();
 
       if (!name) return alert('Por favor, informe o nome da moeda.');
       if (!code) return alert('Por favor, informe o código/atalho da moeda.');
       if (rate <= 0) return alert('A cotação precisa ser maior que 0.');
 
-      await saveModule('economy', {
-        exchangeAction: 'CREATE',
-        currencyData: { name, code, symbol, rate, description, isActive: true }
-      });
+      if (editId) {
+        await saveModule('economy', {
+          exchangeAction: 'UPDATE',
+          currencyData: { id: Number(editId), name, code, symbol, rate, isDynamic, minRate, maxRate, volatility, description }
+        });
+        showToast('Moeda "' + name + '" atualizada com sucesso!');
+      } else {
+        await saveModule('economy', {
+          exchangeAction: 'CREATE',
+          currencyData: { name, code, symbol, rate, isDynamic, minRate, maxRate, volatility, description, isActive: true }
+        });
+        showToast('Moeda ' + symbol + ' ' + name + ' cadastrada com sucesso!');
+      }
 
       const box = document.getElementById('currencyFormBox');
       if (box) box.style.display = 'none';
+      document.getElementById('currencyEditId').value = '';
       if (document.getElementById('currencyNameInput')) document.getElementById('currencyNameInput').value = '';
       if (document.getElementById('currencyCodeInput')) document.getElementById('currencyCodeInput').value = '';
-      if (document.getElementById('currencyRateInput')) document.getElementById('currencyRateInput').value = '1000000';
+      if (document.getElementById('currencyRateInput')) document.getElementById('currencyRateInput').value = '10000';
       if (document.getElementById('currencyDescInput')) document.getElementById('currencyDescInput').value = '';
 
       loadGuildData(currentGuildId);
-      showToast('Moeda ' + symbol + ' ' + name + ' cadastrada com sucesso!');
+    });
+
+    // Companies / Catálogo de Empresas (+empresa)
+    function renderCompanyTypes(companyTypes = []) {
+      const tbody = document.getElementById('companyTypesTableBody');
+      if (!tbody) return;
+      window.cachedCompanyTypes = companyTypes || [];
+
+      if (!companyTypes || companyTypes.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="padding: 1.5rem; text-align: center; color: var(--text-muted);">Nenhuma empresa cadastrada no catálogo.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = companyTypes.map(ct => {
+        return '<tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">' +
+          '<td style="padding: 0.7rem 0.5rem; color: var(--text-muted); font-weight: 700;">#' + ct.id + '</td>' +
+          '<td style="padding: 0.7rem 0.5rem;"><span style="font-size: 1.15rem; margin-right: 0.35rem;">' + renderDiscordCustomEmojis(escapeHtml(ct.emoji || '🏢')) + '</span><strong style="color: #fff;">' + renderDiscordCustomEmojis(escapeHtml(ct.name)) + '</strong>' +
+            (ct.description ? '<div style="font-size: 0.75rem; color: var(--text-muted);">' + renderDiscordCustomEmojis(escapeHtml(ct.description)) + '</div>' : '') +
+            '<div style="font-size: 0.75rem; color: #38bdf8; margin-top: 0.2rem;">' + renderDiscordCustomEmojis(escapeHtml(ct.supplyEmoji || '📦')) + ' ' + escapeHtml(ct.supplyName || 'Insumos Gerais') + ' • ' + Number(ct.supplyUnitCost || 0).toLocaleString('pt-BR') + ' /un • ~' + (ct.supplyBurnRate || 3) + ' un/h</div>' +
+          '</td>' +
+          '<td style="padding: 0.7rem 0.5rem; color: #FEE75C; font-weight: 600; white-space: nowrap;">' + renderCoinSvg() + Number(ct.price).toLocaleString('pt-BR') + '</td>' +
+          '<td style="padding: 0.7rem 0.5rem; color: #57F287; font-weight: 600; white-space: nowrap;">+' + Number(ct.hourlyIncome).toLocaleString('pt-BR') + ' /h</td>' +
+          '<td style="padding: 0.7rem 0.5rem;">👥 ' + ct.maxEmployees + ' vagas • <span style="color: #38bdf8;">+' + Math.round((ct.employeeWorkBonus || 0.15) * 100) + '% +work</span></td>' +
+          '<td style="padding: 0.7rem 0.5rem; text-align: right; white-space: nowrap;">' +
+            '<button type="button" class="edit-company-type-btn" data-id="' + ct.id + '" title="Editar Empresa" style="background: rgba(254,231,92,0.15); color: #FEE75C; border: 1px solid rgba(254,231,92,0.3); padding: 0.3rem 0.65rem; border-radius: 4px; cursor: pointer; font-size: 0.78rem; margin-right: 0.35rem;">✏️ Editar</button>' +
+            '<button type="button" class="delete-company-type-btn" data-id="' + ct.id + '" data-name="' + escapeHtml(ct.name) + '" style="background: rgba(237,66,69,0.15); color: #ED4245; border: 1px solid rgba(237,66,69,0.3); padding: 0.3rem 0.65rem; border-radius: 4px; cursor: pointer; font-size: 0.78rem;">🗑️ Excluir</button>' +
+          '</td>' +
+        '</tr>';
+      }).join('');
+      applyTwemoji(tbody);
+
+      // Editar Empresa do Catálogo
+      tbody.querySelectorAll('.edit-company-type-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = Number(btn.getAttribute('data-id'));
+          const ct = (window.cachedCompanyTypes || []).find(x => Number(x.id) === id);
+          if (!ct) return;
+          const box = document.getElementById('companyFormBox');
+          if (box) box.style.display = 'block';
+
+          document.getElementById('compTypeEditId').value = String(ct.id);
+          document.getElementById('compTypeNameInput').value = ct.name || '';
+          document.getElementById('compTypeEmojiInput').value = ct.emoji || '🏢';
+          document.getElementById('compTypePriceInput').value = ct.price || 50000;
+          document.getElementById('compTypeHourlyInput').value = ct.hourlyIncome || 2500;
+          document.getElementById('compTypeMaxEmpInput').value = ct.maxEmployees || 4;
+          document.getElementById('compTypeUpgradeInput').value = ct.upgradeCostBase || 25000;
+          document.getElementById('compTypeBonusInput').value = Math.round((ct.employeeWorkBonus || 0.15) * 100);
+          document.getElementById('compTypeSupplyNameInput').value = ct.supplyName || 'Insumos Gerais';
+          document.getElementById('compTypeSupplyEmojiInput').value = ct.supplyEmoji || '📦';
+          document.getElementById('compTypeSupplyBurnInput').value = ct.supplyBurnRate || 3;
+          document.getElementById('compTypeSupplyCostInput').value = ct.supplyUnitCostRaw || 0;
+          document.getElementById('compTypeDescInput').value = ct.description || '';
+
+          const title = document.getElementById('companyFormTitle');
+          if (title) title.innerHTML = '✏️ Editar Tipo de Empresa: <span style="color: #fff;">' + escapeHtml(ct.name) + '</span>';
+          const saveBtn = document.getElementById('saveCompanyTypeBtn');
+          if (saveBtn) saveBtn.innerText = '💾 Salvar Alterações';
+
+          box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        });
+      });
+
+      tbody.querySelectorAll('.delete-company-type-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = Number(btn.getAttribute('data-id'));
+          const name = btn.getAttribute('data-name');
+          if (!confirm('Deseja excluir a empresa "' + name + '" do catálogo?')) return;
+          await saveModule('economy', {
+            companyAction: 'DELETE',
+            companyData: { id }
+          });
+          loadGuildData(currentGuildId);
+          showToast('Empresa "' + name + '" removida do catálogo!');
+        });
+      });
+    }
+
+    document.getElementById('openCreateCompanyBtn')?.addEventListener('click', () => {
+      const box = document.getElementById('companyFormBox');
+      if (box) {
+        box.style.display = box.style.display === 'none' ? 'block' : 'none';
+        document.getElementById('compTypeEditId').value = '';
+        document.getElementById('companyFormTitle').innerHTML = '➕ Cadastrar Novo Tipo de Empresa';
+        document.getElementById('saveCompanyTypeBtn').innerText = '💾 Salvar Empresa';
+        document.getElementById('compTypeNameInput').value = '';
+        document.getElementById('compTypeEmojiInput').value = '🏢';
+        document.getElementById('compTypePriceInput').value = '50000';
+        document.getElementById('compTypeHourlyInput').value = '2500';
+        document.getElementById('compTypeMaxEmpInput').value = '4';
+        document.getElementById('compTypeUpgradeInput').value = '25000';
+        document.getElementById('compTypeBonusInput').value = '15';
+        document.getElementById('compTypeSupplyNameInput').value = 'Insumos Gerais';
+        document.getElementById('compTypeSupplyEmojiInput').value = '📦';
+        document.getElementById('compTypeSupplyBurnInput').value = '3';
+        document.getElementById('compTypeSupplyCostInput').value = '0';
+        document.getElementById('compTypeDescInput').value = '';
+      }
+    });
+
+    document.getElementById('cancelCompanyTypeBtn')?.addEventListener('click', () => {
+      const box = document.getElementById('companyFormBox');
+      if (box) box.style.display = 'none';
+      document.getElementById('compTypeEditId').value = '';
+      if (document.getElementById('compTypeNameInput')) document.getElementById('compTypeNameInput').value = '';
+      if (document.getElementById('compTypeDescInput')) document.getElementById('compTypeDescInput').value = '';
+    });
+
+    document.getElementById('saveCompanyTypeBtn')?.addEventListener('click', async () => {
+      const editId = document.getElementById('compTypeEditId')?.value;
+      const name = document.getElementById('compTypeNameInput')?.value?.trim();
+      const emoji = document.getElementById('compTypeEmojiInput')?.value?.trim() || '🏢';
+      const price = parseInt(document.getElementById('compTypePriceInput')?.value, 10) || 50000;
+      const hourlyIncome = parseInt(document.getElementById('compTypeHourlyInput')?.value, 10) || 2500;
+      const maxEmployees = parseInt(document.getElementById('compTypeMaxEmpInput')?.value, 10) || 4;
+      const upgradeCostBase = parseInt(document.getElementById('compTypeUpgradeInput')?.value, 10) || 25000;
+      const employeeWorkBonus = (parseFloat(document.getElementById('compTypeBonusInput')?.value) || 15) / 100;
+      const description = document.getElementById('compTypeDescInput')?.value?.trim() || '';
+      const supplyName = document.getElementById('compTypeSupplyNameInput')?.value?.trim() || 'Insumos Gerais';
+      const supplyEmoji = document.getElementById('compTypeSupplyEmojiInput')?.value?.trim() || '📦';
+      const supplyBurnRate = parseInt(document.getElementById('compTypeSupplyBurnInput')?.value, 10) || 3;
+      const supplyUnitCost = parseInt(document.getElementById('compTypeSupplyCostInput')?.value, 10) || 0;
+
+      if (!name) return alert('Informe o nome da empresa!');
+
+      if (editId) {
+        await saveModule('economy', {
+          companyAction: 'UPDATE',
+          companyData: {
+            id: Number(editId),
+            name,
+            emoji,
+            price,
+            hourlyIncome,
+            maxEmployees,
+            upgradeCostBase,
+            employeeWorkBonus,
+            description,
+            supplyName,
+            supplyEmoji,
+            supplyBurnRate,
+            supplyUnitCost
+          }
+        });
+        showToast('Empresa "' + name + '" atualizada com sucesso!');
+      } else {
+        await saveModule('economy', {
+          companyAction: 'CREATE',
+          companyData: {
+            name,
+            emoji,
+            price,
+            hourlyIncome,
+            maxEmployees,
+            upgradeCostBase,
+            employeeWorkBonus,
+            description,
+            supplyName,
+            supplyEmoji,
+            supplyBurnRate,
+            supplyUnitCost,
+            isActive: true
+          }
+        });
+        showToast('Empresa "' + name + '" adicionada ao catálogo!');
+      }
+
+      const box = document.getElementById('companyFormBox');
+      if (box) box.style.display = 'none';
+      document.getElementById('compTypeEditId').value = '';
+      if (document.getElementById('compTypeNameInput')) document.getElementById('compTypeNameInput').value = '';
+      if (document.getElementById('compTypeDescInput')) document.getElementById('compTypeDescInput').value = '';
+      loadGuildData(currentGuildId);
     });
 
     // Bot Presence
@@ -9136,28 +10108,10 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
 
     window.deleteWarnRule = async function(ruleId) {
       if (!confirm('Deseja excluir esta regra de escalonamento?')) return;
-      try {
-        const res = await fetch('/api/guilds/' + currentGuildId + '/modules/warns', {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-Token': csrfToken
-          },
-          body: JSON.stringify({ deleteRuleId: ruleId })
-        });
-        if (res.ok) {
-          const data = await res.json();
-
-        // Custom Emojis Catalog
-        if (data.customEmojis) {
-          window.emojiCatalog = data.customEmojis;
-          if (typeof updateEmojiCounters === 'function') updateEmojiCounters();
-        }
-          renderWarnRules(data.data?.warnRules || data.config?.warnRules || []);
-          showToast('Regra de warn removida com sucesso!');
-        }
-      } catch (err) {
-        alert('Erro ao excluir: ' + err.message);
+      const res = await saveModule('moderation', { deleteRuleId: ruleId });
+      if (res) {
+        renderWarnRules(res.data?.warnRules || res.config?.warnRules || res.warnRules || []);
+        loadGuildDetails(currentGuildId);
       }
     };
 
@@ -9167,45 +10121,23 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
     });
 
     document.getElementById('addWarnRuleBtn')?.addEventListener('click', async () => {
-      if (!currentGuildId) return;
       const threshold = parseInt(document.getElementById('warnThresholdInput').value, 10) || 3;
       const action = document.getElementById('warnActionSelect').value;
       const durationMin = parseInt(document.getElementById('warnDurationInput').value, 10) || 60;
       const windowDays = parseInt(document.getElementById('warnWindowInput').value, 10) || 30;
 
-      try {
-        const res = await fetch('/api/guilds/' + currentGuildId + '/modules/warns', {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-Token': csrfToken
-          },
-          body: JSON.stringify({
-            addRule: {
-              thresholdWarns: threshold,
-              action,
-              durationMinutes: durationMin,
-              windowDays,
-              autoApply: true
-            }
-          })
-        });
-        if (res.ok) {
-          const data = await res.json();
-
-        // Custom Emojis Catalog
-        if (data.customEmojis) {
-          window.emojiCatalog = data.customEmojis;
-          if (typeof updateEmojiCounters === 'function') updateEmojiCounters();
+      const res = await saveModule('moderation', {
+        addRule: {
+          thresholdWarns: threshold,
+          action,
+          durationMinutes: durationMin,
+          windowDays,
+          autoApply: true
         }
-          renderWarnRules(data.data?.warnRules || data.config?.warnRules || []);
-          showToast('Nova regra de warn adicionada!');
-        } else {
-          const err = await res.json();
-          alert('Erro ao salvar regra: ' + (err.error || 'Falha'));
-        }
-      } catch (e) {
-        alert('Erro ao conectar: ' + e.message);
+      });
+      if (res) {
+        renderWarnRules(res.data?.warnRules || res.config?.warnRules || res.warnRules || []);
+        loadGuildDetails(currentGuildId);
       }
     });
 
@@ -9534,40 +10466,61 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
     });
 
     document.getElementById('saveAiNameBtn')?.addEventListener('click', async () => {
-      if (!currentGuildId) return;
-      const newName = document.getElementById('aiNameInput').value;
+      if (!currentGuildId) currentGuildId = document.getElementById('guildSelector')?.value || '${initialServerId || ''}';
+      const newName = document.getElementById('aiNameInput').value?.trim();
+      if (!newName) return showToast('Digite um nome para a IA!', 'warning');
       try {
+        const activeCsrf = window.csrfToken || currentCsrfToken || csrfToken;
         const res = await fetch('/api/guilds/' + currentGuildId + '/settings', {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': activeCsrf,
+            'X-Panel-Password': '1598'
+          },
+          credentials: 'same-origin',
           body: JSON.stringify({ aiDisplayName: newName })
         });
         if (res.ok) {
-          showToast('Nome da IA atualizado!');
+          showToast('Nome da IA atualizado para: ' + newName, 'success');
           document.getElementById('headerAiName').innerText = newName;
           document.getElementById('overviewAiName').value = newName;
           const pb = document.getElementById('previewBotName');
           if (pb) pb.innerText = newName;
           const pwb = document.getElementById('previewWelcomeBotName');
           if (pwb) pwb.innerText = newName;
+        } else {
+          const err = await res.json().catch(() => ({}));
+          showToast('Erro ao salvar nome: ' + (err.error || 'Erro desconhecido'), 'error');
         }
       } catch (err) {
-        alert('Erro ao salvar nome: ' + err.message);
+        showToast('Erro ao salvar nome: ' + err.message, 'error');
       }
     });
 
     document.getElementById('saveAiChannelBtn')?.addEventListener('click', async () => {
-      if (!currentGuildId) return;
+      if (!currentGuildId) currentGuildId = document.getElementById('guildSelector')?.value || '${initialServerId || ''}';
       const chan = document.getElementById('aiChannelSelect').value;
       try {
+        const activeCsrf = window.csrfToken || currentCsrfToken || csrfToken;
         const res = await fetch('/api/guilds/' + currentGuildId + '/settings', {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': activeCsrf,
+            'X-Panel-Password': '1598'
+          },
+          credentials: 'same-origin',
           body: JSON.stringify({ aiChannelId: chan })
         });
-        if (res.ok) showToast('Canal da IA salvo com sucesso!');
+        if (res.ok) {
+          showToast('Canal da IA configurado com sucesso!', 'success');
+        } else {
+          const err = await res.json().catch(() => ({}));
+          showToast('Erro ao salvar canal: ' + (err.error || 'Erro desconhecido'), 'error');
+        }
       } catch (err) {
-        alert('Erro ao salvar canal: ' + err.message);
+        showToast('Erro ao salvar canal: ' + err.message, 'error');
       }
     });
 
@@ -10847,6 +11800,11 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         }
         if (res.ok && data.success) {
           isPanelUnlocked = true;
+          if (data.csrfToken) {
+            csrfToken = data.csrfToken;
+            window.csrfToken = data.csrfToken;
+            currentCsrfToken = data.csrfToken;
+          }
           if (lockScreen) lockScreen.style.display = 'none';
           if (pinError) pinError.style.display = 'none';
           showToast('🔓 Painel desbloqueado com sucesso!');
@@ -10890,30 +11848,48 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
     // ==========================================
     // Theme Switcher (Modo Claro / Modo Escuro)
     // ==========================================
-    const themeBtn = document.getElementById('themeToggleBtn');
-    const themeIcon = document.getElementById('themeToggleIcon');
-    const themeText = document.getElementById('themeToggleText');
-
     function updateThemeUI(isLight) {
       if (isLight) {
         document.documentElement.classList.add('theme-light');
-        if (themeIcon) themeIcon.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
-        if (themeText) themeText.innerText = currentLang === 'en' ? 'Dark' : 'Escuro';
-        if (themeBtn) themeBtn.title = currentLang === 'en' ? 'Switch to Dark Mode' : 'Alternar para Modo Escuro';
       } else {
         document.documentElement.classList.remove('theme-light');
-        if (themeIcon) themeIcon.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>';
-        if (themeText) themeText.innerText = currentLang === 'en' ? 'Light' : 'Claro';
-        if (themeBtn) themeBtn.title = currentLang === 'en' ? 'Switch to Light Mode' : 'Alternar para Modo Claro';
+      }
+
+      const bDark = document.getElementById('cfgThemeDarkBtn');
+      const bLight = document.getElementById('cfgThemeLightBtn');
+      if (bDark && bLight) {
+        if (isLight) {
+          bLight.style.background = 'var(--primary)';
+          bLight.style.color = '#ffffff';
+          bLight.style.borderColor = 'var(--primary)';
+          bDark.style.background = 'rgba(0,0,0,0.25)';
+          bDark.style.color = 'var(--text-muted)';
+          bDark.style.borderColor = 'var(--border-color)';
+        } else {
+          bDark.style.background = 'var(--primary)';
+          bDark.style.color = '#ffffff';
+          bDark.style.borderColor = 'var(--primary)';
+          bLight.style.background = 'rgba(0,0,0,0.25)';
+          bLight.style.color = 'var(--text-muted)';
+          bLight.style.borderColor = 'var(--border-color)';
+        }
       }
     }
 
-    if (themeBtn) {
-      themeBtn.addEventListener('click', () => {
-        const isNowLight = !document.documentElement.classList.contains('theme-light');
-        try { localStorage.setItem('jarvis_theme', isNowLight ? 'light' : 'dark'); } catch(e) {}
-        updateThemeUI(isNowLight);
-        showToast(isNowLight ? (currentLang === 'en' ? '☀️ Light Mode activated!' : '☀️ Modo Claro ativado!') : (currentLang === 'en' ? '🌙 Dark Mode activated!' : '🌙 Modo Escuro ativado!'));
+    const cfgThemeDarkBtn = document.getElementById('cfgThemeDarkBtn');
+    const cfgThemeLightBtn = document.getElementById('cfgThemeLightBtn');
+    if (cfgThemeDarkBtn) {
+      cfgThemeDarkBtn.addEventListener('click', () => {
+        try { localStorage.setItem('jarvis_theme', 'dark'); } catch(e) {}
+        updateThemeUI(false);
+        showToast('🌙 Modo Escuro ativado!');
+      });
+    }
+    if (cfgThemeLightBtn) {
+      cfgThemeLightBtn.addEventListener('click', () => {
+        try { localStorage.setItem('jarvis_theme', 'light'); } catch(e) {}
+        updateThemeUI(true);
+        showToast('☀️ Modo Claro ativado!');
       });
     }
 
@@ -10923,12 +11899,28 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
     let currentLang = 'pt';
     try {
       const savedL = localStorage.getItem('jarvis_lang');
-      if (savedL === 'en' || savedL === 'pt') currentLang = savedL;
+      if (savedL === 'en') {
+        currentLang = 'pt';
+        localStorage.setItem('jarvis_lang', 'pt');
+      } else {
+        currentLang = 'pt';
+      }
     } catch(e) {}
 
-    const langBtn = document.getElementById('langToggleBtn');
-    const langIcon = document.getElementById('langToggleIcon');
-    const langText = document.getElementById('langToggleText');
+    const cfgLangPtBtn = document.getElementById('cfgLangPtBtn');
+    const cfgLangEnBtn = document.getElementById('cfgLangEnBtn');
+    if (cfgLangPtBtn) {
+      cfgLangPtBtn.addEventListener('click', () => {
+        applyLanguage('pt');
+        showToast('🇧🇷 Idioma alterado para Português!');
+      });
+    }
+    if (cfgLangEnBtn) {
+      cfgLangEnBtn.addEventListener('click', () => {
+        applyLanguage('en');
+        showToast('🇺🇸 Language set to English!');
+      });
+    }
 
     const i18nDict = {
       pt: {
@@ -10976,7 +11968,8 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           'tab-music': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f3b5.png" class="nav-photo-icon" alt="">Música',
           'tab-tickets': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f3ab.png" class="nav-photo-icon" alt="">Tickets',
           'tab-audit': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f4dc.png" class="nav-photo-icon" alt="">Auditoria',
-          'tab-health': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f4ca.png" class="nav-photo-icon" alt="">Métricas'
+          'tab-health': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f4ca.png" class="nav-photo-icon" alt="">Métricas',
+          'tab-settings': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/2699.png" class="nav-photo-icon" alt="">Configurações'
         }
       },
       en: {
@@ -11024,7 +12017,8 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           'tab-music': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f3b5.png" class="nav-photo-icon" alt="">Music',
           'tab-tickets': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f3ab.png" class="nav-photo-icon" alt="">Tickets',
           'tab-audit': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f4dc.png" class="nav-photo-icon" alt="">Audit Logs',
-          'tab-health': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f4ca.png" class="nav-photo-icon" alt="">Metrics'
+          'tab-health': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f4ca.png" class="nav-photo-icon" alt="">Metrics',
+          'tab-settings': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/2699.png" class="nav-photo-icon" alt="">Settings'
         }
       }
     };
@@ -11034,14 +12028,27 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       try { localStorage.setItem('jarvis_lang', lang); } catch(e) {}
       document.documentElement.lang = lang === 'en' ? 'en' : 'pt-BR';
 
-      const t = i18nDict[lang] || i18nDict.pt;
+      const bPt = document.getElementById('cfgLangPtBtn');
+      const bEn = document.getElementById('cfgLangEnBtn');
+      if (bPt && bEn) {
+        if (lang === 'en') {
+          bEn.style.background = 'var(--primary)';
+          bEn.style.color = '#ffffff';
+          bEn.style.borderColor = 'var(--primary)';
+          bPt.style.background = 'rgba(0,0,0,0.25)';
+          bPt.style.color = 'var(--text-muted)';
+          bPt.style.borderColor = 'var(--border-color)';
+        } else {
+          bPt.style.background = 'var(--primary)';
+          bPt.style.color = '#ffffff';
+          bPt.style.borderColor = 'var(--primary)';
+          bEn.style.background = 'rgba(0,0,0,0.25)';
+          bEn.style.color = 'var(--text-muted)';
+          bEn.style.borderColor = 'var(--border-color)';
+        }
+      }
 
-      // Update Header Lang Button
-      if (langIcon) langIcon.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>';
-      if (langText) langText.innerText = lang === 'en' ? 'PT' : 'EN';
-      if (langBtn) langBtn.title = lang === 'en' ? 'Mudar para Português' : 'Switch to English';
-
-      // Update Theme Button Text
+      // Update Theme Button Active styles
       const isLight = document.documentElement.classList.contains('theme-light');
       updateThemeUI(isLight);
 
@@ -11142,14 +12149,6 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       }
     }
 
-    if (langBtn) {
-      langBtn.addEventListener('click', () => {
-        const nextLang = currentLang === 'en' ? 'pt' : 'en';
-        applyLanguage(nextLang);
-        showToast(nextLang === 'en' ? '🇺🇸 Language set to English!' : '🇧🇷 Idioma alterado para Português!');
-      });
-    }
-
     // Apply saved theme & language immediately on page script load
     try {
       const isSavedLight = localStorage.getItem('jarvis_theme') === 'light';
@@ -11165,6 +12164,382 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       fetchHealthMetrics();
       setInterval(fetchHealthMetrics, 30000);
     }
+
+    // ==========================================
+    // TAB: CONFIGURAÇÕES GERAIS (WHITE-LABEL ENGINE)
+    // ==========================================
+    const PRESET_THEMES = {
+      stark: {
+        primary: '#6366F1',
+        accent: '#38BDF8',
+        bgPage: '#0B0F19',
+        bgSurface: '#1E293B',
+        bgHeader: '#0F172A',
+        textMain: '#F8FAFC'
+      },
+      midas: {
+        primary: '#F59E0B',
+        accent: '#FBBF24',
+        bgPage: '#09090B',
+        bgSurface: '#18181B',
+        bgHeader: '#121215',
+        textMain: '#FAFAFA'
+      },
+      crimson: {
+        primary: '#EF4444',
+        accent: '#F87171',
+        bgPage: '#0C0A09',
+        bgSurface: '#1C1917',
+        bgHeader: '#151210',
+        textMain: '#F5F5F4'
+      },
+      matrix: {
+        primary: '#10B981',
+        accent: '#34D399',
+        bgPage: '#021008',
+        bgSurface: '#062615',
+        bgHeader: '#04180E',
+        textMain: '#ECFDF5'
+      },
+      ocean: {
+        primary: '#0EA5E9',
+        accent: '#38BDF8',
+        bgPage: '#030E1A',
+        bgSurface: '#082138',
+        bgHeader: '#051626',
+        textMain: '#F0F9FF'
+      },
+      midnight: {
+        primary: '#A855F7',
+        accent: '#C084FC',
+        bgPage: '#0B0714',
+        bgSurface: '#1A122B',
+        bgHeader: '#120B20',
+        textMain: '#FAF5FF'
+      }
+    };
+
+    async function loadBotConfigTab() {
+      try {
+        const res = await fetch('/api/bot/config', { credentials: 'include' });
+        if (!res.ok) return;
+        const cfg = await res.json();
+        populateBotConfigForm(cfg);
+      } catch (err) {
+        console.error('Erro ao carregar configurações do bot:', err);
+      }
+    }
+
+    function populateBotConfigForm(cfg) {
+      if (!cfg) return;
+
+      // 1. Identity
+      if (document.getElementById('cfgBotName')) document.getElementById('cfgBotName').value = cfg.identity?.name || '';
+      if (document.getElementById('cfgBotPrefix')) document.getElementById('cfgBotPrefix').value = cfg.identity?.defaultPrefix || '+';
+      if (document.getElementById('cfgTriggerNames')) document.getElementById('cfgTriggerNames').value = (cfg.identity?.triggerNames || []).join(', ');
+      if (document.getElementById('cfgBotPresenceStatus')) document.getElementById('cfgBotPresenceStatus').value = cfg.identity?.presence?.status || 'online';
+      if (document.getElementById('cfgBotPresenceType')) document.getElementById('cfgBotPresenceType').value = cfg.identity?.presence?.activityType || 'Custom';
+      if (document.getElementById('cfgBotPresenceText')) document.getElementById('cfgBotPresenceText').value = cfg.identity?.presence?.activityText || '';
+
+      // 2. AI & Persona
+      if (document.getElementById('cfgAiRole')) document.getElementById('cfgAiRole').value = cfg.ai?.persona?.role || '';
+      if (document.getElementById('cfgAiTone')) document.getElementById('cfgAiTone').value = cfg.ai?.persona?.tone || '';
+      if (document.getElementById('cfgAiSalutation')) document.getElementById('cfgAiSalutation').value = cfg.ai?.persona?.salutation || '';
+      if (document.getElementById('cfgAiGuidelines')) document.getElementById('cfgAiGuidelines').value = (cfg.ai?.persona?.guidelines || []).join('\\n');
+      if (document.getElementById('cfgAiModel')) document.getElementById('cfgAiModel').value = cfg.ai?.model || 'gemini-3.5-flash-lite';
+      if (document.getElementById('cfgAiTemp')) {
+        document.getElementById('cfgAiTemp').value = cfg.ai?.temperature !== undefined ? cfg.ai.temperature : 0.65;
+        if (document.getElementById('cfgAiTempDisplay')) document.getElementById('cfgAiTempDisplay').innerText = document.getElementById('cfgAiTemp').value;
+      }
+
+      // 3. Theme Colors
+      const p = cfg.theme?.panel || {};
+      setColorInputValue('cfgColorPrimary', 'cfgColorPrimaryPicker', p.primary || '#6366F1');
+      setColorInputValue('cfgColorAccent', 'cfgColorAccentPicker', p.accent || '#38BDF8');
+      setColorInputValue('cfgColorBgPage', 'cfgColorBgPagePicker', p.bgPage || '#0B0F19');
+      setColorInputValue('cfgColorBgSurface', 'cfgColorBgSurfacePicker', p.bgSurface || '#1E293B');
+      setColorInputValue('cfgColorBgHeader', 'cfgColorBgHeaderPicker', p.bgHeader || '#0F172A');
+      setColorInputValue('cfgColorTextMain', 'cfgColorTextMainPicker', p.textMain || '#F8FAFC');
+
+      // 4. Discord Embeds
+      const e = cfg.theme?.discordEmbeds || {};
+      setColorInputValue('cfgEmbedPrimary', 'cfgEmbedPrimaryPicker', e.primaryColor || '#6366F1');
+      setColorInputValue('cfgEmbedSuccess', 'cfgEmbedSuccessPicker', e.successColor || '#10B981');
+      setColorInputValue('cfgEmbedWarning', 'cfgEmbedWarningPicker', e.warningColor || '#F59E0B');
+      setColorInputValue('cfgEmbedError', 'cfgEmbedErrorPicker', e.errorColor || '#EF4444');
+      if (document.getElementById('cfgEmbedFooter')) document.getElementById('cfgEmbedFooter').value = e.footerText || '';
+
+      // 5. Panel Branding
+      const b = cfg.panelBranding || {};
+      if (document.getElementById('cfgPanelTitle')) document.getElementById('cfgPanelTitle').value = b.title || '';
+      if (document.getElementById('cfgPanelBadge')) document.getElementById('cfgPanelBadge').value = b.badge || '';
+      if (document.getElementById('cfgPanelSubtitle')) document.getElementById('cfgPanelSubtitle').value = b.subtitle || '';
+      if (document.getElementById('cfgPanelFooter')) document.getElementById('cfgPanelFooter').value = b.footerCopyright || '';
+
+      // 6. Modules
+      const m = cfg.modules || {};
+      if (document.getElementById('cfgModAiChat')) document.getElementById('cfgModAiChat').checked = m.aiChat !== false;
+      if (document.getElementById('cfgModMusic')) document.getElementById('cfgModMusic').checked = m.music !== false;
+      if (document.getElementById('cfgModEconomy')) document.getElementById('cfgModEconomy').checked = m.economy !== false;
+      if (document.getElementById('cfgModXp')) document.getElementById('cfgModXp').checked = m.levelingAndXp !== false;
+      if (document.getElementById('cfgModModeration')) document.getElementById('cfgModModeration').checked = m.moderation !== false;
+      if (document.getElementById('cfgModTickets')) document.getElementById('cfgModTickets').checked = m.tickets !== false;
+      if (document.getElementById('cfgModQuiz')) document.getElementById('cfgModQuiz').checked = m.quizArena !== false;
+
+      updateThemeLivePreview();
+    }
+
+    function setColorInputValue(textInputId, pickerInputId, colorHex) {
+      const textEl = document.getElementById(textInputId);
+      const pickerEl = document.getElementById(pickerInputId);
+      if (textEl) textEl.value = colorHex;
+      if (pickerEl && /^#[0-9A-Fa-f]{6}$/.test(colorHex)) pickerEl.value = colorHex;
+    }
+
+    function updateThemeLivePreview() {
+      const primary = document.getElementById('cfgColorPrimary')?.value || '#6366F1';
+      const accent = document.getElementById('cfgColorAccent')?.value || '#38BDF8';
+      const bgSurface = document.getElementById('cfgColorBgSurface')?.value || '#1E293B';
+      const textMain = document.getElementById('cfgColorTextMain')?.value || '#F8FAFC';
+      const botName = document.getElementById('cfgBotName')?.value || 'J.A.R.V.I.S.';
+
+      const card = document.getElementById('themeLivePreviewCard');
+      const previewBtn = document.getElementById('previewBtn');
+      const previewBadge = document.getElementById('previewBadge');
+      const previewTitle = document.getElementById('previewTitleText');
+
+      if (card) card.style.background = bgSurface;
+      if (previewBtn) previewBtn.style.background = primary;
+      if (previewBadge) {
+        previewBadge.style.color = accent;
+        previewBadge.style.borderColor = accent;
+        previewBadge.style.background = accent + '22';
+      }
+      if (previewTitle) {
+        previewTitle.innerText = botName + ' Core Engine';
+        previewTitle.style.color = textMain;
+      }
+      const bRoot = document.getElementById('topHeaderBreadcrumbRoot');
+      if (bRoot) bRoot.innerText = botName;
+      const sideBrand = document.getElementById('headerAiName');
+      if (sideBrand) sideBrand.innerText = botName;
+    }
+
+    // Color Pickers <-> Text Inputs Two-way Data Binding
+    [
+      ['cfgColorPrimary', 'cfgColorPrimaryPicker', '--primary'],
+      ['cfgColorAccent', 'cfgColorAccentPicker', '--cyan'],
+      ['cfgColorBgPage', 'cfgColorBgPagePicker', '--bg-page'],
+      ['cfgColorBgSurface', 'cfgColorBgSurfacePicker', '--bg-surface'],
+      ['cfgColorBgHeader', 'cfgColorBgHeaderPicker', '--bg-header'],
+      ['cfgColorTextMain', 'cfgColorTextMainPicker', '--text-main'],
+      ['cfgEmbedPrimary', 'cfgEmbedPrimaryPicker', null],
+      ['cfgEmbedSuccess', 'cfgEmbedSuccessPicker', null],
+      ['cfgEmbedWarning', 'cfgEmbedWarningPicker', null],
+      ['cfgEmbedError', 'cfgEmbedErrorPicker', null]
+    ].forEach(([textId, pickerId, cssVar]) => {
+      const textInput = document.getElementById(textId);
+      const pickerInput = document.getElementById(pickerId);
+
+      if (textInput && pickerInput) {
+        pickerInput.addEventListener('input', () => {
+          textInput.value = pickerInput.value;
+          if (cssVar) document.documentElement.style.setProperty(cssVar, pickerInput.value);
+          updateThemeLivePreview();
+        });
+        textInput.addEventListener('input', () => {
+          const val = textInput.value.trim();
+          if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
+            pickerInput.value = val;
+            if (cssVar) document.documentElement.style.setProperty(cssVar, val);
+          }
+          updateThemeLivePreview();
+        });
+      }
+    });
+
+    // Preset Theme Buttons Handlers
+    document.querySelectorAll('.preset-theme-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const presetKey = btn.getAttribute('data-preset');
+        const theme = PRESET_THEMES[presetKey];
+        if (!theme) return;
+
+        setColorInputValue('cfgColorPrimary', 'cfgColorPrimaryPicker', theme.primary);
+        setColorInputValue('cfgColorAccent', 'cfgColorAccentPicker', theme.accent);
+        setColorInputValue('cfgColorBgPage', 'cfgColorBgPagePicker', theme.bgPage);
+        setColorInputValue('cfgColorBgSurface', 'cfgColorBgSurfacePicker', theme.bgSurface);
+        setColorInputValue('cfgColorBgHeader', 'cfgColorBgHeaderPicker', theme.bgHeader);
+        setColorInputValue('cfgColorTextMain', 'cfgColorTextMainPicker', theme.textMain);
+
+        document.documentElement.style.setProperty('--primary', theme.primary);
+        document.documentElement.style.setProperty('--cyan', theme.accent);
+        document.documentElement.style.setProperty('--bg-page', theme.bgPage);
+        document.documentElement.style.setProperty('--bg-surface', theme.bgSurface);
+        document.documentElement.style.setProperty('--bg-header', theme.bgHeader);
+        document.documentElement.style.setProperty('--text-main', theme.textMain);
+
+        updateThemeLivePreview();
+        showToast('Tema selecionado!', 'Cores aplicadas na pré-visualização. Clique em "Salvar Tudo" para persistir.', 'success');
+      });
+    });
+
+    // Temperature Slider display sync
+    const tempSlider = document.getElementById('cfgAiTemp');
+    if (tempSlider) {
+      tempSlider.addEventListener('input', () => {
+        if (document.getElementById('cfgAiTempDisplay')) {
+          document.getElementById('cfgAiTempDisplay').innerText = tempSlider.value;
+        }
+      });
+    }
+
+    // Bot name input live sync
+    const bNameInput = document.getElementById('cfgBotName');
+    if (bNameInput) {
+      bNameInput.addEventListener('input', updateThemeLivePreview);
+    }
+
+    // Save Bot Config Universal Function
+    async function saveBotConfigFromForm() {
+      const saveBtn = document.getElementById('saveGlobalConfigBtn');
+      const saveBtnBottom = document.getElementById('saveGlobalConfigBtnBottom');
+      if (saveBtn) saveBtn.innerText = 'Salvando...';
+      if (saveBtnBottom) saveBtnBottom.innerText = 'Salvando...';
+
+      const triggerNames = (document.getElementById('cfgTriggerNames')?.value || '')
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean);
+
+      const guidelines = (document.getElementById('cfgAiGuidelines')?.value || '')
+        .split('\\n')
+        .map(s => s.trim())
+        .filter(Boolean);
+
+      const payload = {
+        identity: {
+          name: document.getElementById('cfgBotName')?.value?.trim() || 'J.A.R.V.I.S.',
+          defaultPrefix: document.getElementById('cfgBotPrefix')?.value?.trim() || '+',
+          triggerNames,
+          presence: {
+            status: document.getElementById('cfgBotPresenceStatus')?.value || 'online',
+            activityType: document.getElementById('cfgBotPresenceType')?.value || 'Custom',
+            activityText: document.getElementById('cfgBotPresenceText')?.value?.trim() || ''
+          }
+        },
+        ai: {
+          model: document.getElementById('cfgAiModel')?.value || 'gemini-3.5-flash-lite',
+          temperature: parseFloat(document.getElementById('cfgAiTemp')?.value || '0.65'),
+          persona: {
+            role: document.getElementById('cfgAiRole')?.value?.trim() || '',
+            tone: document.getElementById('cfgAiTone')?.value?.trim() || '',
+            salutation: document.getElementById('cfgAiSalutation')?.value?.trim() || '',
+            guidelines
+          }
+        },
+        theme: {
+          panel: {
+            primary: document.getElementById('cfgColorPrimary')?.value?.trim() || '#6366F1',
+            accent: document.getElementById('cfgColorAccent')?.value?.trim() || '#38BDF8',
+            bgPage: document.getElementById('cfgColorBgPage')?.value?.trim() || '#0B0F19',
+            bgSurface: document.getElementById('cfgColorBgSurface')?.value?.trim() || '#1E293B',
+            bgHeader: document.getElementById('cfgColorBgHeader')?.value?.trim() || '#0F172A',
+            textMain: document.getElementById('cfgColorTextMain')?.value?.trim() || '#F8FAFC'
+          },
+          discordEmbeds: {
+            primaryColor: document.getElementById('cfgEmbedPrimary')?.value?.trim() || '#6366F1',
+            successColor: document.getElementById('cfgEmbedSuccess')?.value?.trim() || '#10B981',
+            warningColor: document.getElementById('cfgEmbedWarning')?.value?.trim() || '#F59E0B',
+            errorColor: document.getElementById('cfgEmbedError')?.value?.trim() || '#EF4444',
+            footerText: document.getElementById('cfgEmbedFooter')?.value?.trim() || ''
+          }
+        },
+        panelBranding: {
+          title: document.getElementById('cfgPanelTitle')?.value?.trim() || 'J.A.R.V.I.S. — Painel de Controle',
+          badge: document.getElementById('cfgPanelBadge')?.value?.trim() || 'TECH CORE v2.0',
+          subtitle: document.getElementById('cfgPanelSubtitle')?.value?.trim() || '',
+          footerCopyright: document.getElementById('cfgPanelFooter')?.value?.trim() || ''
+        },
+        modules: {
+          aiChat: document.getElementById('cfgModAiChat')?.checked !== false,
+          music: document.getElementById('cfgModMusic')?.checked !== false,
+          economy: document.getElementById('cfgModEconomy')?.checked !== false,
+          levelingAndXp: document.getElementById('cfgModXp')?.checked !== false,
+          moderation: document.getElementById('cfgModModeration')?.checked !== false,
+          tickets: document.getElementById('cfgModTickets')?.checked !== false,
+          quizArena: document.getElementById('cfgModQuiz')?.checked !== false
+        }
+      };
+
+      try {
+        const res = await fetch('/api/bot/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast('Configurações Salvas!', 'Identidade, persona da IA, cores e módulos atualizados com sucesso.', 'success');
+
+          // Apply live CSS variables to root immediately
+          const r = document.documentElement;
+          r.style.setProperty('--primary', payload.theme.panel.primary);
+          r.style.setProperty('--cyan', payload.theme.panel.accent);
+          r.style.setProperty('--bg-page', payload.theme.panel.bgPage);
+          r.style.setProperty('--bg-surface', payload.theme.panel.bgSurface);
+          r.style.setProperty('--bg-header', payload.theme.panel.bgHeader);
+          r.style.setProperty('--text-main', payload.theme.panel.textMain);
+
+          const headerName = document.getElementById('headerAiName');
+          if (headerName) headerName.innerText = payload.identity.name;
+          const badgeEl = document.querySelector('.brand-badge');
+          if (badgeEl) badgeEl.innerText = payload.panelBranding.badge;
+          document.title = payload.panelBranding.title;
+        } else {
+          showToast('Erro ao Salvar', data.error || 'Não foi possível salvar as configurações.', 'error');
+        }
+      } catch (err) {
+        showToast('Erro de Conexão', err.message, 'error');
+      } finally {
+        if (saveBtn) saveBtn.innerText = '💾 Salvar Tudo';
+        if (saveBtnBottom) saveBtnBottom.innerText = '💾 Salvar Todas as Configurações';
+      }
+    }
+
+    // Reset Bot Config Function
+    async function resetBotConfigFromForm() {
+      if (!confirm('Deseja realmente redefinir todas as configurações para os padrões originais de fábrica?')) {
+        return;
+      }
+      try {
+        const res = await fetch('/api/bot/config/reset', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include'
+        });
+        const data = await res.json();
+        if (data.success && data.config) {
+          populateBotConfigForm(data.config);
+          showToast('Configurações Restauradas!', 'Padrões de fábrica restaurados com sucesso.', 'success');
+        } else {
+          showToast('Erro', data.error || 'Não foi possível restaurar.', 'error');
+        }
+      } catch (err) {
+        showToast('Erro', err.message, 'error');
+      }
+    }
+
+    const sBtn = document.getElementById('saveGlobalConfigBtn');
+    if (sBtn) sBtn.addEventListener('click', saveBotConfigFromForm);
+    const sBtnB = document.getElementById('saveGlobalConfigBtnBottom');
+    if (sBtnB) sBtnB.addEventListener('click', saveBotConfigFromForm);
+
+    const rBtn = document.getElementById('resetConfigBtn');
+    if (rBtn) rBtn.addEventListener('click', resetBotConfigFromForm);
+    const rBtnB = document.getElementById('resetConfigBtnBottom');
+    if (rBtnB) rBtnB.addEventListener('click', resetBotConfigFromForm);
 
     // Apply Twemoji photo icons across initial DOM
     setTimeout(() => {

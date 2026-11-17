@@ -369,9 +369,11 @@ function createAppContext(customDbPath = null) {
   }
 
   // 11. Initialize AI Core & Tool Catalog
+  const { botConfig } = require('./config/botConfig');
+  const activeBotConfig = botConfig.getConfig();
   const llmAdapter = new GeminiAdapter({
     apiKeys: activeApiKeys,
-    model: process.env.GEMINI_MODEL
+    model: activeBotConfig.ai?.model || process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite'
   });
 
   const webPanelService = new WebPanelService({
@@ -717,6 +719,15 @@ async function bootstrap() {
   }
   if (context.auditService) {
     context.auditService.botClient = client;
+  }
+  if (context.economyRepo) {
+    context.economyRepo.botClient = client;
+  }
+  if (context.economyService) {
+    context.economyService.botClient = client;
+  }
+  if (context.musicService) {
+    context.musicService.setClient(client);
   }
 
   // Load events

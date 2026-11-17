@@ -30,7 +30,7 @@ class GeminiAdapter extends LLMAdapter {
 
     this.currentKeyIndex = 0;
     this.keyCooldowns = new Map();
-    this.model = options.model || process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+    this.model = options.model || process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
     this.timeoutMs = options.timeoutMs || 15000;
     this.maxRetries = options.maxRetries || 3;
     this.maxPromptChars = options.maxPromptChars || 16000;
@@ -179,12 +179,17 @@ class GeminiAdapter extends LLMAdapter {
 
   /**
    * Translates tool declarations to Gemini functionDeclarations format.
+   * Caches formatted declarations to avoid redundant overhead on identical schemas.
    * @param {Array<object>} tools
    */
   _formatToolsForGemini(tools) {
     if (!tools || tools.length === 0) return undefined;
 
-    return [{
+    if (this._cachedRawTools === tools && this._cachedFormattedTools) {
+      return this._cachedFormattedTools;
+    }
+
+    const formatted = [{
       functionDeclarations: tools.map(t => ({
         name: t.name,
         description: t.description,
@@ -195,6 +200,10 @@ class GeminiAdapter extends LLMAdapter {
         }
       }))
     }];
+
+    this._cachedRawTools = tools;
+    this._cachedFormattedTools = formatted;
+    return formatted;
   }
 
   /**
@@ -330,8 +339,9 @@ class GeminiAdapter extends LLMAdapter {
     const payload = {
       contents,
       generationConfig: {
-        temperature,
-        maxOutputTokens: 2048
+        temperature: temperature !== undefined ? temperature : 0.65,
+        maxOutputTokens: 1024,
+        topP: 0.95
       }
     };
 

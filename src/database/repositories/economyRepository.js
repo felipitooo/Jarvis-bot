@@ -1,9 +1,13 @@
+const { resolveCustomEmojis } = require('../../utils/emojiHelper');
+const companyRules = require('../../utils/companyRules');
+
 class EconomyRepository {
   /**
    * @param {import('../connection').DatabaseManager} dbManager
    */
   constructor(dbManager) {
     this.db = dbManager;
+    this.botClient = null;
   }
 
   // ==========================================
@@ -610,25 +614,39 @@ class EconomyRepository {
   }
 
   // ==========================================
-  // 9. Exchange Currencies (Câmbio / Moedas de Prestígio)
+  // 9. Exchange Currencies & Stock Market (Câmbio / Bolsa Stark)
   // ==========================================
+
+  _mapCurrencyRow(r) {
+    if (!r) return null;
+    const rate = Number(r.rate) || 1000000;
+    const prev = Number(r.previous_rate) || rate;
+    const changePct = prev > 0 ? Number((((rate - prev) / prev) * 100).toFixed(2)) : 0;
+    return {
+      id: r.id,
+      guildId: r.guild_id,
+      name: r.name,
+      code: r.code.toLowerCase(),
+      symbol: r.symbol || '💎',
+      rate,
+      previousRate: prev,
+      changePercent: changePct,
+      isDynamic: Boolean(r.is_dynamic),
+      minRate: Math.max(1, Number(r.min_rate) || Math.max(1, Math.floor(rate * 0.2))),
+      maxRate: Math.max(rate, Number(r.max_rate) || Math.floor(rate * 5)),
+      volatility: Math.max(0.01, Math.min(0.50, Number(r.volatility) || 0.05)),
+      description: r.description,
+      isActive: r.is_active === 1,
+      createdAt: r.created_at
+    };
+  }
 
   listExchangeCurrencies(guildId, onlyActive = false) {
     const query = onlyActive
       ? 'SELECT * FROM economy_currencies WHERE guild_id = ? AND is_active = 1 ORDER BY rate ASC'
       : 'SELECT * FROM economy_currencies WHERE guild_id = ? ORDER BY rate ASC';
     const rows = this.db.all(query, [guildId]);
-    return rows.map(r => ({
-      id: r.id,
-      guildId: r.guild_id,
-      name: r.name,
-      code: r.code.toLowerCase(),
-      symbol: r.symbol || '💎',
-      rate: Number(r.rate) || 1000000,
-      description: r.description,
-      isActive: r.is_active === 1,
-      createdAt: r.created_at
-    }));
+    return rows.map(r => this._mapCurrencyRow(r));
   }
 
   getExchangeCurrencyByCode(guildId, code) {
@@ -638,18 +656,7 @@ class EconomyRepository {
       'SELECT * FROM economy_currencies WHERE guild_id = ? AND (LOWER(code) = ? OR LOWER(name) = ?)',
       [guildId, clean, clean]
     );
-    if (!row) return null;
-    return {
-      id: row.id,
-      guildId: row.guild_id,
-      name: row.name,
-      code: row.code.toLowerCase(),
-      symbol: row.symbol || '💎',
-      rate: Number(row.rate) || 1000000,
-      description: row.description,
-      isActive: row.is_active === 1,
-      createdAt: row.created_at
-    };
+    return this._mapCurrencyRow(row);
   }
 
   getExchangeCurrencyById(guildId, id) {
@@ -657,33 +664,48 @@ class EconomyRepository {
       'SELECT * FROM economy_currencies WHERE guild_id = ? AND id = ?',
       [guildId, Number(id)]
     );
-    if (!row) return null;
-    return {
-      id: row.id,
-      guildId: row.guild_id,
-      name: row.name,
-      code: row.code.toLowerCase(),
-      symbol: row.symbol || '💎',
-      rate: Number(row.rate) || 1000000,
-      description: row.description,
-      isActive: row.is_active === 1,
-      createdAt: row.created_at
-    };
+    return this._mapCurrencyRow(row);
   }
 
-  createExchangeCurrency(guildId, { name, code, symbol = '💎', rate = 1000000, description = null, isActive = true }) {
+  createExchangeCurrency(guildId, {
+    name,
+    code,
+    symbol = '💎',
+    rate = 1000000,
+    description = null,
+    isActive = true,
+    isDynamic = false,
+    minRate = null,
+    maxRate = null,
+    volatility = 0.05
+  }) {
     const cleanCode = String(code || name || '').trim().toLowerCase().replace(/\s+/g, '_');
     const cleanRate = Math.max(1, parseInt(rate, 10) || 1000000);
+    const cleanMin = Math.max(1, parseInt(minRate, 10) || Math.max(1, Math.floor(cleanRate * 0.25)));
+    const cleanMax = Math.max(cleanRate, parseInt(maxRate, 10) || Math.floor(cleanRate * 4));
+    const cleanVol = Math.max(0.01, Math.min(0.50, Number(volatility) || 0.05));
     const active = isActive ? 1 : 0;
+    const dynamic = isDynamic ? 1 : 0;
     const now = new Date().toISOString();
 
+    const cleanSymbol = (this.botClient && symbol) ? resolveCustomEmojis(symbol, this.botClient, guildId) : (symbol || '💎');
+
     const result = this.db.run(
-      `INSERT INTO economy_currencies (guild_id, name, code, symbol, rate, description, is_active, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [guildId, String(name).trim(), cleanCode, symbol || '💎', cleanRate, description || null, active, now]
+      `INSERT INTO economy_currencies (
+        guild_id, name, code, symbol, rate, previous_rate,
+        is_dynamic, min_rate, max_rate, volatility,
+        description, is_active, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        guildId, String(name).trim(), cleanCode, cleanSymbol,
+        cleanRate, cleanRate, dynamic, cleanMin, cleanMax, cleanVol,
+        description || null, active, now
+      ]
     );
 
-    return this.getExchangeCurrencyById(guildId, result.lastInsertRowid);
+    const createdId = result.lastInsertRowid;
+    this.recordCurrencyRateHistory(guildId, createdId, cleanRate, 'Cotação inicial');
+    return this.getExchangeCurrencyById(guildId, createdId);
   }
 
   updateExchangeCurrency(guildId, id, updates = {}) {
@@ -692,23 +714,67 @@ class EconomyRepository {
 
     const name = updates.name !== undefined ? String(updates.name).trim() : current.name;
     const code = updates.code !== undefined ? String(updates.code).trim().toLowerCase().replace(/\s+/g, '_') : current.code;
-    const symbol = updates.symbol !== undefined ? updates.symbol : current.symbol;
+    const rawSymbol = updates.symbol !== undefined ? updates.symbol : current.symbol;
+    const symbol = (this.botClient && rawSymbol) ? resolveCustomEmojis(rawSymbol, this.botClient, guildId) : rawSymbol;
     const rate = updates.rate !== undefined ? Math.max(1, parseInt(updates.rate, 10) || current.rate) : current.rate;
+    const previousRate = updates.previousRate !== undefined
+      ? Math.max(1, parseInt(updates.previousRate, 10) || current.rate)
+      : (rate !== current.rate ? current.rate : current.previousRate);
+    const isDynamic = updates.isDynamic !== undefined ? (updates.isDynamic ? 1 : 0) : (current.isDynamic ? 1 : 0);
+    const minRate = updates.minRate !== undefined ? Math.max(1, parseInt(updates.minRate, 10) || current.minRate) : current.minRate;
+    const maxRate = updates.maxRate !== undefined ? Math.max(minRate, parseInt(updates.maxRate, 10) || current.maxRate) : Math.max(minRate, current.maxRate);
+    const volatility = updates.volatility !== undefined ? Math.max(0.01, Math.min(0.50, Number(updates.volatility) || 0.05)) : current.volatility;
     const description = updates.description !== undefined ? updates.description : current.description;
     const isActive = updates.isActive !== undefined ? (updates.isActive ? 1 : 0) : (current.isActive ? 1 : 0);
 
     this.db.run(
       `UPDATE economy_currencies
-       SET name = ?, code = ?, symbol = ?, rate = ?, description = ?, is_active = ?
+       SET name = ?, code = ?, symbol = ?, rate = ?, previous_rate = ?,
+           is_dynamic = ?, min_rate = ?, max_rate = ?, volatility = ?,
+           description = ?, is_active = ?
        WHERE guild_id = ? AND id = ?`,
-      [name, code, symbol, rate, description, isActive, guildId, Number(id)]
+      [name, code, symbol, rate, previousRate, isDynamic, minRate, maxRate, volatility, description, isActive, guildId, Number(id)]
     );
+
+    if (rate !== current.rate) {
+      this.recordCurrencyRateHistory(guildId, Number(id), rate, updates.reason || 'Atualização de cotação');
+    }
 
     return this.getExchangeCurrencyById(guildId, id);
   }
 
+  recordCurrencyRateHistory(guildId, currencyId, rate, reason = null) {
+    try {
+      this.db.run(
+        `INSERT INTO economy_currency_history (guild_id, currency_id, rate, reason, created_at)
+         VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+        [guildId, Number(currencyId), Math.max(1, Math.round(Number(rate) || 1)), reason || null]
+      );
+    } catch {}
+  }
+
+  getCurrencyRateHistory(guildId, currencyId, limit = 24) {
+    try {
+      const rows = this.db.all(
+        `SELECT id, rate, reason, created_at FROM economy_currency_history
+         WHERE guild_id = ? AND currency_id = ?
+         ORDER BY id DESC LIMIT ?`,
+        [guildId, Number(currencyId), Math.max(2, Number(limit) || 24)]
+      );
+      return rows.reverse().map(r => ({
+        id: r.id,
+        rate: Number(r.rate),
+        reason: r.reason,
+        createdAt: r.created_at
+      }));
+    } catch {
+      return [];
+    }
+  }
+
   deleteExchangeCurrency(guildId, id) {
     this.db.run('DELETE FROM economy_user_currencies WHERE guild_id = ? AND currency_id = ?', [guildId, Number(id)]);
+    this.db.run('DELETE FROM economy_currency_history WHERE guild_id = ? AND currency_id = ?', [guildId, Number(id)]);
     const res = this.db.run('DELETE FROM economy_currencies WHERE guild_id = ? AND id = ?', [guildId, Number(id)]);
     return res.changes > 0;
   }
@@ -755,6 +821,586 @@ class EconomyRepository {
     );
 
     return newAmount;
+  }
+
+  // ==========================================
+  // 10. Companies & Passive Income (+empresa)
+  // ==========================================
+
+  ensureDefaultCompanyTypes(guildId) {
+    const existing = this.db.all('SELECT id FROM economy_company_types WHERE guild_id = ? LIMIT 1', [guildId]);
+    if (existing.length > 0) return;
+
+    const defaults = [
+      {
+        name: 'Cafeteria & Cyber Café',
+        emoji: '☕',
+        description: 'Negócio local com fluxo constante de clientes e baixo custo inicial.',
+        price: 15000,
+        hourlyIncome: 600,
+        maxEmployees: 2,
+        upgradeCostBase: 8000,
+        employeeWorkBonus: 0.10,
+        supplyName: 'Sacas de Café & Insumos',
+        supplyEmoji: '🫘',
+        supplyBurnRate: 6
+      },
+      {
+        name: 'Mineradora de Criptoativos',
+        emoji: '⛏️',
+        description: 'Galpão refrigerado com servidores de alta performance gerando renda passiva.',
+        price: 75000,
+        hourlyIncome: 3200,
+        maxEmployees: 4,
+        upgradeCostBase: 35000,
+        employeeWorkBonus: 0.15,
+        supplyName: 'Kits de Energia & Refrigeração',
+        supplyEmoji: '🔌',
+        supplyBurnRate: 4
+      },
+      {
+        name: 'Cassino & Resort VIP',
+        emoji: '🎰',
+        description: 'Empreendimento de luxo na noite da cidade com altíssimo retorno por hora.',
+        price: 300000,
+        hourlyIncome: 14000,
+        maxEmployees: 6,
+        upgradeCostBase: 120000,
+        employeeWorkBonus: 0.20,
+        supplyName: 'Fichas, Bebidas & Suprimentos VIP',
+        supplyEmoji: '🍾',
+        supplyBurnRate: 3
+      },
+      {
+        name: 'Laboratório Aeroespacial Stark',
+        emoji: '🚀',
+        description: 'Complexo tecnológico de ponta com contratos bilionários e máxima rentabilidade.',
+        price: 1500000,
+        hourlyIncome: 75000,
+        maxEmployees: 10,
+        upgradeCostBase: 600000,
+        employeeWorkBonus: 0.25,
+        supplyName: 'Células de Combustível & Componentes',
+        supplyEmoji: '🛰️',
+        supplyBurnRate: 2
+      }
+    ];
+
+    for (const d of defaults) {
+      this.createCompanyType(guildId, d);
+    }
+  }
+
+  /**
+   * Supply (stock) profile of a company type. Every business consumes its own kind of supplies.
+   * supply_unit_cost = 0 means "auto": 30% of the hourly income is spent on supplies.
+   */
+  _companySupplyFields(r) {
+    const burn = Math.max(1, Number(r.supply_burn_rate) || 3);
+    const hourly = Math.max(1, Number(r.hourly_income) || 500);
+    const rawCost = Math.max(0, Number(r.supply_unit_cost) || 0);
+    const autoCost = Math.max(1, Math.round((hourly * 0.30) / burn));
+    return {
+      supplyName: r.supply_name || 'Insumos Gerais',
+      supplyEmoji: r.supply_emoji || '📦',
+      supplyBurnRate: burn,
+      supplyUnitCostRaw: rawCost,
+      supplyUnitCost: rawCost > 0 ? rawCost : autoCost
+    };
+  }
+
+  listCompanyTypes(guildId, activeOnly = false) {
+    this.ensureDefaultCompanyTypes(guildId);
+    const sql = activeOnly
+      ? 'SELECT * FROM economy_company_types WHERE guild_id = ? AND is_active = 1 ORDER BY price ASC'
+      : 'SELECT * FROM economy_company_types WHERE guild_id = ? ORDER BY price ASC';
+    return this.db.all(sql, [guildId]).map(r => ({
+      id: r.id,
+      guildId: r.guild_id,
+      name: r.name,
+      emoji: r.emoji || '🏢',
+      description: r.description,
+      price: Number(r.price),
+      hourlyIncome: Number(r.hourly_income),
+      maxEmployees: Number(r.max_employees),
+      upgradeCostBase: Number(r.upgrade_cost_base),
+      employeeWorkBonus: Number(r.employee_work_bonus ?? 0.15),
+      ...this._companySupplyFields(r),
+      isActive: r.is_active === 1
+    }));
+  }
+
+  getCompanyTypeById(guildId, idOrName) {
+    this.ensureDefaultCompanyTypes(guildId);
+    let row = null;
+    if (!isNaN(Number(idOrName))) {
+      row = this.db.get('SELECT * FROM economy_company_types WHERE guild_id = ? AND id = ?', [guildId, Number(idOrName)]);
+    }
+    if (!row && idOrName) {
+      const clean = String(idOrName).trim().toLowerCase();
+      row = this.db.get(
+        'SELECT * FROM economy_company_types WHERE guild_id = ? AND (LOWER(name) = ? OR LOWER(name) LIKE ?)',
+        [guildId, clean, `%${clean}%`]
+      );
+    }
+    if (!row) return null;
+    return {
+      id: row.id,
+      guildId: row.guild_id,
+      name: row.name,
+      emoji: row.emoji || '🏢',
+      description: row.description,
+      price: Number(row.price),
+      hourlyIncome: Number(row.hourly_income),
+      maxEmployees: Number(row.max_employees),
+      upgradeCostBase: Number(row.upgrade_cost_base),
+      employeeWorkBonus: Number(row.employee_work_bonus ?? 0.15),
+      ...this._companySupplyFields(row),
+      isActive: row.is_active === 1
+    };
+  }
+
+  createCompanyType(guildId, {
+    name,
+    emoji = '🏢',
+    description = null,
+    price = 10000,
+    hourlyIncome = 500,
+    maxEmployees = 3,
+    upgradeCostBase = 5000,
+    employeeWorkBonus = 0.15,
+    supplyName = 'Insumos Gerais',
+    supplyEmoji = '📦',
+    supplyBurnRate = 3,
+    supplyUnitCost = 0,
+    isActive = true
+  }) {
+    const cleanEmoji = (this.botClient && emoji) ? resolveCustomEmojis(emoji, this.botClient, guildId) : (emoji || '🏢');
+
+    const res = this.db.run(
+      `INSERT INTO economy_company_types (
+        guild_id, name, emoji, description, price, hourly_income,
+        max_employees, upgrade_cost_base, employee_work_bonus, is_active,
+        supply_name, supply_emoji, supply_burn_rate, supply_unit_cost
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        guildId,
+        String(name).trim(),
+        cleanEmoji,
+        description || null,
+        Math.max(1, parseInt(price, 10) || 10000),
+        Math.max(1, parseInt(hourlyIncome, 10) || 500),
+        Math.max(1, parseInt(maxEmployees, 10) || 3),
+        Math.max(1, parseInt(upgradeCostBase, 10) || 5000),
+        Math.max(0, Math.min(1, Number(employeeWorkBonus ?? 0.15))),
+        isActive ? 1 : 0,
+        String(supplyName || 'Insumos Gerais').trim().substring(0, 60) || 'Insumos Gerais',
+        (this.botClient && supplyEmoji) ? resolveCustomEmojis(supplyEmoji, this.botClient, guildId) : (supplyEmoji || '📦'),
+        Math.max(1, Math.min(200, parseInt(supplyBurnRate, 10) || 3)),
+        Math.max(0, parseInt(supplyUnitCost, 10) || 0)
+      ]
+    );
+    return this.getCompanyTypeById(guildId, res.lastInsertRowid);
+  }
+
+  updateCompanyType(guildId, id, updates = {}) {
+    const current = this.getCompanyTypeById(guildId, id);
+    if (!current) return null;
+
+    const name = updates.name !== undefined ? String(updates.name).trim() : current.name;
+    const rawEmoji = updates.emoji !== undefined ? updates.emoji : current.emoji;
+    const emoji = (this.botClient && rawEmoji) ? resolveCustomEmojis(rawEmoji, this.botClient, guildId) : rawEmoji;
+    const description = updates.description !== undefined ? updates.description : current.description;
+    const price = updates.price !== undefined ? Math.max(1, parseInt(updates.price, 10) || current.price) : current.price;
+    const hourlyIncome = updates.hourlyIncome !== undefined ? Math.max(1, parseInt(updates.hourlyIncome, 10) || current.hourlyIncome) : current.hourlyIncome;
+    const maxEmployees = updates.maxEmployees !== undefined ? Math.max(1, parseInt(updates.maxEmployees, 10) || current.maxEmployees) : current.maxEmployees;
+    const upgradeCostBase = updates.upgradeCostBase !== undefined ? Math.max(1, parseInt(updates.upgradeCostBase, 10) || current.upgradeCostBase) : current.upgradeCostBase;
+    const employeeWorkBonus = updates.employeeWorkBonus !== undefined ? Math.max(0, Math.min(1, Number(updates.employeeWorkBonus))) : current.employeeWorkBonus;
+    const isActive = updates.isActive !== undefined ? (updates.isActive ? 1 : 0) : (current.isActive ? 1 : 0);
+    const supplyName = updates.supplyName !== undefined
+      ? (String(updates.supplyName).trim().substring(0, 60) || current.supplyName)
+      : current.supplyName;
+    const rawSupplyEmoji = updates.supplyEmoji !== undefined ? updates.supplyEmoji : current.supplyEmoji;
+    const supplyEmoji = (this.botClient && rawSupplyEmoji) ? resolveCustomEmojis(rawSupplyEmoji, this.botClient, guildId) : rawSupplyEmoji;
+    const supplyBurnRate = updates.supplyBurnRate !== undefined
+      ? Math.max(1, Math.min(200, parseInt(updates.supplyBurnRate, 10) || current.supplyBurnRate))
+      : current.supplyBurnRate;
+    const supplyUnitCost = updates.supplyUnitCost !== undefined
+      ? Math.max(0, parseInt(updates.supplyUnitCost, 10) || 0)
+      : current.supplyUnitCostRaw;
+
+    this.db.run(
+      `UPDATE economy_company_types
+       SET name = ?, emoji = ?, description = ?, price = ?, hourly_income = ?,
+           max_employees = ?, upgrade_cost_base = ?, employee_work_bonus = ?, is_active = ?,
+           supply_name = ?, supply_emoji = ?, supply_burn_rate = ?, supply_unit_cost = ?
+       WHERE guild_id = ? AND id = ?`,
+      [name, emoji, description, price, hourlyIncome, maxEmployees, upgradeCostBase, employeeWorkBonus, isActive,
+        supplyName, supplyEmoji, supplyBurnRate, supplyUnitCost, guildId, Number(id)]
+    );
+    return this.getCompanyTypeById(guildId, id);
+  }
+
+  deleteCompanyType(guildId, id) {
+    this.db.run('DELETE FROM economy_user_companies WHERE guild_id = ? AND company_type_id = ?', [guildId, Number(id)]);
+    const res = this.db.run('DELETE FROM economy_company_types WHERE guild_id = ? AND id = ?', [guildId, Number(id)]);
+    return res.changes > 0;
+  }
+
+  _userCompanySelect() {
+    return `SELECT uc.*, ct.name as type_name, ct.emoji, ct.description, ct.price,
+              ct.hourly_income, ct.max_employees, ct.upgrade_cost_base, ct.employee_work_bonus,
+              ct.supply_name, ct.supply_emoji, ct.supply_burn_rate, ct.supply_unit_cost
+       FROM economy_user_companies uc
+       JOIN economy_company_types ct ON ct.id = uc.company_type_id`;
+  }
+
+  getUserCompanies(guildId, ownerId) {
+    const rows = this.db.all(
+      `${this._userCompanySelect()}
+       WHERE uc.guild_id = ? AND uc.owner_id = ? AND uc.status = 'ACTIVE'
+       ORDER BY uc.id ASC`,
+      [guildId, ownerId]
+    );
+    return rows.map(r => this._mapUserCompanyRow(r));
+  }
+
+  /** Every ACTIVE company in every guild (used by the bankruptcy health worker). */
+  getAllActiveCompanies() {
+    const rows = this.db.all(
+      `${this._userCompanySelect()}
+       WHERE uc.status = 'ACTIVE' AND uc.owner_id <> ?
+       ORDER BY uc.id ASC`,
+      [companyRules.ADMIN_OWNER_ID]
+    );
+    return rows.map(r => this._mapUserCompanyRow(r));
+  }
+
+  /** Companies currently held by the bot administrator waiting for a buyer. */
+  listCompaniesForSale(guildId) {
+    const rows = this.db.all(
+      `${this._userCompanySelect()}
+       WHERE uc.guild_id = ? AND uc.status = 'FOR_SALE'
+       ORDER BY uc.bankrupt_at ASC`,
+      [guildId]
+    );
+    return rows.map(r => this._mapUserCompanyRow(r));
+  }
+
+  getFoundingBan(guildId, userId) {
+    const row = this.db.get(
+      'SELECT * FROM economy_company_founding_bans WHERE guild_id = ? AND user_id = ?',
+      [guildId, userId]
+    );
+    if (!row) return null;
+    const untilMs = new Date(row.banned_until).getTime();
+    if (!untilMs || untilMs <= Date.now()) return null;
+    return { bannedUntil: row.banned_until, reason: row.reason || null };
+  }
+
+  setFoundingBan(guildId, userId, bannedUntilIso, reason = null) {
+    this.db.run(
+      `INSERT INTO economy_company_founding_bans (guild_id, user_id, banned_until, reason)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT(guild_id, user_id) DO UPDATE SET banned_until = excluded.banned_until, reason = excluded.reason`,
+      [guildId, userId, bannedUntilIso, reason]
+    );
+  }
+
+  /** Removes every human employee of a company and returns who was let go. */
+  removeCompanyEmployees(companyId) {
+    const employees = this.getCompanyEmployees(companyId);
+    this.db.run('DELETE FROM economy_company_employees WHERE company_id = ?', [Number(companyId)]);
+    return employees;
+  }
+
+  recordBankruptcy({ guildId, companyId, companyName, formerOwnerId, reason, bookValue, debt, ownerPayout }) {
+    this.db.run(
+      `INSERT INTO economy_company_bankruptcies
+         (guild_id, company_id, company_name, former_owner_id, reason, book_value, debt, owner_payout)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [guildId, Number(companyId), companyName, formerOwnerId, reason, bookValue, debt, ownerPayout]
+    );
+  }
+
+  getUserCompanyById(id) {
+    const row = this.db.get(
+      `${this._userCompanySelect()}
+       WHERE uc.id = ?`,
+      [Number(id)]
+    );
+    return this._mapUserCompanyRow(row);
+  }
+
+  _mapUserCompanyRow(r) {
+    if (!r) return null;
+    const employees = this.getCompanyEmployees(r.id);
+    const level = Math.max(1, Number(r.level) || 1);
+    const baseHourly = Number(r.hourly_income) || 500;
+    const npcWorkers = Math.max(0, Number(r.npc_workers) || 0);
+    const autoRestock = Boolean(r.auto_restock);
+    const stockProducts = Math.max(0, Number(r.stock_products ?? 50));
+    const maxStock = Math.max(50, Number(r.max_stock ?? (100 + (level - 1) * 50 + npcWorkers * 25)));
+    const reputation = Math.max(0, Number(r.reputation) || 0);
+
+    // Productivity multipliers: employees (+10% each), NPC workers (+12% each)
+    const employeeMultiplier = 1 + (employees.length * 0.10) + (npcWorkers * 0.12);
+    // Level scaling: +30% per level
+    const effectiveHourly = Math.round(baseHourly * (1 + (level - 1) * 0.30) * employeeMultiplier);
+    const maxEmployees = (Number(r.max_employees) || 3) + Math.floor((level - 1) / 2);
+    const nextUpgradeCost = Math.round((Number(r.upgrade_cost_base) || 5000) * Math.pow(1.65, level - 1));
+    const minTurnoverRequired = Math.round(nextUpgradeCost * 0.35);
+
+    // Supplies are specific to each business type. Consumption scales with level like income does,
+    // so the running cost stays proportional to what the company earns.
+    const supply = this._companySupplyFields(r);
+    const stockBurnRate = Math.max(1, Math.round(supply.supplyBurnRate * (1 + (level - 1) * 0.30)));
+    const supplyHourlyCost = stockBurnRate * supply.supplyUnitCost;
+    const lastCollectedMs = new Date(r.last_collected_at).getTime() || Date.now();
+    const elapsedHours = Math.min(48, Math.max(0, (Date.now() - lastCollectedMs) / (1000 * 60 * 60)));
+
+    let hoursWithStock = elapsedHours;
+    let consumedStock = 0;
+    if (stockBurnRate > 0) {
+      const maxCoveredHours = stockProducts / stockBurnRate;
+      hoursWithStock = Math.min(elapsedHours, maxCoveredHours);
+      consumedStock = Math.min(stockProducts, Math.floor(elapsedHours * stockBurnRate));
+    }
+    const hoursWithoutStock = Math.max(0, elapsedHours - hoursWithStock);
+    const remainingStock = Math.max(0, stockProducts - consumedStock);
+
+    // 100% income while stocked; 10% residual maintenance income when empty
+    const earnedWithStock = hoursWithStock * effectiveHourly;
+    const earnedWithoutStock = hoursWithoutStock * (effectiveHourly * 0.10);
+    const pendingPassive = Math.floor(earnedWithStock + earnedWithoutStock);
+
+    const tierTitles = [
+      '🏪 Banca de Garagem',
+      '🏢 Microempresa (ME)',
+      '🏭 Empresa Comercial',
+      '🏬 Média Empresa Regional',
+      '🌐 Grande Corporação S.A.',
+      '🚀 Conglomerado Stark Industries'
+    ];
+    const tierTitle = tierTitles[Math.min(level - 1, tierTitles.length - 1)];
+    const nextTierTitle = tierTitles[Math.min(level, tierTitles.length - 1)];
+
+    return {
+      id: r.id,
+      guildId: r.guild_id,
+      ownerId: r.owner_id,
+      companyTypeId: r.company_type_id,
+      name: r.custom_name || r.type_name,
+      typeName: r.type_name,
+      emoji: r.emoji || '🏢',
+      description: r.description,
+      level,
+      tierTitle,
+      nextTierTitle,
+      baseHourlyIncome: baseHourly,
+      effectiveHourlyIncome: effectiveHourly,
+      maxEmployees,
+      nextUpgradeCost,
+      minTurnoverRequired,
+      canUpgradeByTurnover: (Number(r.total_earned) || 0) >= minTurnoverRequired,
+      employeeWorkBonus: Number(r.employee_work_bonus ?? 0.15),
+      vaultBalance: Number(r.vault_balance) || 0,
+      stockProducts,
+      maxStock,
+      supplyName: supply.supplyName,
+      supplyEmoji: supply.supplyEmoji,
+      supplyUnitCost: supply.supplyUnitCost,
+      supplyHourlyCost,
+      stockBurnRate,
+      consumedStock,
+      remainingStock,
+      isOutOfStock: remainingStock <= 0,
+      autoRestock,
+      npcWorkers,
+      reputation,
+      typePrice: Number(r.price) || 0,
+      upgradeCostBase: Number(r.upgrade_cost_base) || 5000,
+      status: r.status || 'ACTIVE',
+      distressSince: r.distress_since || null,
+      distressNotified: Number(r.distress_notified) || 0,
+      bankruptcyDeadline: r.distress_since
+        ? new Date(new Date(r.distress_since).getTime() + companyRules.BANKRUPTCY_GRACE_HOURS * 3600000).toISOString()
+        : null,
+      bankruptAt: r.bankrupt_at || null,
+      formerOwnerId: r.former_owner_id || null,
+      listStartPrice: Number(r.list_start_price) || 0,
+      listCapPrice: Number(r.list_cap_price) || 0,
+      pendingPassiveIncome: pendingPassive,
+      claimableTotal: (Number(r.vault_balance) || 0) + pendingPassive,
+      totalEarned: Number(r.total_earned) || 0,
+      lastCollectedAt: r.last_collected_at,
+      employees
+    };
+  }
+
+  createUserCompany(guildId, ownerId, companyTypeId, customName = null) {
+    const now = new Date().toISOString();
+    const typeRow = this.db.get('SELECT supply_burn_rate FROM economy_company_types WHERE id = ?', [Number(companyTypeId)]);
+    const starterStock = Math.max(1, Number(typeRow?.supply_burn_rate) || 3) * 6;
+    const res = this.db.run(
+      `INSERT INTO economy_user_companies (
+        guild_id, owner_id, company_type_id, custom_name, level,
+        vault_balance, total_earned, last_collected_at, created_at, stock_products
+      ) VALUES (?, ?, ?, ?, 1, 0, 0, ?, ?, ?)`,
+      [guildId, ownerId, Number(companyTypeId), customName || null, now, now, starterStock]
+    );
+    return this.getUserCompanyById(res.lastInsertRowid);
+  }
+
+  updateUserCompany(id, updates = {}) {
+    const sets = [];
+    const params = [];
+    if (updates.customName !== undefined) {
+      sets.push('custom_name = ?');
+      params.push(updates.customName);
+    }
+    if (updates.level !== undefined) {
+      sets.push('level = ?');
+      params.push(updates.level);
+    }
+    if (updates.vaultBalance !== undefined) {
+      sets.push('vault_balance = ?');
+      params.push(updates.vaultBalance);
+    }
+    if (updates.totalEarned !== undefined) {
+      sets.push('total_earned = ?');
+      params.push(updates.totalEarned);
+    }
+    if (updates.lastCollectedAt !== undefined) {
+      sets.push('last_collected_at = ?');
+      params.push(updates.lastCollectedAt);
+    }
+    if (updates.stockProducts !== undefined) {
+      sets.push('stock_products = ?');
+      params.push(Math.max(0, parseInt(updates.stockProducts, 10) || 0));
+    }
+    if (updates.maxStock !== undefined) {
+      sets.push('max_stock = ?');
+      params.push(Math.max(50, parseInt(updates.maxStock, 10) || 100));
+    }
+    if (updates.autoRestock !== undefined) {
+      sets.push('auto_restock = ?');
+      params.push(updates.autoRestock ? 1 : 0);
+    }
+    if (updates.npcWorkers !== undefined) {
+      sets.push('npc_workers = ?');
+      params.push(Math.max(0, parseInt(updates.npcWorkers, 10) || 0));
+    }
+    if (updates.reputation !== undefined) {
+      sets.push('reputation = ?');
+      params.push(parseInt(updates.reputation, 10) || 0);
+    }
+    if (updates.ownerId !== undefined) {
+      sets.push('owner_id = ?');
+      params.push(String(updates.ownerId));
+    }
+    if (updates.status !== undefined) {
+      sets.push('status = ?');
+      params.push(String(updates.status));
+    }
+    if (updates.distressSince !== undefined) {
+      sets.push('distress_since = ?');
+      params.push(updates.distressSince);
+    }
+    if (updates.distressNotified !== undefined) {
+      sets.push('distress_notified = ?');
+      params.push(Math.max(0, parseInt(updates.distressNotified, 10) || 0));
+    }
+    if (updates.bankruptAt !== undefined) {
+      sets.push('bankrupt_at = ?');
+      params.push(updates.bankruptAt);
+    }
+    if (updates.formerOwnerId !== undefined) {
+      sets.push('former_owner_id = ?');
+      params.push(updates.formerOwnerId);
+    }
+    if (updates.listStartPrice !== undefined) {
+      sets.push('list_start_price = ?');
+      params.push(Math.max(0, parseInt(updates.listStartPrice, 10) || 0));
+    }
+    if (updates.listCapPrice !== undefined) {
+      sets.push('list_cap_price = ?');
+      params.push(Math.max(0, parseInt(updates.listCapPrice, 10) || 0));
+    }
+    if (sets.length === 0) return this.getUserCompanyById(id);
+    params.push(Number(id));
+    this.db.run(`UPDATE economy_user_companies SET ${sets.join(', ')} WHERE id = ?`, params);
+    return this.getUserCompanyById(id);
+  }
+
+  getCompanyEmployees(companyId) {
+    const rows = this.db.all(
+      'SELECT * FROM economy_company_employees WHERE company_id = ? ORDER BY hired_at ASC',
+      [Number(companyId)]
+    );
+    return rows.map(r => ({
+      id: r.id,
+      guildId: r.guild_id,
+      companyId: r.company_id,
+      userId: r.user_id,
+      totalContributed: Number(r.total_contributed) || 0,
+      hiredAt: r.hired_at
+    }));
+  }
+
+  getEmployeeJob(guildId, userId) {
+    const row = this.db.get(
+      `SELECT e.*, uc.owner_id, uc.custom_name, ct.name as type_name, ct.emoji, ct.employee_work_bonus
+       FROM economy_company_employees e
+       JOIN economy_user_companies uc ON uc.id = e.company_id
+       JOIN economy_company_types ct ON ct.id = uc.company_type_id
+       WHERE e.guild_id = ? AND e.user_id = ?`,
+      [guildId, userId]
+    );
+    if (!row) return null;
+    return {
+      id: row.id,
+      guildId: row.guild_id,
+      companyId: row.company_id,
+      ownerId: row.owner_id,
+      userId: row.user_id,
+      companyName: row.custom_name || row.type_name,
+      emoji: row.emoji || '🏢',
+      workBonusRate: Number(row.employee_work_bonus ?? 0.15),
+      totalContributed: Number(row.total_contributed) || 0
+    };
+  }
+
+  hireEmployee(guildId, companyId, userId) {
+    this.db.run(
+      `INSERT INTO economy_company_employees (guild_id, company_id, user_id, total_contributed, hired_at)
+       VALUES (?, ?, ?, 0, CURRENT_TIMESTAMP)
+       ON CONFLICT(guild_id, user_id) DO UPDATE SET company_id = excluded.company_id, hired_at = CURRENT_TIMESTAMP`,
+      [guildId, Number(companyId), userId]
+    );
+    return this.getEmployeeJob(guildId, userId);
+  }
+
+  fireEmployee(guildId, companyId, userId) {
+    const res = this.db.run(
+      'DELETE FROM economy_company_employees WHERE guild_id = ? AND company_id = ? AND user_id = ?',
+      [guildId, Number(companyId), userId]
+    );
+    return res.changes > 0;
+  }
+
+  recordEmployeeContribution(guildId, userId, companyCommission) {
+    const job = this.getEmployeeJob(guildId, userId);
+    if (!job || companyCommission <= 0) return null;
+    this.db.run(
+      'UPDATE economy_company_employees SET total_contributed = total_contributed + ? WHERE id = ?',
+      [companyCommission, job.id]
+    );
+    this.db.run(
+      'UPDATE economy_user_companies SET vault_balance = vault_balance + ? WHERE id = ?',
+      [companyCommission, job.companyId]
+    );
+    return job;
   }
 }
 

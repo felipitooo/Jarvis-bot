@@ -65,28 +65,29 @@ const musicVoiceTools = [
   // 3. tocar_musica
   {
     name: 'tocar_musica',
-    description: 'Toca ou adiciona à fila de reprodução uma música ou rádio pelo nome, preset ("lofi", "jazz", "synthwave", "classical") ou URL direta.',
+    description: 'Toca imediatamente (se nada estiver tocando) ou adiciona à fila de reprodução (se já houver música tocando) uma música, artista, link ou rádio. Use sempre que o usuário pedir para tocar, enfileirar, colocar na fila ou ouvir uma música.',
     parameters: {
       type: 'OBJECT',
       properties: {
-        busca_ou_url: { type: 'STRING', description: 'Nome da música, preset de rádio ou URL de áudio direta.' },
+        busca_ou_url: { type: 'STRING', description: 'Nome da música, artista, preset de rádio ("lofi", "jazz", "synthwave", "classical") ou link direto.' },
+        tocar_em_seguida: { type: 'BOOLEAN', description: 'Se true, insere a música como a próxima a ser tocada na fila (logo após a faixa atual).' },
         canal_voz_id: { type: 'STRING', description: 'ID opcional do canal de voz caso o bot não esteja conectado.' }
       },
       required: ['busca_ou_url']
     },
     riskLevel: 'LOW',
-    async execute({ busca_ou_url, canal_voz_id }, context) {
+    async execute({ busca_ou_url, tocar_em_seguida, canal_voz_id }, context) {
       const { guild, member, user, channel, musicService } = context;
       if (!guild || !musicService) throw new ValidationError('Requer contexto de servidor e serviço de música.');
 
       let voiceChannel = member?.voice?.channel;
       if (!voiceChannel && canal_voz_id) {
-        voiceChannel = guild.channels?.cache?.get(canal_voz_id);
+        voiceChannel = guild.channels?.cache?.get(canal_voz_id) || (await guild.channels?.fetch?.(canal_voz_id).catch(() => null));
       }
       if (!voiceChannel) {
         const existingSession = musicService.getSession(guild.id);
         if (existingSession && existingSession.voiceChannelId) {
-          voiceChannel = guild.channels?.cache?.get(existingSession.voiceChannelId);
+          voiceChannel = guild.channels?.cache?.get(existingSession.voiceChannelId) || (await guild.channels?.fetch?.(existingSession.voiceChannelId).catch(() => null));
         }
       }
 
@@ -94,16 +95,46 @@ const musicVoiceTools = [
         throw new ValidationError('Você precisa estar em um canal de voz para solicitar músicas.');
       }
 
-      const result = await musicService.play(guild, voiceChannel, channel, busca_ou_url, user);
+      const result = await musicService.play(guild, voiceChannel, channel, busca_ou_url, user, {
+        playNext: Boolean(tocar_em_seguida)
+      });
+
+      const trackTitle = result.track?.title || result.firstTrack?.title || 'Faixa de áudio';
+      const duration = result.track?.durationFormatted || result.firstTrack?.durationFormatted || 'Desconhecida';
+      const isQueued = result.action === 'QUEUED' || result.action === 'PLAYLIST_QUEUED';
+      const pos = result.position || (isQueued ? (result.session?.queue?.length || 1) : 1);
 
       return {
         status: 'sucesso',
         acao: result.action,
-        titulo: result.track.title,
-        duracao: result.track.durationFormatted,
-        posicao_fila: result.position || 1,
-        canal_voz: voiceChannel.name
+        titulo: trackTitle,
+        duracao: duration,
+        posicao_fila: pos,
+        canal_voz: voiceChannel.name,
+        mensagem: isQueued
+          ? `Música "${trackTitle}" adicionada com sucesso à fila de reprodução (posição #${pos}) no canal "${voiceChannel.name}".`
+          : `Tocando agora "${trackTitle}" no canal de voz "${voiceChannel.name}".`
       };
+    }
+  },
+
+  // 3.5 adicionar_musica_fila
+  {
+    name: 'adicionar_musica_fila',
+    description: 'Adiciona uma música ou rádio à fila de reprodução do canal de voz. Use sempre que o usuário pedir para botar na fila, colocar na fila, enfileirar ou agendar uma música.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        busca_ou_url: { type: 'STRING', description: 'Nome da música, artista, link ou URL.' },
+        tocar_em_seguida: { type: 'BOOLEAN', description: 'Se true, adiciona logo após a faixa atual (posição #1).' },
+        canal_voz_id: { type: 'STRING', description: 'ID opcional do canal de voz.' }
+      },
+      required: ['busca_ou_url']
+    },
+    riskLevel: 'LOW',
+    async execute(params, context) {
+      const playTool = musicVoiceTools.find(t => t.name === 'tocar_musica');
+      return playTool.execute(params, context);
     }
   },
 

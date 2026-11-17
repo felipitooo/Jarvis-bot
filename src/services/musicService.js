@@ -1,13 +1,13 @@
 const { EventEmitter } = require('node:events');
 const { Readable } = require('node:stream');
 const { logger } = require('../utils/logger');
-const { PermissionFlagsBits } = require('discord.js');
+const { PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 
 const musicLogger = logger.forContext('MusicService');
 
 try {
   const ffmpegPath = require('ffmpeg-static');
-  if (ffmpegPath && !process.env.FFMPEG_PATH) {
+  if (ffmpegPath) {
     process.env.FFMPEG_PATH = ffmpegPath;
   }
 } catch (e) {
@@ -100,6 +100,8 @@ class GuildMusicSession extends EventEmitter {
     this.textChannelId = options.textChannelId || null;
     this.connection = options.connection || null;
     this.player = options.player || null;
+    this.guild = options.guild || null;
+    this.client = options.client || null;
     this.queue = [];
     this.currentTrack = null;
     this.state = 'IDLE'; // 'IDLE', 'PLAYING', 'PAUSED', 'BUFFERING', 'DISCONNECTED'
@@ -107,12 +109,42 @@ class GuildMusicSession extends EventEmitter {
     this.loopMode = 'OFF'; // 'OFF', 'TRACK', 'QUEUE'
     this.inactivityTimer = null;
     this.autoDisconnectMinutes = options.autoDisconnectMinutes || 5;
+    this._manualStop = false;
 
     this.setupPlayerEvents();
   }
 
+  async notifyTextChannel(payload) {
+    if (!this.textChannelId) return;
+
+    try {
+      let targetChannel = null;
+
+      if (this.guild?.channels?.cache) {
+        targetChannel = this.guild.channels.cache.get(this.textChannelId);
+      }
+      if (!targetChannel && this.client?.channels?.cache) {
+        targetChannel = this.client.channels.cache.get(this.textChannelId);
+      }
+      if (!targetChannel && this.guild?.channels?.fetch) {
+        targetChannel = await this.guild.channels.fetch(this.textChannelId).catch(() => null);
+      }
+      if (!targetChannel && this.client?.channels?.fetch) {
+        targetChannel = await this.client.channels.fetch(this.textChannelId).catch(() => null);
+      }
+
+      if (targetChannel && typeof targetChannel.send === 'function') {
+        return await targetChannel.send(payload).catch((err) => {
+          musicLogger.warn(`Failed to send music notification to channel ${this.textChannelId}: ${err.message}`);
+        });
+      }
+    } catch (err) {
+      musicLogger.warn(`Error in notifyTextChannel: ${err.message}`);
+    }
+  }
+
   setupPlayerEvents() {
-    if (!this.player) return;
+    if (!this.player || this.player._eventsConfigured) return;
 
     if (voiceLib && this.player.on) {
       this.player.on(voiceLib.AudioPlayerStatus.Playing, () => {
@@ -129,6 +161,7 @@ class GuildMusicSession extends EventEmitter {
         musicLogger.error(`Audio player error in guild ${this.guildId}`, { error: err.message });
         this.handleTrackEnd();
       });
+      this.player._eventsConfigured = true;
     }
   }
 
@@ -152,13 +185,17 @@ class GuildMusicSession extends EventEmitter {
     }
   }
 
-  enqueue(track) {
-    this.queue.push(track);
+  enqueue(track, atBeginning = false) {
+    if (atBeginning) {
+      this.queue.unshift(track);
+    } else {
+      this.queue.push(track);
+    }
     this.emit('queueAdd', track);
     return this.queue.length;
   }
 
-  playNext() {
+  playNext(announceNext = true) {
     if (this.loopMode === 'TRACK' && this.currentTrack) {
       // Replay current track
       this.playTrack(this.currentTrack);
@@ -173,6 +210,19 @@ class GuildMusicSession extends EventEmitter {
       this.currentTrack = null;
       this.state = 'IDLE';
       this.emit('queueEnd');
+
+      if (!this._manualStop) {
+        const embed = new EmbedBuilder()
+          .setColor(0xFEE75C)
+          .setTitle('🏁 Fim da Fila de Reprodução')
+          .setDescription('Todas as músicas da fila foram concluídas, senhor. O reprodutor agora está em repouso.')
+          .setTimestamp();
+
+        this.notifyTextChannel({ embeds: [embed] }).catch(() => {
+          this.notifyTextChannel({ content: '🏁 **Fila de reprodução finalizada:** Todas as músicas foram concluídas, senhor.' });
+        });
+      }
+
       this.resetInactivityTimer(() => this.emit('autoDisconnected'));
       return null;
     }
@@ -180,6 +230,27 @@ class GuildMusicSession extends EventEmitter {
     const nextTrack = this.queue.shift();
     this.currentTrack = nextTrack;
     this.playTrack(nextTrack);
+
+    if (announceNext && !this._manualStop) {
+      const embed = new EmbedBuilder()
+        .setColor(0x57F287)
+        .setTitle('▶️ Tocando Agora')
+        .setDescription(`**[${nextTrack.title}](${nextTrack.url || 'https://youtube.com'})**`)
+        .addFields(
+          { name: '⏱️ Duração', value: nextTrack.durationFormatted || 'Desconhecida', inline: true },
+          { name: '👤 Solicitado por', value: nextTrack.requestedBy || 'Membro', inline: true }
+        )
+        .setTimestamp();
+
+      if (nextTrack.thumbnail) {
+        embed.setThumbnail(nextTrack.thumbnail);
+      }
+
+      this.notifyTextChannel({ embeds: [embed] }).catch(() => {
+        this.notifyTextChannel({ content: `▶️ Tocando agora da fila: **"${nextTrack.title}"** (${nextTrack.durationFormatted || 'Desconhecida'})` });
+      });
+    }
+
     return nextTrack;
   }
 
@@ -199,6 +270,12 @@ class GuildMusicSession extends EventEmitter {
             read() {
               this.push(null);
             }
+          });
+        }
+
+        if (stream && typeof stream.on === 'function') {
+          stream.on('error', (streamErr) => {
+            musicLogger.error(`Audio stream error for track "${track.title}" in guild ${this.guildId}`, { error: streamErr.message });
           });
         }
 
@@ -227,6 +304,19 @@ class GuildMusicSession extends EventEmitter {
   handleTrackEnd() {
     const previous = this.currentTrack;
     this.emit('trackEnd', previous);
+
+    if (previous && !this._manualStop) {
+      const embed = new EmbedBuilder()
+        .setColor(0x5865F2)
+        .setTitle('⏹️ Música Finalizada')
+        .setDescription(`A reprodução de **${previous.title}** terminou.`)
+        .setTimestamp();
+
+      this.notifyTextChannel({ embeds: [embed] }).catch(() => {
+        this.notifyTextChannel({ content: `⏹️ A reprodução de **"${previous.title}"** terminou.` });
+      });
+    }
+
     this.playNext();
   }
 
@@ -262,6 +352,7 @@ class GuildMusicSession extends EventEmitter {
   }
 
   stop() {
+    this._manualStop = true;
     this.queue = [];
     this.currentTrack = null;
     this.loopMode = 'OFF';
@@ -271,6 +362,9 @@ class GuildMusicSession extends EventEmitter {
     this.state = 'IDLE';
     this.resetInactivityTimer(() => this.emit('autoDisconnected'));
     this.emit('stop');
+    setTimeout(() => {
+      this._manualStop = false;
+    }, 500);
     return true;
   }
 
@@ -311,6 +405,7 @@ class GuildMusicSession extends EventEmitter {
       }
     }
     this.connection = null;
+    this.player = null;
     this.state = 'DISCONNECTED';
     this.emit('disconnect');
   }
@@ -358,46 +453,77 @@ class MusicService {
       throw new Error('Canal de voz não especificado ou inválido.');
     }
 
-    let connection = null;
-    let player = null;
-
-    if (voiceLib && voiceLib.joinVoiceChannel && guild.voiceAdapterCreator) {
-      connection = voiceLib.joinVoiceChannel({
-        channelId: voiceChannel.id,
-        guildId: guild.id,
-        adapterCreator: guild.voiceAdapterCreator
-      });
-
-      player = voiceLib.createAudioPlayer();
-      connection.subscribe(player);
-    } else {
-      // Mock player for CI/test environments
-      player = new EventEmitter();
-      player.play = () => {};
-      player.stop = () => { player.emit('idle'); };
-      player.pause = () => {};
-      player.unpause = () => {};
-      connection = {
-        isMock: true,
-        destroy: () => {},
-        subscribe: () => {}
-      };
-    }
-
     const session = this.getOrCreateSession(guild.id, {
       voiceChannelId: voiceChannel.id,
       textChannelId: textChannel ? textChannel.id : null,
-      connection,
-      player
+      guild,
+      client: guild?.client || this.client
     });
+
+    session.guild = guild;
+    session.client = guild?.client || this.client || session.client;
+    if (textChannel) session.textChannelId = textChannel.id;
+
+    const isConnected = session.connection &&
+      session.connection.state?.status !== 'destroyed' &&
+      session.connection.state?.status !== 'disconnected';
+
+    // If already connected to the same voice channel with an active player, preserve playback
+    if (isConnected && session.voiceChannelId === voiceChannel.id && session.player) {
+      return session;
+    }
+
+    let connection = session.connection;
+    let player = session.player;
+
+    if (voiceLib && voiceLib.joinVoiceChannel && guild.voiceAdapterCreator) {
+      if (!isConnected || session.voiceChannelId !== voiceChannel.id) {
+        connection = voiceLib.joinVoiceChannel({
+          channelId: voiceChannel.id,
+          guildId: guild.id,
+          adapterCreator: guild.voiceAdapterCreator
+        });
+      }
+
+      if (!player) {
+        player = voiceLib.createAudioPlayer({
+          behaviors: {
+            noSubscriber: voiceLib.NoSubscriberBehavior.Play,
+            maxMissedFrames: 250
+          }
+        });
+      }
+      connection.subscribe(player);
+    } else {
+      if (!player) {
+        player = new EventEmitter();
+        player.play = () => {};
+        player.stop = () => { player.emit('idle'); };
+        player.pause = () => {};
+        player.unpause = () => {};
+      }
+      if (!connection) {
+        connection = {
+          isMock: true,
+          destroy: () => {},
+          subscribe: () => {}
+        };
+      }
+    }
 
     session.connection = connection;
     session.player = player;
     session.voiceChannelId = voiceChannel.id;
-    if (textChannel) session.textChannelId = textChannel.id;
 
     session.setupPlayerEvents();
     return session;
+  }
+
+  setClient(client) {
+    this.client = client;
+    for (const session of this.sessions.values()) {
+      session.client = client;
+    }
   }
 
   disconnectVoice(guildId) {
@@ -486,7 +612,9 @@ class MusicService {
         const videoUrl = first.url || `https://www.youtube.com/watch?v=${first.id}`;
         return this.ytdlClient.download(videoUrl, {
           filter: { hasAudio: true, hasVideo: false },
-          highWaterMark: 1 << 25
+          quality: 'highestaudio',
+          highWaterMark: 1 << 25,
+          dlChunkSize: 0
         });
       }
     };
@@ -554,7 +682,9 @@ class MusicService {
             const videoUrl = first.url || `https://www.youtube.com/watch?v=${first.id}`;
             return this.ytdlClient.download(videoUrl, {
               filter: { hasAudio: true, hasVideo: false },
-              highWaterMark: 1 << 25
+              quality: 'highestaudio',
+              highWaterMark: 1 << 25,
+              dlChunkSize: 0
             });
           }
         };
@@ -607,7 +737,9 @@ class MusicService {
             requestedById: requestedBy?.id || null,
             streamFactory: () => this.ytdlClient.download(videoUrl, {
               filter: { hasAudio: true, hasVideo: false },
-              highWaterMark: 1 << 25
+              quality: 'highestaudio',
+              highWaterMark: 1 << 25,
+              dlChunkSize: 0
             })
           };
         });
@@ -683,7 +815,9 @@ class MusicService {
           requestedById: requestedBy?.id || null,
           streamFactory: () => this.ytdlClient.download(query, {
             filter: { hasAudio: true, hasVideo: false },
-            highWaterMark: 1 << 25
+            quality: 'highestaudio',
+            highWaterMark: 1 << 25,
+            dlChunkSize: 0
           })
         };
       } catch (err) {
@@ -755,7 +889,9 @@ class MusicService {
           requestedById: requestedBy?.id || null,
           streamFactory: () => this.ytdlClient.download(videoUrl, {
             filter: { hasAudio: true, hasVideo: false },
-            highWaterMark: 1 << 25
+            quality: 'highestaudio',
+            highWaterMark: 1 << 25,
+            dlChunkSize: 0
           })
         };
       } catch (err) {
@@ -784,7 +920,7 @@ class MusicService {
   // 4. Playback Controls
   // ==========================================
 
-  async play(guild, voiceChannel, textChannel, query, requestedBy) {
+  async play(guild, voiceChannel, textChannel, query, requestedBy, options = {}) {
     const config = this.musicVoiceRepo.getMusicConfig(guild.id);
     if (config.allowedTextChannelId && textChannel?.id && textChannel.id !== config.allowedTextChannelId) {
       throw new Error(`Os comandos de música estão restritos ao canal de texto <#${config.allowedTextChannelId}>!`);
@@ -839,7 +975,7 @@ class MusicService {
         let firstTrack = tracksToAdd[0];
 
         if (session.state === 'IDLE') {
-          firstTrack = session.playNext();
+          firstTrack = session.playNext(false);
           action = 'PLAYLIST_PLAYING';
         }
 
@@ -855,6 +991,7 @@ class MusicService {
           },
           count: tracksToAdd.length,
           firstTrack,
+          track: firstTrack,
           session
         };
       }
@@ -874,10 +1011,11 @@ class MusicService {
       }
     }
 
-    session.enqueue(track);
+    const playNextImmediately = Boolean(options?.playNext);
+    session.enqueue(track, playNextImmediately);
 
     if (session.state === 'IDLE') {
-      const started = session.playNext();
+      const started = session.playNext(false);
       return {
         action: 'PLAYING',
         track: started,
@@ -888,7 +1026,7 @@ class MusicService {
     return {
       action: 'QUEUED',
       track,
-      position: session.queue.length,
+      position: playNextImmediately ? 1 : session.queue.length,
       session
     };
   }

@@ -1,5 +1,6 @@
 const { logger } = require('../utils/logger');
 const { formatCompactNumber } = require('../utils/numberFormatter');
+const companyRules = require('../utils/companyRules');
 
 const ecoLogger = logger.forContext('EconomyService');
 
@@ -602,6 +603,16 @@ class EconomyService {
 
     return this.economyRepo.db.transaction(() => {
       let reward = Math.floor(Math.random() * (config.workMax - config.workMin + 1)) + config.workMin;
+      let jobBonusNotice = '';
+      if (this.economyRepo.getEmployeeJob) {
+        const job = this.economyRepo.getEmployeeJob(guildId, userId);
+        if (job && job.workBonusRate > 0) {
+          const bonus = Math.max(1, Math.round(reward * job.workBonusRate));
+          reward += bonus;
+          this.economyRepo.recordEmployeeContribution(guildId, userId, bonus);
+          jobBonusNotice = `\n${job.emoji} **Bônus Corporativo (${job.companyName}):** +${this.formatCurrency(bonus, config)} *(+${Math.round(job.workBonusRate * 100)}% para você e para o cofre da empresa)*`;
+        }
+      }
       let loanNotice = '';
       if (this.loanService) {
         const ret = this.loanService.processIncomeRetention(guildId, userId, reward);
@@ -631,7 +642,7 @@ class EconomyService {
 
       const template = this.workMessages[Math.floor(Math.random() * this.workMessages.length)];
       const formattedReward = this.formatCurrency(reward, config);
-      let message = template.replace('{amount}', formattedReward) + loanNotice;
+      let message = template.replace('{amount}', formattedReward) + jobBonusNotice + loanNotice;
 
       if (account.walletBalance < 0) {
         if (updated.walletBalance >= 0) {
@@ -2442,8 +2453,24 @@ class EconomyService {
         description: `Câmbio: Compra de ${qty}x ${currency.symbol} ${currency.name} (cotação: ${currency.rate})`
       });
 
+      let updatedCurrency = currency;
+      if (currency.isDynamic) {
+        const impactPct = Math.min(currency.volatility || 0.05, 0.008 * Math.min(10, qty));
+        const nextRate = Math.min(
+          currency.maxRate,
+          Math.max(currency.minRate, Math.round(currency.rate * (1 + impactPct)))
+        );
+        if (nextRate !== currency.rate) {
+          updatedCurrency = this.economyRepo.updateExchangeCurrency(guildId, currency.id, {
+            rate: nextRate,
+            previousRate: currency.rate,
+            reason: `Alta por demanda de compra (+${qty}x)`
+          });
+        }
+      }
+
       return {
-        currency,
+        currency: updatedCurrency,
         quantity: qty,
         totalCost,
         remainingWallet: updated.walletBalance,
@@ -2490,14 +2517,1199 @@ class EconomyService {
         description: `Câmbio: Venda de ${qty}x ${currency.symbol} ${currency.name} (recebido: ${totalGained})`
       });
 
+      let updatedCurrency = currency;
+      if (currency.isDynamic) {
+        const impactPct = Math.min(currency.volatility || 0.05, 0.008 * Math.min(10, qty));
+        const nextRate = Math.min(
+          currency.maxRate,
+          Math.max(currency.minRate, Math.round(currency.rate * (1 - impactPct)))
+        );
+        if (nextRate !== currency.rate) {
+          updatedCurrency = this.economyRepo.updateExchangeCurrency(guildId, currency.id, {
+            rate: nextRate,
+            previousRate: currency.rate,
+            reason: `Correção por oferta de venda (-${qty}x)`
+          });
+        }
+      }
+
       return {
-        currency,
+        currency: updatedCurrency,
         quantity: qty,
         totalGained,
         newWallet: updated.walletBalance,
         remainingCurrencyBalance
       };
     });
+  }
+
+  getCurrencyChartData(guildId, codeOrId = null) {
+    let currency = null;
+    if (codeOrId) {
+      currency = this.getExchangeCurrency(guildId, codeOrId);
+    } else {
+      const all = this.listExchangeCurrencies(guildId, false);
+      currency = all[0] || null;
+    }
+    if (!currency) {
+      throw new Error('Moeda de câmbio não encontrada neste servidor.');
+    }
+    const history = this.economyRepo.getCurrencyRateHistory
+      ? this.economyRepo.getCurrencyRateHistory(guildId, currency.id, 24)
+      : [];
+    return { currency, history };
+  }
+
+  simulateMarketCycle(guildId, codeOrId = null, customDeltaPct = null, customReason = null) {
+    const currencies = codeOrId
+      ? [this.getExchangeCurrency(guildId, codeOrId)].filter(Boolean)
+      : this.listExchangeCurrencies(guildId, true).filter(c => c.isDynamic || customDeltaPct !== null);
+
+    if (currencies.length === 0) {
+      throw new Error('Nenhuma moeda dinâmica encontrada para oscilar no mercado.');
+    }
+
+    const results = [];
+    for (const c of currencies) {
+      const vol = Number(c.volatility) || 0.05;
+      const pctDelta = customDeltaPct !== null && customDeltaPct !== undefined && !isNaN(Number(customDeltaPct))
+        ? Number(customDeltaPct) / 100
+        : (Math.random() * 2 - 0.96) * vol;
+
+      const rawNext = Math.round(c.rate * (1 + pctDelta));
+      const clampedNext = Math.max(c.minRate, Math.min(c.maxRate, rawNext === c.rate ? c.rate + (pctDelta >= 0 ? 1 : -1) : rawNext));
+      const updated = this.economyRepo.updateExchangeCurrency(guildId, c.id, {
+        rate: clampedNext,
+        previousRate: c.rate,
+        reason: customReason || (clampedNext >= c.rate ? 'Oscilação positiva da Bolsa Stark' : 'Correção de mercado da Bolsa Stark')
+      });
+      results.push(updated);
+    }
+    return results;
+  }
+
+  // ==========================================
+  // 14. Company Bankruptcy, Bot Auto-Buyout & Takeover
+  // ==========================================
+
+  assertNotFoundingBanned(guildId, userId) {
+    const ban = this.economyRepo.getFoundingBan(guildId, userId);
+    if (ban) {
+      const unix = Math.floor(new Date(ban.bannedUntil).getTime() / 1000);
+      throw new Error(`🚫 Você faliu recentemente e está impedido de fundar ou assumir empresas até <t:${unix}:f> (<t:${unix}:R>).`);
+    }
+  }
+
+  /** Book value ("valor contábil"): share of the founding price + share of what was invested in upgrades. */
+  getCompanyBookValue(company) {
+    let upgrades = 0;
+    for (let l = 1; l < company.level; l++) {
+      upgrades += Math.round(company.upgradeCostBase * Math.pow(1.65, l - 1));
+    }
+    const value = company.typePrice * companyRules.BOOK_VALUE_PRICE_RATE + upgrades * companyRules.BOOK_VALUE_UPGRADE_RATE;
+    return Math.max(1000, Math.round(value));
+  }
+
+  /** Supplier debt: grows every hour the company stays out of stock (suppliers deliver on credit). */
+  calculateCompanyDebt(company, nowMs = Date.now()) {
+    if (!company.distressSince) return 0;
+    const since = new Date(company.distressSince).getTime();
+    if (!since) return 0;
+    const hours = Math.min(companyRules.MAX_DEBT_HOURS, Math.max(0, (nowMs - since) / 3600000));
+    return Math.round(hours * company.supplyHourlyCost);
+  }
+
+  /** Price the bot asks for a bankrupt company: appreciates every day it waits, up to its book value. */
+  getAskingPrice(company, nowMs = Date.now()) {
+    const listedMs = new Date(company.bankruptAt).getTime() || nowMs;
+    const days = Math.max(0, (nowMs - listedMs) / 86400000);
+    const price = Math.round(company.listStartPrice * (1 + companyRules.AUCTION_APPRECIATION_PER_DAY * days));
+    return Math.min(company.listCapPrice, price);
+  }
+
+  _computeBankruptcySettlement(company, nowMs = Date.now()) {
+    const bookValue = this.getCompanyBookValue(company);
+    const debt = this.calculateCompanyDebt(company, nowMs);
+    const claimable = Math.max(0, company.claimableTotal || 0);
+    const grossShare = Math.round(bookValue * companyRules.OWNER_PAYOUT_RATE);
+    const ownerPayout = Math.max(0, claimable + grossShare - debt);
+    const startPrice = Math.round(bookValue * companyRules.AUCTION_START_RATE);
+    return {
+      bookValue,
+      debt,
+      claimable,
+      grossShare,
+      ownerPayout,
+      startPrice,
+      capPrice: Math.max(startPrice, bookValue)
+    };
+  }
+
+  /** What would happen if the owner declared bankruptcy now (no side effects). */
+  previewCompanyBankruptcy(guildId, userId, companyId = null) {
+    const companies = this.economyRepo.getUserCompanies(guildId, userId);
+    if (companies.length === 0) {
+      throw new Error('Você não possui nenhuma empresa para declarar falência!');
+    }
+    let comp = null;
+    if (companyId) {
+      comp = companies.find(c => c.id === Number(String(companyId).replace('#', '')));
+    } else if (companies.length === 1) {
+      comp = companies[0];
+    } else {
+      throw new Error('Você tem mais de uma empresa! Informe o ID: `+empresa falir <id>` (veja os IDs em `+empresa`).');
+    }
+    if (!comp) throw new Error('Empresa não encontrada ou não pertence a você.');
+    return { company: comp, ...this._computeBankruptcySettlement(comp) };
+  }
+
+  /**
+   * Bankruptcy: the bot's NPC administrator buys the company from its owner, pays the owner a share of the
+   * book value (minus supplier debts), fires the human staff, keeps it supplied and re-lists it for sale.
+   * @param {'MANUAL'|'FORCED_NO_STOCK'} reason
+   */
+  declareCompanyBankruptcy(guildId, userId, companyId, reason = 'MANUAL') {
+    const comp = this.economyRepo.getUserCompanyById(Number(String(companyId).replace('#', '')));
+    if (!comp || comp.guildId !== guildId || comp.ownerId !== userId || comp.status !== 'ACTIVE') {
+      throw new Error('Empresa não encontrada ou não pertence a você.');
+    }
+
+    return this.economyRepo.db.transaction(() => {
+      const nowMs = Date.now();
+      const nowIso = new Date(nowMs).toISOString();
+      const settlement = this._computeBankruptcySettlement(comp, nowMs);
+
+      const fired = this.economyRepo.removeCompanyEmployees(comp.id);
+
+      let walletBalance = null;
+      if (settlement.ownerPayout > 0) {
+        const acc = this.economyRepo.getOrCreateAccount(guildId, userId);
+        const updated = this.economyRepo.updateBalances(guildId, userId, {
+          walletBalance: acc.walletBalance + settlement.ownerPayout
+        });
+        walletBalance = updated.walletBalance;
+        this.economyRepo.recordTransaction({
+          guildId,
+          userId,
+          type: 'COMPANY_BANKRUPTCY_PAYOUT',
+          amount: settlement.ownerPayout,
+          walletAfter: updated.walletBalance,
+          bankAfter: updated.bankBalance,
+          description: `Falência de ${comp.name}: venda ao administrador (${reason === 'MANUAL' ? 'declarada pelo dono' : 'estoque zerado'})`
+        });
+      }
+
+      // The bot's administrator now holds the company and keeps it supplied until someone buys it
+      const updatedCompany = this.economyRepo.updateUserCompany(comp.id, {
+        ownerId: companyRules.ADMIN_OWNER_ID,
+        status: 'FOR_SALE',
+        formerOwnerId: userId,
+        bankruptAt: nowIso,
+        distressSince: null,
+        distressNotified: 0,
+        listStartPrice: settlement.startPrice,
+        listCapPrice: settlement.capPrice,
+        stockProducts: Math.ceil(comp.maxStock * companyRules.ADMIN_STOCK_RATE),
+        vaultBalance: 0,
+        autoRestock: 0,
+        lastCollectedAt: nowIso
+      });
+
+      const banUntil = new Date(nowMs + companyRules.FOUNDING_BAN_HOURS * 3600000).toISOString();
+      this.economyRepo.setFoundingBan(guildId, userId, banUntil, `Falência de ${comp.name}`);
+
+      this.economyRepo.recordBankruptcy({
+        guildId,
+        companyId: comp.id,
+        companyName: comp.name,
+        formerOwnerId: userId,
+        reason,
+        bookValue: settlement.bookValue,
+        debt: settlement.debt,
+        ownerPayout: settlement.ownerPayout
+      });
+
+      return {
+        company: updatedCompany,
+        originalCompany: comp,
+        reason,
+        ...settlement,
+        walletBalance,
+        banUntil,
+        firedUserIds: fired.map(e => e.userId)
+      };
+    });
+  }
+
+  listCompaniesForSale(guildId) {
+    const now = Date.now();
+    return this.economyRepo.listCompaniesForSale(guildId).map(c => ({
+      ...c,
+      bookValue: this.getCompanyBookValue(c),
+      askingPrice: this.getAskingPrice(c, now),
+      daysListed: Math.max(0, (now - (new Date(c.bankruptAt).getTime() || now)) / 86400000)
+    }));
+  }
+
+  /** A player buys a bankrupt company from the bot's administrator at the current (appreciated) price. */
+  takeoverCompany(guildId, userId, companyIdInput) {
+    const id = Number(String(companyIdInput || '').replace('#', ''));
+    if (!id) {
+      throw new Error('Informe o ID da empresa à venda. Veja a lista com `+empresa leilao`!');
+    }
+    this.assertNotFoundingBanned(guildId, userId);
+
+    const comp = this.economyRepo.getUserCompanyById(id);
+    if (!comp || comp.guildId !== guildId || comp.status !== 'FOR_SALE') {
+      throw new Error('Essa empresa não está à venda (ou já foi comprada por outra pessoa). Veja `+empresa leilao`.');
+    }
+
+    const existing = this.economyRepo.getUserCompanies(guildId, userId);
+    const askingPrice = this.getAskingPrice(comp);
+    const scaledPrice = Math.round(askingPrice * Math.pow(1.6, existing.length));
+
+    return this.economyRepo.db.transaction(() => {
+      const config = this.economyRepo.getGuildConfig(guildId);
+      let acc = this.economyRepo.getOrCreateAccount(guildId, userId);
+      let convertedNotice = '';
+      if (acc.walletBalance < scaledPrice) {
+        const liq = this.ensureWalletLiquidity(guildId, userId, scaledPrice);
+        acc = liq.account;
+        convertedNotice = liq.convertedNotice || '';
+      }
+      if (acc.walletBalance < scaledPrice) {
+        throw new Error(`Saldo insuficiente! **${comp.emoji} ${comp.name}** está à venda por **${this.formatCompactCurrency(scaledPrice, config)}**${existing.length > 0 ? ` *(preço escalado para sua ${existing.length + 1}ª empresa)*` : ''} e você possui **${this.formatCompactCurrency(acc.walletBalance, config)}**.`);
+      }
+
+      const updatedAcc = this.economyRepo.updateBalances(guildId, userId, {
+        walletBalance: acc.walletBalance - scaledPrice
+      });
+      this.economyRepo.recordTransaction({
+        guildId,
+        userId,
+        type: 'COMPANY_TAKEOVER',
+        amount: -scaledPrice,
+        walletAfter: updatedAcc.walletBalance,
+        bankAfter: updatedAcc.bankBalance,
+        description: `Aquisição de empresa falida: ${comp.name} (${existing.length + 1}ª empresa)`
+      });
+
+      const nowIso = new Date().toISOString();
+      const company = this.economyRepo.updateUserCompany(comp.id, {
+        ownerId: userId,
+        status: 'ACTIVE',
+        formerOwnerId: null,
+        bankruptAt: null,
+        listStartPrice: 0,
+        listCapPrice: 0,
+        distressSince: null,
+        distressNotified: 0,
+        vaultBalance: 0,
+        totalEarned: 0,
+        autoRestock: 0,
+        lastCollectedAt: nowIso
+      });
+
+      return {
+        company,
+        askingPrice,
+        scaledPrice,
+        convertedNotice,
+        companyNumber: existing.length + 1,
+        previousOwnerId: comp.formerOwnerId
+      };
+    });
+  }
+
+  /** The Supply Manager (if hired) buys the company's own supplies from its earnings before stock runs out. */
+  _applyManagerAutoRestock(comp, nowIso) {
+    if (!comp.autoRestock || comp.remainingStock >= Math.floor(comp.maxStock * 0.25)) return comp;
+    const claimable = comp.claimableTotal;
+    const needed = comp.maxStock - comp.remainingStock;
+    const affordable = Math.min(needed, Math.floor(claimable / Math.max(1, comp.supplyUnitCost)));
+    if (affordable <= 0) return comp;
+    return this.economyRepo.updateUserCompany(comp.id, {
+      stockProducts: comp.remainingStock + affordable,
+      vaultBalance: claimable - affordable * comp.supplyUnitCost,
+      lastCollectedAt: nowIso
+    });
+  }
+
+  /**
+   * Periodic check of every company: detects empty stock, starts the grace period, escalates warnings and
+   * forces bankruptcy when the deadline passes. Returns the DMs that must be delivered.
+   * @returns {Array<{ userId: string, guildId: string, type: string, text: string }>}
+   */
+  runCompanyHealthCheck(nowMs = Date.now()) {
+    const notifications = [];
+    const nowIso = new Date(nowMs).toISOString();
+    const graceMs = companyRules.BANKRUPTCY_GRACE_HOURS * 3600000;
+
+    let companies = [];
+    try {
+      companies = this.economyRepo.getAllActiveCompanies();
+    } catch (err) {
+      ecoLogger.warn(`Company health check could not list companies: ${err.message}`);
+      return notifications;
+    }
+
+    for (let comp of companies) {
+      try {
+        comp = this._applyManagerAutoRestock(comp, nowIso);
+
+        if (comp.remainingStock > 0) {
+          if (comp.distressSince || comp.distressNotified) {
+            this.economyRepo.updateUserCompany(comp.id, { distressSince: null, distressNotified: 0 });
+          }
+          continue;
+        }
+
+        // Out of stock -> distress timer
+        if (!comp.distressSince) {
+          this.economyRepo.updateUserCompany(comp.id, { distressSince: nowIso, distressNotified: 1 });
+          const deadlineUnix = Math.floor((nowMs + graceMs) / 1000);
+          notifications.push({
+            userId: comp.ownerId,
+            guildId: comp.guildId,
+            type: 'DISTRESS_WARNING',
+            text:
+              `⚠️ **Alerta de Falência — ${comp.emoji} ${comp.name}** (ID #${comp.id})\n` +
+              `Sua empresa está **sem estoque de ${comp.supplyEmoji} ${comp.supplyName}** e a renda caiu para 10%. Os fornecedores estão entregando a crédito e a dívida cresce a cada hora.\n\n` +
+              `• **Prazo para reabastecer:** <t:${deadlineUnix}:f> (<t:${deadlineUnix}:R>)\n` +
+              `• Reabasteça com \`+empresa estoque\` (ou contrate o gerente com \`+empresa gerente\`).\n` +
+              `• Se o prazo vencer, o administrador do bot **compra a empresa**: você recebe só uma parte do valor (menos as dívidas) e fica **${companyRules.FOUNDING_BAN_HOURS / 24} dias sem fundar empresas**.\n` +
+              `• Prefere encerrar agora? Use \`+empresa falir ${comp.id}\`.`
+          });
+          continue;
+        }
+
+        const elapsedMs = nowMs - new Date(comp.distressSince).getTime();
+        const remainingMs = graceMs - elapsedMs;
+
+        if (remainingMs <= 0) {
+          const res = this.declareCompanyBankruptcy(comp.guildId, comp.ownerId, comp.id, 'FORCED_NO_STOCK');
+          const unixBan = Math.floor(new Date(res.banUntil).getTime() / 1000);
+          notifications.push({
+            userId: comp.ownerId,
+            guildId: comp.guildId,
+            type: 'BANKRUPT',
+            text:
+              `🏦 **Sua empresa faliu — ${comp.emoji} ${comp.name}**\n` +
+              `O prazo para reabastecer ${comp.supplyEmoji} ${comp.supplyName} venceu e o administrador do bot comprou a empresa.\n\n` +
+              `• **Valor contábil:** ${formatCompactNumber(res.bookValue)} • **Sua parte (${Math.round(companyRules.OWNER_PAYOUT_RATE * 100)}%):** ${formatCompactNumber(res.grossShare)}\n` +
+              `• **Lucros pendentes no cofre:** +${formatCompactNumber(res.claimable)}\n` +
+              `• **Dívidas com fornecedores:** -${formatCompactNumber(res.debt)}\n` +
+              `• **Você recebeu:** 💰 **${formatCompactNumber(res.ownerPayout)} moedas**\n` +
+              `• Você não pode fundar nem assumir empresas até <t:${unixBan}:f> (<t:${unixBan}:R>).`
+          });
+          for (const fid of res.firedUserIds) {
+            notifications.push({
+              userId: fid,
+              guildId: comp.guildId,
+              type: 'EMPLOYEE_FIRED',
+              text: `💼 A empresa **${comp.emoji} ${comp.name}**, onde você trabalhava, faliu. Você ficou desempregado e perdeu o bônus no \`+work\`. Procure outra empresa para trabalhar!`
+            });
+          }
+          continue;
+        }
+
+        if (remainingMs <= companyRules.FINAL_WARNING_HOURS * 3600000 && comp.distressNotified < 2) {
+          this.economyRepo.updateUserCompany(comp.id, { distressNotified: 2 });
+          const deadlineUnix = Math.floor((new Date(comp.distressSince).getTime() + graceMs) / 1000);
+          notifications.push({
+            userId: comp.ownerId,
+            guildId: comp.guildId,
+            type: 'DISTRESS_FINAL',
+            text:
+              `🚨 **ÚLTIMO AVISO — ${comp.emoji} ${comp.name}** (ID #${comp.id})\n` +
+              `Sua empresa vai **falir** <t:${deadlineUnix}:R> se continuar sem estoque de ${comp.supplyEmoji} ${comp.supplyName}!\n` +
+              `• Dívida atual com fornecedores: **${formatCompactNumber(this.calculateCompanyDebt(comp, nowMs))} moedas**\n` +
+              `• Reabasteça agora: \`+empresa estoque\``
+          });
+        }
+      } catch (err) {
+        ecoLogger.warn(`Company health check failed for company #${comp?.id}: ${err.message}`);
+      }
+    }
+
+    return notifications;
+  }
+
+  startCompanyHealthWorker(client, intervalMinutes = companyRules.HEALTH_CHECK_INTERVAL_MINUTES) {
+    if (this._companyHealthInterval) clearInterval(this._companyHealthInterval);
+    if (this._companyHealthTimeout) clearTimeout(this._companyHealthTimeout);
+    const intervalMs = Math.max(1, Number(intervalMinutes) || companyRules.HEALTH_CHECK_INTERVAL_MINUTES) * 60 * 1000;
+
+    const run = async () => {
+      let notifications = [];
+      try {
+        notifications = this.runCompanyHealthCheck();
+      } catch (err) {
+        ecoLogger.warn(`Company health worker error: ${err.message}`);
+      }
+      for (const n of notifications) {
+        try {
+          const user = await client.users.fetch(n.userId);
+          await user.send(n.text);
+        } catch {
+          // DMs closed or user unavailable: the warning is still visible in +empresa
+        }
+      }
+    };
+
+    this._companyHealthTimeout = setTimeout(run, companyRules.HEALTH_CHECK_FIRST_RUN_DELAY_MS);
+    this._companyHealthInterval = setInterval(run, intervalMs);
+    return this._companyHealthInterval;
+  }
+
+  startStockMarketDailyCycle(client, intervalHours = 24) {
+    if (this._stockMarketInterval) {
+      clearInterval(this._stockMarketInterval);
+    }
+    const intervalMs = Math.max(1, Number(intervalHours) || 24) * 60 * 60 * 1000;
+
+    const runDailyCycle = () => {
+      try {
+        if (!client?.guilds?.cache) return;
+        for (const [guildId] of client.guilds.cache) {
+          try {
+            const dynamicCurrencies = this.listExchangeCurrencies(guildId, true).filter(c => c.isDynamic);
+            if (dynamicCurrencies.length > 0) {
+              this.simulateMarketCycle(guildId, null, null, 'Oscilação do Ciclo Diário Automático da Bolsa Stark');
+            }
+          } catch {}
+        }
+      } catch {}
+    };
+
+    this._stockMarketInterval = setInterval(runDailyCycle, intervalMs);
+    this._stockMarketIntervalHours = intervalHours;
+    return this._stockMarketInterval;
+  }
+
+  getStockMarketCycleStatus() {
+    return {
+      active: true,
+      intervalHours: this._stockMarketIntervalHours || 24,
+      description: `Roda automaticamente a cada ${this._stockMarketIntervalHours || 24} horas para todas as moedas dinâmicas da Bolsa.`
+    };
+  }
+
+  // ==========================================
+  // 13. Companies, Real Estate & Passive Income (+empresa)
+  // ==========================================
+
+  listCompanyCatalog(guildId, activeOnly = true) {
+    return this.economyRepo.listCompanyTypes(guildId, activeOnly);
+  }
+
+  getUserCompaniesStatus(guildId, userId) {
+    const companies = this.economyRepo.getUserCompanies(guildId, userId);
+    const job = this.economyRepo.getEmployeeJob(guildId, userId);
+    return { companies, job };
+  }
+
+  buyCompany(guildId, userId, typeIdOrName, customName = null, currencyCode = null) {
+    const type = this.economyRepo.getCompanyTypeById(guildId, typeIdOrName);
+    if (!type || !type.isActive) {
+      throw new Error(`Tipo de empresa "${typeIdOrName}" não encontrado no catálogo. Use \`+empresa loja\` para ver as opções!`);
+    }
+    this.assertNotFoundingBanned(guildId, userId);
+
+    // Anti-monopoly progressive scaling based on companies already owned
+    const existingCompanies = this.economyRepo.getUserCompanies(guildId, userId);
+    const scaleMultiplier = Math.pow(1.6, existingCompanies.length);
+    const scaledPrice = Math.round(type.price * scaleMultiplier);
+
+    return this.economyRepo.db.transaction(() => {
+      const config = this.economyRepo.getGuildConfig(guildId);
+      let convertedNotice = '';
+
+      if (currencyCode) {
+        const currency = this.getExchangeCurrency(guildId, currencyCode);
+        if (!currency) throw new Error(`Moeda de câmbio "${currencyCode}" não encontrada.`);
+        const neededUnits = Math.ceil(scaledPrice / currency.rate);
+        const userUnits = this.economyRepo.getUserCurrencyBalance(guildId, userId, currency.id);
+        if (userUnits < neededUnits) {
+          throw new Error(`Saldo insuficiente! Você precisa de **${neededUnits}x ${currency.symbol} ${currency.name}** para comprar **${type.emoji} ${type.name}** (Você possui ${userUnits}x).`);
+        }
+        const totalValue = neededUnits * currency.rate;
+        const change = Math.max(0, totalValue - scaledPrice);
+        this.economyRepo.addUserCurrencyBalance(guildId, userId, currency.id, -neededUnits);
+        const acc = this.economyRepo.getOrCreateAccount(guildId, userId);
+        if (change > 0) {
+          this.economyRepo.updateBalances(guildId, userId, { walletBalance: acc.walletBalance + change });
+        }
+        convertedNotice = `\n💱 *(Adquirida com **${neededUnits}x ${currency.symbol} ${currency.name}**${change > 0 ? ` • Troco: ${this.formatCompactCurrency(change, config)}` : ''})*`;
+      } else {
+        let acc = this.economyRepo.getOrCreateAccount(guildId, userId);
+        if (acc.walletBalance < scaledPrice) {
+          const liq = this.ensureWalletLiquidity(guildId, userId, scaledPrice);
+          acc = liq.account;
+          convertedNotice = liq.convertedNotice || '';
+        }
+        if (acc.walletBalance < scaledPrice) {
+          throw new Error(`Saldo insuficiente na carteira! **${type.emoji} ${type.name}** custa **${this.formatCompactCurrency(scaledPrice, config)}**${existingCompanies.length > 0 ? ` *(preço escalado para sua ${existingCompanies.length + 1}ª empresa)*` : ''} e você possui **${this.formatCompactCurrency(acc.walletBalance, config)}**.`);
+        }
+        const updatedAcc = this.economyRepo.updateBalances(guildId, userId, {
+          walletBalance: acc.walletBalance - scaledPrice
+        });
+        this.economyRepo.recordTransaction({
+          guildId,
+          userId,
+          type: 'COMPANY_BUY',
+          amount: -scaledPrice,
+          walletAfter: updatedAcc.walletBalance,
+          bankAfter: updatedAcc.bankBalance,
+          description: `Fundação de empresa: ${type.name} (${existingCompanies.length + 1}ª empresa)`
+        });
+      }
+
+      const company = this.economyRepo.createUserCompany(guildId, userId, type.id, customName);
+      return { company, type, scaledPrice, convertedNotice, companyNumber: existingCompanies.length + 1 };
+    });
+  }
+
+  collectCompanyProfits(guildId, userId, companyId = null) {
+    const companies = this.economyRepo.getUserCompanies(guildId, userId);
+    if (companies.length === 0) {
+      throw new Error('Você ainda não possui nenhuma empresa! Use `+empresa loja` para ver o catálogo e `+empresa comprar <id>` para fundar a sua.');
+    }
+
+    const targets = companyId
+      ? companies.filter(c => c.id === Number(companyId))
+      : companies;
+
+    if (targets.length === 0) {
+      throw new Error('Empresa não encontrada ou não pertence a você.');
+    }
+
+    return this.economyRepo.db.transaction(() => {
+      let totalCollected = 0;
+      let totalRestockSpent = 0;
+      let autoRestockedUnits = 0;
+      const restockDetails = [];
+      const nowIso = new Date().toISOString();
+
+      for (const comp of targets) {
+        let claimable = comp.claimableTotal;
+        let newStock = comp.remainingStock;
+        let companyRestockSpent = 0;
+
+        // Auto-restock manager: buys THIS company's own supplies at THIS company's wholesale price
+        if (comp.autoRestock && newStock < Math.floor(comp.maxStock * 0.25)) {
+          const needed = comp.maxStock - newStock;
+          const wholesaleCost = needed * comp.supplyUnitCost;
+          if (claimable >= wholesaleCost) {
+            claimable -= wholesaleCost;
+            companyRestockSpent = wholesaleCost;
+            totalRestockSpent += wholesaleCost;
+            autoRestockedUnits += needed;
+            newStock = comp.maxStock;
+            restockDetails.push({
+              companyName: comp.name,
+              supplyName: comp.supplyName,
+              supplyEmoji: comp.supplyEmoji,
+              units: needed,
+              cost: wholesaleCost
+            });
+          }
+        }
+
+        if (claimable > 0 || comp.consumedStock > 0 || newStock !== comp.stockProducts) {
+          totalCollected += claimable;
+          this.economyRepo.updateUserCompany(comp.id, {
+            vaultBalance: 0,
+            stockProducts: newStock,
+            totalEarned: comp.totalEarned + claimable + companyRestockSpent,
+            lastCollectedAt: nowIso,
+            ...(newStock > 0 ? { distressSince: null, distressNotified: 0 } : {})
+          });
+        }
+      }
+
+      if (totalCollected <= 0 && autoRestockedUnits <= 0) {
+        throw new Error('O cofre da sua empresa ainda está acumulando lucros ou precisa de reposição de estoque! Use `+empresa estoque` ou aguarde mais alguns minutos.');
+      }
+
+      let walletBalance = 0;
+      if (totalCollected > 0) {
+        const acc = this.economyRepo.getOrCreateAccount(guildId, userId);
+        const updated = this.economyRepo.updateBalances(guildId, userId, {
+          walletBalance: acc.walletBalance + totalCollected
+        });
+        walletBalance = updated.walletBalance;
+
+        this.economyRepo.recordTransaction({
+          guildId,
+          userId,
+          type: 'COMPANY_COLLECT',
+          amount: totalCollected,
+          walletAfter: updated.walletBalance,
+          bankAfter: updated.bankBalance,
+          description: `Coleta de lucros corporativos (${targets.length} empresa(s))`
+        });
+      } else {
+        const acc = this.economyRepo.getOrCreateAccount(guildId, userId);
+        walletBalance = acc.walletBalance;
+      }
+
+      return {
+        totalCollected,
+        totalRestockSpent,
+        autoRestockedUnits,
+        restockDetails,
+        walletBalance,
+        companies: this.economyRepo.getUserCompanies(guildId, userId)
+      };
+    });
+  }
+
+  upgradeCompany(guildId, userId, companyId = null) {
+    const companies = this.economyRepo.getUserCompanies(guildId, userId);
+    if (companies.length === 0) {
+      throw new Error('Você não possui nenhuma empresa para evoluir!');
+    }
+    const comp = companyId ? companies.find(c => c.id === Number(companyId)) : companies[0];
+    if (!comp) {
+      throw new Error('Empresa não encontrada.');
+    }
+
+    if (!comp.canUpgradeByTurnover) {
+      throw new Error(`Sua empresa **${comp.emoji} ${comp.name}** (${comp.tierTitle}) ainda não possui maturidade comercial para expandir!\nPara subir para **${comp.nextTierTitle}**, a empresa precisa acumular pelo menos **${formatCompactNumber(comp.minTurnoverRequired)} moedas** em vendas e lucros coletados (Faturado até agora: **${formatCompactNumber(comp.totalEarned)} moedas**).\nMantenha seu estoque abastecido e colete lucros para crescer!`);
+    }
+
+    const cost = comp.nextUpgradeCost;
+    return this.economyRepo.db.transaction(() => {
+      let acc = this.economyRepo.getOrCreateAccount(guildId, userId);
+      let convertedNotice = '';
+      if (acc.walletBalance < cost) {
+        const liq = this.ensureWalletLiquidity(guildId, userId, cost);
+        acc = liq.account;
+        convertedNotice = liq.convertedNotice || '';
+      }
+      if (acc.walletBalance < cost) {
+        throw new Error(`Saldo insuficiente para evoluir **${comp.emoji} ${comp.name}** para o Nível ${comp.level + 1}! Custo: **${formatCompactNumber(cost)} moedas**.`);
+      }
+
+      const updatedAcc = this.economyRepo.updateBalances(guildId, userId, {
+        walletBalance: acc.walletBalance - cost
+      });
+
+      // Preserve any pending passive income in vault before leveling up
+      const updatedCompany = this.economyRepo.updateUserCompany(comp.id, {
+        level: comp.level + 1,
+        maxStock: comp.maxStock + 50,
+        vaultBalance: comp.claimableTotal,
+        stockProducts: comp.remainingStock,
+        lastCollectedAt: new Date().toISOString()
+      });
+
+      this.economyRepo.recordTransaction({
+        guildId,
+        userId,
+        type: 'COMPANY_UPGRADE',
+        amount: -cost,
+        walletAfter: updatedAcc.walletBalance,
+        bankAfter: updatedAcc.bankBalance,
+        description: `Upgrade da empresa ${comp.name} para Nível ${comp.level + 1}`
+      });
+
+      return {
+        company: updatedCompany,
+        cost,
+        walletBalance: updatedAcc.walletBalance,
+        convertedNotice
+      };
+    });
+  }
+
+  restockCompany(guildId, userId, amountInput = null, companyId = null) {
+    const companies = this.economyRepo.getUserCompanies(guildId, userId);
+    if (companies.length === 0) {
+      throw new Error('Você não possui nenhuma empresa para reabastecer! Use `+empresa loja`.');
+    }
+    const comp = companyId ? companies.find(c => c.id === Number(companyId)) : companies[0];
+    if (!comp) throw new Error('Empresa não encontrada.');
+
+    const availableSpace = Math.max(0, comp.maxStock - comp.remainingStock);
+    if (availableSpace <= 0) {
+      throw new Error(`O estoque de **${comp.emoji} ${comp.name}** já está no limite máximo (**${comp.remainingStock}/${comp.maxStock}** ${comp.supplyEmoji} ${comp.supplyName})!`);
+    }
+
+    let qty = availableSpace;
+    if (amountInput && String(amountInput).toLowerCase() !== 'max') {
+      const parsed = parseInt(amountInput, 10);
+      if (isNaN(parsed) || parsed <= 0) {
+        throw new Error(`Informe uma quantidade válida de ${comp.supplyName} para comprar ou use \`max\`.`);
+      }
+      qty = Math.min(availableSpace, parsed);
+    }
+
+    // Each business buys its own kind of supplies, priced by the business type
+    const wholesalePricePerUnit = comp.supplyUnitCost;
+    const totalCost = qty * wholesalePricePerUnit;
+
+    return this.economyRepo.db.transaction(() => {
+      let acc = this.economyRepo.getOrCreateAccount(guildId, userId);
+      let convertedNotice = '';
+      if (acc.walletBalance < totalCost) {
+        const liq = this.ensureWalletLiquidity(guildId, userId, totalCost);
+        acc = liq.account;
+        convertedNotice = liq.convertedNotice || '';
+      }
+      if (acc.walletBalance < totalCost) {
+        throw new Error(`Saldo insuficiente para comprar **${qty}x ${comp.supplyEmoji} ${comp.supplyName}**! Custo total: **${formatCompactNumber(totalCost)} moedas** (${formatCompactNumber(wholesalePricePerUnit)} cada) — você tem ${formatCompactNumber(acc.walletBalance)}.`);
+      }
+
+      const updatedAcc = this.economyRepo.updateBalances(guildId, userId, {
+        walletBalance: acc.walletBalance - totalCost
+      });
+
+      const newStock = comp.remainingStock + qty;
+      const updatedCompany = this.economyRepo.updateUserCompany(comp.id, {
+        stockProducts: newStock,
+        vaultBalance: comp.claimableTotal,
+        lastCollectedAt: new Date().toISOString(),
+        distressSince: null,
+        distressNotified: 0
+      });
+
+      this.economyRepo.recordTransaction({
+        guildId,
+        userId,
+        type: 'COMPANY_RESTOCK',
+        amount: -totalCost,
+        walletAfter: updatedAcc.walletBalance,
+        bankAfter: updatedAcc.bankBalance,
+        description: `Reabastecimento: ${qty}x ${comp.supplyName} para ${comp.name}`
+      });
+
+      return {
+        company: updatedCompany,
+        qtyAdded: qty,
+        newStock,
+        totalCost,
+        unitCost: wholesalePricePerUnit,
+        supplyName: comp.supplyName,
+        supplyEmoji: comp.supplyEmoji,
+        walletBalance: updatedAcc.walletBalance,
+        convertedNotice
+      };
+    });
+  }
+
+  toggleCompanyAutoRestock(guildId, userId, companyId = null) {
+    const companies = this.economyRepo.getUserCompanies(guildId, userId);
+    if (companies.length === 0) {
+      throw new Error('Você não possui nenhuma empresa! Use `+empresa loja`.');
+    }
+    const comp = companyId ? companies.find(c => c.id === Number(companyId)) : companies[0];
+    if (!comp) throw new Error('Empresa não encontrada.');
+
+    const activating = !comp.autoRestock;
+    const managerHiringCost = 5000;
+
+    return this.economyRepo.db.transaction(() => {
+      let notice = '';
+      if (activating) {
+        let acc = this.economyRepo.getOrCreateAccount(guildId, userId);
+        if (acc.walletBalance < managerHiringCost) {
+          const liq = this.ensureWalletLiquidity(guildId, userId, managerHiringCost);
+          acc = liq.account;
+        }
+        if (acc.walletBalance < managerHiringCost) {
+          throw new Error(`Saldo insuficiente para contratar o **Gerente de Suprimentos**! Taxa de contratação: **${formatCompactNumber(managerHiringCost)} moedas**.`);
+        }
+        const updatedAcc = this.economyRepo.updateBalances(guildId, userId, {
+          walletBalance: acc.walletBalance - managerHiringCost
+        });
+        this.economyRepo.recordTransaction({
+          guildId,
+          userId,
+          type: 'COMPANY_MANAGER_HIRE',
+          amount: -managerHiringCost,
+          walletAfter: updatedAcc.walletBalance,
+          bankAfter: updatedAcc.bankBalance,
+          description: `Contratação de Gerente de Suprimentos para ${comp.name}`
+        });
+        notice = `Contratado por **${formatCompactNumber(managerHiringCost)} moedas**! Ele manterá seu estoque sempre abastecido automaticamente.`;
+      } else {
+        notice = 'Gerente de suprimentos desativado. Você precisará reabastecer manualmente.';
+      }
+
+      const updatedCompany = this.economyRepo.updateUserCompany(comp.id, {
+        autoRestock: activating ? 1 : 0
+      });
+
+      return {
+        company: updatedCompany,
+        isActive: activating,
+        notice
+      };
+    });
+  }
+
+  hireNpcWorker(guildId, userId, companyId = null) {
+    const companies = this.economyRepo.getUserCompanies(guildId, userId);
+    if (companies.length === 0) {
+      throw new Error('Você não possui nenhuma empresa! Use `+empresa loja`.');
+    }
+    const comp = companyId ? companies.find(c => c.id === Number(companyId)) : companies[0];
+    if (!comp) throw new Error('Empresa não encontrada.');
+
+    const totalStaff = comp.employees.length + comp.npcWorkers;
+    if (totalStaff >= comp.maxEmployees) {
+      throw new Error(`Sua empresa **${comp.emoji} ${comp.name}** já atingiu a capacidade máxima de equipe (**${comp.maxEmployees} funcionários**)! Evolua o nível da empresa com \`+empresa evoluir\` para abrir novos postos de trabalho.`);
+    }
+
+    const hireCost = 3000 * comp.level;
+    return this.economyRepo.db.transaction(() => {
+      let acc = this.economyRepo.getOrCreateAccount(guildId, userId);
+      if (acc.walletBalance < hireCost) {
+        const liq = this.ensureWalletLiquidity(guildId, userId, hireCost);
+        acc = liq.account;
+      }
+      if (acc.walletBalance < hireCost) {
+        throw new Error(`Saldo insuficiente para contratar funcionário operacional! Custo: **${formatCompactNumber(hireCost)} moedas**.`);
+      }
+
+      const updatedAcc = this.economyRepo.updateBalances(guildId, userId, {
+        walletBalance: acc.walletBalance - hireCost
+      });
+
+      const updatedCompany = this.economyRepo.updateUserCompany(comp.id, {
+        npcWorkers: comp.npcWorkers + 1,
+        maxStock: comp.maxStock + 25
+      });
+
+      this.economyRepo.recordTransaction({
+        guildId,
+        userId,
+        type: 'COMPANY_NPC_HIRE',
+        amount: -hireCost,
+        walletAfter: updatedAcc.walletBalance,
+        bankAfter: updatedAcc.bankBalance,
+        description: `Contratação de funcionário NPC para ${comp.name}`
+      });
+
+      return {
+        company: updatedCompany,
+        hireCost,
+        walletBalance: updatedAcc.walletBalance
+      };
+    });
+  }
+
+  hireCompanyEmployee(guildId, ownerId, employeeId, companyId = null) {
+    if (ownerId === employeeId) {
+      throw new Error('Você já é o dono da empresa e não pode contratar a si mesmo como funcionário!');
+    }
+    const companies = this.economyRepo.getUserCompanies(guildId, ownerId);
+    if (companies.length === 0) {
+      throw new Error('Você precisa ter uma empresa para contratar funcionários! Use `+empresa loja`.');
+    }
+    const comp = companyId ? companies.find(c => c.id === Number(companyId)) : companies[0];
+    if (!comp) throw new Error('Empresa não encontrada.');
+
+    if (comp.employees.length >= comp.maxEmployees) {
+      throw new Error(`Sua empresa **${comp.emoji} ${comp.name}** já atingiu o limite de **${comp.maxEmployees} funcionários**! Evolua sua empresa com \`+empresa evoluir\` para abrir mais vagas.`);
+    }
+
+    const job = this.economyRepo.hireEmployee(guildId, comp.id, employeeId);
+    return {
+      company: this.economyRepo.getUserCompanyById(comp.id),
+      job
+    };
+  }
+
+  fireCompanyEmployee(guildId, ownerId, employeeId, companyId = null) {
+    const companies = this.economyRepo.getUserCompanies(guildId, ownerId);
+    const comp = companyId ? companies.find(c => c.id === Number(companyId)) : companies[0];
+    if (!comp) throw new Error('Você não possui uma empresa ativa.');
+    const removed = this.economyRepo.fireEmployee(guildId, comp.id, employeeId);
+    if (!removed) throw new Error('Este membro não faz parte do quadro de funcionários da sua empresa.');
+    return { company: this.economyRepo.getUserCompanyById(comp.id) };
+  }
+
+  // ==========================================
+  // 14. PvP Duels X1 (+duelo)
+  // ==========================================
+
+  _ensureDuelMaps() {
+    if (!this.pendingDuels) this.pendingDuels = new Map();
+    if (!this.activeRussianRoulettes) this.activeRussianRoulettes = new Map();
+  }
+
+  createDuelChallenge(guildId, challengerId, opponentId, amountInput, modeInput = 'moeda', currencyCode = null) {
+    this._ensureDuelMaps();
+    this._checkCasinoAccess(guildId, challengerId);
+    this._checkCasinoAccess(guildId, opponentId);
+
+    if (challengerId === opponentId) {
+      throw new Error('Você não pode desafiar a si mesmo para um duelo!');
+    }
+
+    const rawMode = String(modeInput || 'moeda').toLowerCase().trim();
+    let mode = 'moeda';
+    if (['dado', 'dados', 'dice'].includes(rawMode)) mode = 'dado';
+    else if (['roleta', 'russa', 'roulette', 'revolver'].includes(rawMode)) mode = 'roleta';
+
+    const amount = parseInt(amountInput, 10);
+    if (isNaN(amount) || amount <= 0) {
+      throw new Error('Informe uma quantia válida e positiva para a aposta do duelo!');
+    }
+
+    let currency = null;
+    if (currencyCode) {
+      currency = this.getExchangeCurrency(guildId, currencyCode);
+      if (!currency) throw new Error(`A moeda de câmbio "${currencyCode}" não foi encontrada neste servidor.`);
+      const challengerUnits = this.economyRepo.getUserCurrencyBalance(guildId, challengerId, currency.id);
+      if (challengerUnits < amount) {
+        throw new Error(`Você não possui **${formatCompactNumber(amount)}x ${currency.symbol} ${currency.name}** na carteira para desafiar!`);
+      }
+    } else {
+      const bal = this.getBalance(guildId, challengerId);
+      const eff = bal.effectiveWalletBalance ?? bal.walletBalance;
+      if (eff < amount) {
+        throw new Error(`Você não possui saldo suficiente na carteira para apostar **${formatCompactNumber(amount)} moedas**!`);
+      }
+    }
+
+    const duelId = `${Date.now().toString(36)}${Math.floor(Math.random() * 999)}`;
+    const duel = {
+      id: duelId,
+      guildId,
+      challengerId,
+      opponentId,
+      amount,
+      mode,
+      currencyCode: currency ? currency.code : null,
+      currency,
+      createdAt: Date.now()
+    };
+
+    this.pendingDuels.set(duelId, duel);
+    return duel;
+  }
+
+  declineDuelChallenge(guildId, duelId, userId) {
+    this._ensureDuelMaps();
+    const duel = this.pendingDuels.get(duelId);
+    if (!duel || duel.guildId !== guildId) {
+      throw new Error('Este desafio de duelo não existe mais ou já expirou.');
+    }
+    if (userId !== duel.opponentId && userId !== duel.challengerId) {
+      throw new Error('Apenas os participantes do duelo podem cancelar ou recusar o desafio!');
+    }
+    this.pendingDuels.delete(duelId);
+    return duel;
+  }
+
+  acceptDuelChallenge(guildId, duelId, accepterId) {
+    this._ensureDuelMaps();
+    const duel = this.pendingDuels.get(duelId);
+    if (!duel || duel.guildId !== guildId) {
+      throw new Error('Este desafio de duelo não existe mais ou já foi encerrado!');
+    }
+    if (accepterId !== duel.opponentId) {
+      throw new Error(`Apenas <@${duel.opponentId}> pode aceitar este duelo!`);
+    }
+
+    this._checkCasinoAccess(guildId, duel.challengerId);
+    this._checkCasinoAccess(guildId, duel.opponentId);
+
+    this.pendingDuels.delete(duelId);
+
+    // Verify both players have funds & lock/settle inside transaction
+    return this.economyRepo.db.transaction(() => {
+      const { challengerId, opponentId, amount, mode, currency } = duel;
+
+      if (currency) {
+        const cUnits = this.economyRepo.getUserCurrencyBalance(guildId, challengerId, currency.id);
+        const oUnits = this.economyRepo.getUserCurrencyBalance(guildId, opponentId, currency.id);
+        if (cUnits < amount) {
+          throw new Error(`<@${challengerId}> não possui mais **${amount}x ${currency.symbol} ${currency.name}** na carteira!`);
+        }
+        if (oUnits < amount) {
+          throw new Error(`Você precisa de **${amount}x ${currency.symbol} ${currency.name}** na carteira para aceitar este duelo (você possui ${oUnits}x)!`);
+        }
+      } else {
+        let cAcc = this.economyRepo.getOrCreateAccount(guildId, challengerId);
+        if (cAcc.walletBalance < amount) {
+          cAcc = this.ensureWalletLiquidity(guildId, challengerId, amount).account;
+        }
+        if (cAcc.walletBalance < amount) {
+          throw new Error(`<@${challengerId}> não possui mais saldo suficiente na carteira!`);
+        }
+
+        let oAcc = this.economyRepo.getOrCreateAccount(guildId, opponentId);
+        if (oAcc.walletBalance < amount) {
+          oAcc = this.ensureWalletLiquidity(guildId, opponentId, amount).account;
+        }
+        if (oAcc.walletBalance < amount) {
+          throw new Error(`Você não possui saldo suficiente na carteira para aceitar a aposta de **${formatCompactNumber(amount)} moedas**!`);
+        }
+      }
+
+      // If Russian Roulette mode, deduct stakes into pot and start interactive turn-based game
+      if (mode === 'roleta') {
+        if (currency) {
+          this.economyRepo.addUserCurrencyBalance(guildId, challengerId, currency.id, -amount);
+          this.economyRepo.addUserCurrencyBalance(guildId, opponentId, currency.id, -amount);
+        } else {
+          const cAcc = this.economyRepo.getOrCreateAccount(guildId, challengerId);
+          const oAcc = this.economyRepo.getOrCreateAccount(guildId, opponentId);
+          this.economyRepo.updateBalances(guildId, challengerId, { walletBalance: cAcc.walletBalance - amount });
+          this.economyRepo.updateBalances(guildId, opponentId, { walletBalance: oAcc.walletBalance - amount });
+        }
+
+        const rrState = {
+          ...duel,
+          pot: amount * 2,
+          currentTurnId: Math.random() < 0.5 ? challengerId : opponentId,
+          chamberIndex: 0,
+          bulletChamber: Math.floor(Math.random() * 6),
+          log: []
+        };
+        this.activeRussianRoulettes.set(duelId, rrState);
+        return {
+          mode: 'roleta',
+          finished: false,
+          rrState
+        };
+      }
+
+      // Instant resolution for 'moeda' (Coinflip X1) or 'dado' (Dice 2d6 X1)
+      let winnerId;
+      let loserId;
+      let detailsText = '';
+
+      if (mode === 'dado') {
+        let cRoll1 = 1, cRoll2 = 1, oRoll1 = 1, oRoll2 = 1;
+        let cSum = 0, oSum = 0;
+        while (cSum === oSum) {
+          cRoll1 = Math.floor(Math.random() * 6) + 1;
+          cRoll2 = Math.floor(Math.random() * 6) + 1;
+          oRoll1 = Math.floor(Math.random() * 6) + 1;
+          oRoll2 = Math.floor(Math.random() * 6) + 1;
+          cSum = cRoll1 + cRoll2;
+          oSum = oRoll1 + oRoll2;
+        }
+        winnerId = cSum > oSum ? challengerId : opponentId;
+        loserId = winnerId === challengerId ? opponentId : challengerId;
+        detailsText =
+          `🎲 <@${challengerId}> rolou **[${cRoll1} + ${cRoll2}] = ${cSum}**\n` +
+          `🎲 <@${opponentId}> rolou **[${oRoll1} + ${oRoll2}] = ${oSum}**`;
+      } else {
+        const landed = Math.random() < 0.5 ? 'CARA' : 'COROA';
+        winnerId = landed === 'CARA' ? challengerId : opponentId;
+        loserId = winnerId === challengerId ? opponentId : challengerId;
+        detailsText =
+          `🪙 <@${challengerId}> ficou com **CARA** • <@${opponentId}> ficou com **COROA**\n` +
+          `✨ A moeda girou no ar e caiu em: **${landed}**!`;
+      }
+
+      if (currency) {
+        this.economyRepo.addUserCurrencyBalance(guildId, loserId, currency.id, -amount);
+        this.economyRepo.addUserCurrencyBalance(guildId, winnerId, currency.id, amount);
+      } else {
+        const lAcc = this.economyRepo.getOrCreateAccount(guildId, loserId);
+        const wAcc = this.economyRepo.getOrCreateAccount(guildId, winnerId);
+        const updatedL = this.economyRepo.updateBalances(guildId, loserId, { walletBalance: lAcc.walletBalance - amount });
+        const updatedW = this.economyRepo.updateBalances(guildId, winnerId, { walletBalance: wAcc.walletBalance + amount });
+
+        this.economyRepo.recordTransaction({
+          guildId,
+          userId: winnerId,
+          targetId: loserId,
+          type: 'DUEL_WIN',
+          amount,
+          walletAfter: updatedW.walletBalance,
+          bankAfter: updatedW.bankBalance,
+          description: `Vitória em Duelo X1 (${mode}) contra ${loserId}`
+        });
+        this.economyRepo.recordTransaction({
+          guildId,
+          userId: loserId,
+          targetId: winnerId,
+          type: 'DUEL_LOSS',
+          amount: -amount,
+          walletAfter: updatedL.walletBalance,
+          bankAfter: updatedL.bankBalance,
+          description: `Derrota em Duelo X1 (${mode}) para ${winnerId}`
+        });
+      }
+
+      return {
+        mode,
+        finished: true,
+        duel,
+        winnerId,
+        loserId,
+        amount,
+        pot: amount * 2,
+        currency,
+        detailsText
+      };
+    });
+  }
+
+  pullRussianRouletteTrigger(guildId, duelId, userId) {
+    this._ensureDuelMaps();
+    const rr = this.activeRussianRoulettes.get(duelId);
+    if (!rr || rr.guildId !== guildId) {
+      throw new Error('Esta partida de Roleta Russa não está mais ativa.');
+    }
+    if (userId !== rr.currentTurnId) {
+      throw new Error(`Não é a sua vez! Agora é a vez de <@${rr.currentTurnId}> puxar o gatilho!`);
+    }
+
+    const chamberNum = rr.chamberIndex + 1;
+    const fired = rr.chamberIndex === rr.bulletChamber;
+
+    if (fired) {
+      this.activeRussianRoulettes.delete(duelId);
+      const loserId = userId;
+      const winnerId = userId === rr.challengerId ? rr.opponentId : rr.challengerId;
+
+      this.economyRepo.db.transaction(() => {
+        if (rr.currency) {
+          this.economyRepo.addUserCurrencyBalance(guildId, winnerId, rr.currency.id, rr.pot);
+        } else {
+          const wAcc = this.economyRepo.getOrCreateAccount(guildId, winnerId);
+          const updatedW = this.economyRepo.updateBalances(guildId, winnerId, {
+            walletBalance: wAcc.walletBalance + rr.pot
+          });
+          this.economyRepo.recordTransaction({
+            guildId,
+            userId: winnerId,
+            targetId: loserId,
+            type: 'DUEL_ROULETTE_WIN',
+            amount: rr.amount,
+            walletAfter: updatedW.walletBalance,
+            bankAfter: updatedW.bankBalance,
+            description: `Sobreviveu à Roleta Russa X1 contra ${loserId}`
+          });
+        }
+      });
+
+      rr.log.push(`💥 **[Câmara ${chamberNum}/6]** <@${loserId}> puxou o gatilho e... **BANG!** O disparo de plasma acertou em cheio!`);
+      return {
+        finished: true,
+        winnerId,
+        loserId,
+        rrState: rr
+      };
+    } else {
+      rr.log.push(`😮‍💨 **[Câmara ${chamberNum}/6]** <@${userId}> puxou o gatilho... *CLICK!* Câmara vazia!`);
+      rr.chamberIndex += 1;
+      rr.currentTurnId = userId === rr.challengerId ? rr.opponentId : rr.challengerId;
+      return {
+        finished: false,
+        rrState: rr
+      };
+    }
   }
 }
 

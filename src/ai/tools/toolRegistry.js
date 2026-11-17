@@ -14,6 +14,7 @@ class MissingParameterError extends ValidationError {
 class ToolRegistry {
   constructor() {
     this.tools = new Map();
+    this._cachedSchema = null;
   }
 
   /**
@@ -34,6 +35,7 @@ class ToolRegistry {
       execute: tool.execute
     });
 
+    this._cachedSchema = null;
     toolLogger.debug(`Tool registered: ${tool.name} (Risk: ${tool.riskLevel || 'LOW'})`);
   }
 
@@ -50,11 +52,14 @@ class ToolRegistry {
   }
 
   getToolsSchema() {
-    return this.getAll().map(tool => ({
-      name: tool.name,
-      description: tool.description,
-      parameters: tool.parameters
-    }));
+    if (!this._cachedSchema) {
+      this._cachedSchema = this.getAll().map(tool => ({
+        name: tool.name,
+        description: tool.description,
+        parameters: tool.parameters
+      }));
+    }
+    return this._cachedSchema;
   }
 
   /**

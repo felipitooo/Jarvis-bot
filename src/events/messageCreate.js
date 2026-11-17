@@ -145,9 +145,13 @@ module.exports = {
       }
     }
 
-    // Check if addressed by name (dynamically resolved per guild + default fallback)
-    const aiName = context.identityService?.getDisplayName(message.guild?.id) || 'Jarvis';
-    const namesToCheck = Array.from(new Set([aiName, 'Jarvis', 'J.A.R.V.I.S', 'Cell'])).filter(Boolean);
+    // Check if addressed by name (dynamically resolved per guild + central config + default fallback)
+    const { botConfig } = require('../config/botConfig');
+    const globalConfig = botConfig?.getConfig();
+    const configTriggers = globalConfig?.identity?.triggerNames || [];
+    const configName = globalConfig?.identity?.name;
+    const aiName = context.identityService?.getDisplayName(message.guild?.id) || configName || 'Jarvis';
+    const namesToCheck = Array.from(new Set([aiName, configName, ...configTriggers, 'Jarvis', 'J.A.R.V.I.S', 'Cell'])).filter(Boolean);
     const escapedNames = namesToCheck.map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
     const nameWordRegex = new RegExp(`(^|\\s|[.,!?;:])(${escapedNames})($|\\s|[.,!?;:])`, 'i');
     const isNamed = nameWordRegex.test(message.content || '');
@@ -238,7 +242,8 @@ module.exports = {
     }
 
     try {
-      await message.channel.sendTyping().catch(() => {});
+      // Non-blocking typing indicator so LLM processing starts immediately without waiting on Discord REST roundtrip
+      message.channel.sendTyping().catch(() => {});
 
       if (!context.aiOrchestrator) {
         msgLogger.warn('AIOrchestrator not available in context.');

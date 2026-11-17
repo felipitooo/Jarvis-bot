@@ -239,7 +239,11 @@ class MemoryRepository {
        LIMIT ?`,
       [channelId, limit]
     );
-    return rows.reverse();
+    const cleaned = rows.map((r) => ({
+      ...r,
+      content: (r.content || '').replace(/\[Ferramentas executadas[^\n\]]*\]\s*/gi, '').trim()
+    }));
+    return cleaned.reverse();
   }
 
   clearHistory(channelId) {

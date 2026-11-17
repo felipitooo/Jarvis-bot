@@ -323,4 +323,79 @@ describe('Loan System (Model A Bank & Model C P2P) & Enhanced Profile', () => {
     const repayRest = loanService.repayLoan(guildId, borrowerId, 'tudo');
     assert.equal(repayRest.fullyPaid, true);
   });
+
+  test('Stark Stock Market, Companies (+empresa) & PvP Duels X1 (+duelo)', () => {
+    // 1. Dynamic Stock Market Currency & Chart Generation
+    const starkStock = economyRepo.createExchangeCurrency(guildId, {
+      name: 'Ação Stark Industries',
+      code: 'stark',
+      symbol: '📈',
+      rate: 1000,
+      isDynamic: true,
+      minRate: 500,
+      maxRate: 5000,
+      volatility: 0.10
+    });
+    assert.equal(starkStock.isDynamic, true);
+
+    economyRepo.updateBalances(guildId, borrowerId, { walletBalance: 50000 });
+    economyRepo.updateBalances(guildId, lenderId, { walletBalance: 50000 });
+
+    const buyStock = economyService.buyExchangeCurrency(guildId, borrowerId, 'stark', 5);
+    assert.ok(buyStock.currency.rate > 1000); // Dynamic price moved up on demand!
+
+    const { generateStockChartCanvas } = require('../src/utils/stockChartGenerator');
+    const chartData = economyService.getCurrencyChartData(guildId, 'stark');
+    const pngBuf = generateStockChartCanvas({ currency: chartData.currency, history: chartData.history, guildName: 'Nova Era' });
+    assert.ok(Buffer.isBuffer(pngBuf) && pngBuf.length > 1000);
+
+    // 2. Companies & Passive Income (+empresa)
+    const catalog = economyService.listCompanyCatalog(guildId);
+    assert.ok(catalog.length >= 4);
+
+    const boughtComp = economyService.buyCompany(guildId, borrowerId, catalog[0].id);
+    assert.equal(boughtComp.company.level, 1);
+
+    // Hire lenderId as an employee
+    const hired = economyService.hireCompanyEmployee(guildId, borrowerId, lenderId);
+    assert.equal(hired.company.employees.length, 1);
+
+    // Employee runs +work -> receives corporate bonus and contributes to company vault!
+    const workRes = economyService.work(guildId, lenderId);
+    assert.equal(workRes.success, true);
+    assert.ok(workRes.message.includes('Bônus Corporativo'));
+
+    const statusAfterWork = economyService.getUserCompaniesStatus(guildId, borrowerId);
+    assert.ok(statusAfterWork.companies[0].claimableTotal > 0);
+
+    const collected = economyService.collectCompanyProfits(guildId, borrowerId);
+    assert.ok(collected.totalCollected > 0);
+
+    // Test Restock & Stock Limits
+    economyRepo.updateBalances(guildId, borrowerId, { walletBalance: 100000 });
+    const restockRes = economyService.restockCompany(guildId, borrowerId, 20);
+    assert.ok(restockRes.qtyAdded > 0);
+    assert.ok(restockRes.totalCost > 0);
+
+    // Test NPC Worker Hiring
+    const npcRes = economyService.hireNpcWorker(guildId, borrowerId);
+    assert.equal(npcRes.company.npcWorkers, 1);
+
+    // Test Auto-Restock Manager Toggle
+    const mgrRes = economyService.toggleCompanyAutoRestock(guildId, borrowerId);
+    assert.equal(mgrRes.isActive, true);
+
+    // Test Anti-Monopoly Price Scaling for 2nd Company
+    economyRepo.updateBalances(guildId, borrowerId, { walletBalance: 200000 });
+    const secondComp = economyService.buyCompany(guildId, borrowerId, catalog[1].id);
+    assert.equal(secondComp.companyNumber, 2);
+    assert.ok(secondComp.scaledPrice > catalog[1].price);
+
+    // 3. PvP Duels X1 (+duelo)
+    const duel = economyService.createDuelChallenge(guildId, borrowerId, lenderId, 1000, 'dado');
+    assert.ok(duel.id);
+    const duelResult = economyService.acceptDuelChallenge(guildId, duel.id, lenderId);
+    assert.equal(duelResult.finished, true);
+    assert.ok([borrowerId, lenderId].includes(duelResult.winnerId));
+  });
 });

@@ -55,6 +55,18 @@ module.exports = {
       }, 60000);
     }
 
+    // Automatic Daily Stock Market Cycle for dynamic currencies (Bolsa Stark)
+    if (context?.economyService && !client._stockMarketCycle) {
+      client._stockMarketCycle = context.economyService.startStockMarketDailyCycle(client, 24);
+      readyLogger.info('Stark Stock Market automatic daily cycle worker started (every 24h).');
+    }
+
+    // Company bankruptcy watchdog: warns owners of companies without stock, forces bankruptcy after the grace period
+    if (context?.economyService && !client._companyHealthWorker) {
+      client._companyHealthWorker = context.economyService.startCompanyHealthWorker(client);
+      readyLogger.info('Company bankruptcy health worker started (checks every 10 minutes).');
+    }
+
     // Deploy slash commands directly to guilds (INSTANT) + globally
     if (process.env.DISCORD_TOKEN && client.user?.id) {
       try {
