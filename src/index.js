@@ -30,6 +30,7 @@ const { CasinoRepository } = require('./database/repositories/casinoRepository')
 const { QuizRepository } = require('./database/repositories/quizRepository');
 const { CustomCommandRepository } = require('./database/repositories/customCommandRepository');
 const { LoanRepository } = require('./database/repositories/loanRepository');
+const { SocialAlertRepository } = require('./database/repositories/socialAlertRepository');
 
 // Services
 const { AuditService } = require('./services/auditService');
@@ -61,6 +62,7 @@ const { AutomationService } = require('./services/automationService');
 const { BadgeService } = require('./services/badgeService');
 const { PredictionService } = require('./services/predictionService');
 const { GossipService } = require('./services/gossipService');
+const { SocialAlertService } = require('./services/socialAlertService');
 
 // Web Server
 const { WebServer } = require('./web/server');
@@ -177,6 +179,8 @@ const reminderCommand = require('./commands/automations/reminder');
 const taskCommand = require('./commands/automations/task');
 const briefingCommand = require('./commands/automations/briefing');
 const utilityCommand = require('./commands/automations/utility');
+const alertaCommand = require('./commands/automations/alerta');
+const resumoCommand = require('./commands/community/resumo');
 
 // Event Loader
 const { loadEvents } = require('./events/eventLoader');
@@ -223,6 +227,7 @@ function createAppContext(customDbPath = null) {
   const quizRepo = new QuizRepository(dbManager);
   const customCommandRepo = new CustomCommandRepository(dbManager);
   const loanRepo = new LoanRepository(dbManager);
+  const socialAlertRepo = new SocialAlertRepository(dbManager);
 
   // 4. Initialize Core & Admin Services
   const auditService = new AuditService(auditRepo);
@@ -382,6 +387,7 @@ function createAppContext(customDbPath = null) {
   const badgeService = new BadgeService(dbManager);
   const predictionService = new PredictionService(dbManager);
   const gossipService = new GossipService({ llmAdapter, botConfig });
+  const socialAlertService = new SocialAlertService(socialAlertRepo, auditService);
   loanService.badgeService = badgeService;
 
   const webPanelService = new WebPanelService({
@@ -415,7 +421,9 @@ function createAppContext(customDbPath = null) {
       memoryRepo,
       badgeService,
       predictionService,
-      gossipService
+      gossipService,
+      socialAlertRepo,
+      socialAlertService
     },
     botClient: client
   });
@@ -489,6 +497,8 @@ function createAppContext(customDbPath = null) {
       badgeService,
       predictionService,
       gossipService,
+      socialAlertRepo,
+      socialAlertService,
       dbManager,
       llmAdapter
     }
@@ -586,6 +596,8 @@ function createAppContext(customDbPath = null) {
   commandRegistry.register(taskCommand);
   commandRegistry.register(briefingCommand);
   commandRegistry.register(utilityCommand);
+  commandRegistry.register(alertaCommand);
+  commandRegistry.register(resumoCommand);
 
   return {
     dbManager,
@@ -613,6 +625,7 @@ function createAppContext(customDbPath = null) {
     quizRepo,
     customCommandRepo,
     loanRepo,
+    socialAlertRepo,
     customCommandService,
     auditService,
     settingsService,
@@ -642,6 +655,7 @@ function createAppContext(customDbPath = null) {
     badgeService,
     predictionService,
     gossipService,
+    socialAlertService,
     webServer,
     llmAdapter,
     toolRegistry,
@@ -661,6 +675,10 @@ async function shutdown(signal = 'SIGTERM') {
   appLogger.info(`Graceful shutdown initiated (${signal})...`);
 
   try {
+    if (appContext && appContext.socialAlertService) {
+      appContext.socialAlertService.stopPolling();
+    }
+
     if (appContext && appContext.webServer) {
       appLogger.info('Stopping Web Server...');
       await appContext.webServer.stop();
@@ -750,6 +768,9 @@ async function bootstrap() {
   }
   if (context.musicService) {
     context.musicService.setClient(client);
+  }
+  if (context.socialAlertService) {
+    context.socialAlertService.startPolling(client, 5);
   }
 
   // Load events

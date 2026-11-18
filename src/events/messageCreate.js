@@ -1,6 +1,10 @@
 const { Events, AttachmentBuilder } = require('discord.js');
 const { logger } = require('../utils/logger');
 const { messageCache } = require('../utils/messageCache');
+const { prefixCommandHandler } = require('../handlers/prefixCommandHandler');
+const { dmTracker } = require('../utils/dmTracker');
+const { botConfig } = require('../config/botConfig');
+const { processAttachmentsSafely, processCustomEmojisSafely } = require('../utils/attachmentProcessor');
 
 const msgLogger = logger.forContext('Event:MessageCreate');
 
@@ -10,6 +14,26 @@ const registeredUsers = new Set();
 setInterval(() => {
   if (registeredUsers.size > 5000) registeredUsers.clear();
 }, 30 * 60 * 1000);
+
+// High-speed compiled regex cache for AI trigger names
+let cachedTriggersKey = '';
+let cachedRegexes = null;
+
+function getNameRegexes(aiName, configName, configTriggers) {
+  const key = `${aiName}|${configName}|${configTriggers.join(',')}`;
+  if (cachedRegexes && cachedTriggersKey === key) {
+    return cachedRegexes;
+  }
+  const namesToCheck = Array.from(new Set([aiName, configName, ...configTriggers, 'Jarvis', 'J.A.R.V.I.S', 'Cell'])).filter(Boolean);
+  const escapedNames = namesToCheck.map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+  cachedRegexes = {
+    nameWordRegex: new RegExp(`(^|\\s|[.,!?;:])(${escapedNames})($|\\s|[.,!?;:])`, 'i'),
+    leadingNameRegex: new RegExp(`^\\s*(${escapedNames})\\b[,.:;!?-]?\\s*`, 'i'),
+    trailingNameRegex: new RegExp(`[,.:;!?-]?\\s*(${escapedNames})\\s*$`, 'i')
+  };
+  cachedTriggersKey = key;
+  return cachedRegexes;
+}
 
 module.exports = {
   name: Events.MessageCreate,
@@ -30,12 +54,25 @@ module.exports = {
     }
 
     // Cache message in memory ring buffer for instant audit prints upon delete/edit
-    // (includes other bots like Loritta, so embed/content is preserved if deleted)
     try {
       messageCache.set(message);
     } catch {}
 
-    // If message is from another bot (e.g. Loritta), do not process prefix commands, XP or AI
+    // 0. Real-time Anti-Spam, Anti-Flood & Anti-Bot/Scam Protection Inspection (e.g. MrBeast fake giveaways)
+    // Run BEFORE filtering other bots to catch malicious bot spam, webhooks and token grabbers!
+    if (context.protectionService) {
+      try {
+        const check = await context.protectionService.inspectMessage(message);
+        if (check && check.isViolating) {
+          msgLogger.warn(`Message from ${message.author.id} flagged by ProtectionService (${check.type}). Action: ${check.actionTaken}`);
+          return;
+        }
+      } catch (protErr) {
+        msgLogger.error(`Error inspecting message in ProtectionService: ${protErr.message}`);
+      }
+    }
+
+    // If message is from another legitimate bot (e.g. Loritta), do not process prefix commands, XP or AI
     if (message.author.bot) return;
 
     // Ensure guild and user exist in database registry (cached in memory for high-frequency chats)
@@ -59,21 +96,7 @@ module.exports = {
       msgLogger.debug(`Registry upsert bypassed: ${upsertErr.message}`);
     }
 
-    // Real-time Anti-Spam & Anti-Flood Protection Inspection
-    if (context.protectionService) {
-      try {
-        const check = await context.protectionService.inspectMessage(message);
-        if (check && check.isViolating) {
-          msgLogger.warn(`Message from ${message.author.id} flagged by ProtectionService (${check.type}). Action: ${check.actionTaken}`);
-          return;
-        }
-      } catch (protErr) {
-        msgLogger.error(`Error inspecting message in ProtectionService: ${protErr.message}`);
-      }
-    }
-
     // Traditional Prefix Commands (+work, +slut, +bank, +ban, +daily, +ping, etc.)
-    const { prefixCommandHandler } = require('../handlers/prefixCommandHandler');
     try {
       const handled = await prefixCommandHandler.handle(message, context);
       if (handled) return;
@@ -105,11 +128,9 @@ module.exports = {
     // Track direct message replies from members if an administrative DM session is active
     if (isDirectMessage && message.author && !message.author.bot) {
       try {
-        const { dmTracker } = require('../utils/dmTracker');
         if (dmTracker.hasActiveSession(message.author.id)) {
           const updatedSession = dmTracker.recordReply(message.author.id, message);
           msgLogger.info(`[DM-Tracker] Captured direct message reply (${updatedSession?.replies?.length || 0}/2) from ${message.author.username} (${message.author.id}). Silencing AI auto-response during tracking.`);
-          // CRITICAL: Mute the AI while administrative tracking is active so the member is not answered by the bot!
           return;
         }
       } catch (dmTrackErr) {
@@ -146,14 +167,11 @@ module.exports = {
     }
 
     // Check if addressed by name (dynamically resolved per guild + central config + default fallback)
-    const { botConfig } = require('../config/botConfig');
     const globalConfig = botConfig?.getConfig();
     const configTriggers = globalConfig?.identity?.triggerNames || [];
     const configName = globalConfig?.identity?.name;
     const aiName = context.identityService?.getDisplayName(message.guild?.id) || configName || 'Jarvis';
-    const namesToCheck = Array.from(new Set([aiName, configName, ...configTriggers, 'Jarvis', 'J.A.R.V.I.S', 'Cell'])).filter(Boolean);
-    const escapedNames = namesToCheck.map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
-    const nameWordRegex = new RegExp(`(^|\\s|[.,!?;:])(${escapedNames})($|\\s|[.,!?;:])`, 'i');
+    const { nameWordRegex, leadingNameRegex, trailingNameRegex } = getNameRegexes(aiName, configName, configTriggers);
     const isNamed = nameWordRegex.test(message.content || '');
 
     // Only respond if in DM, mentioned, directly replying to the bot, or called by name
@@ -172,8 +190,6 @@ module.exports = {
     }
 
     // Clean bot mention and leading/trailing name calls from message text
-    const leadingNameRegex = new RegExp(`^\\s*(${escapedNames})\\b[,.:;!?-]?\\s*`, 'i');
-    const trailingNameRegex = new RegExp(`[,.:;!?-]?\\s*(${escapedNames})\\s*$`, 'i');
     let cleanText = (message.content || '')
       .replace(new RegExp(`<@!?${client.user.id}>`, 'g'), '')
       .replace(leadingNameRegex, '')
@@ -186,7 +202,6 @@ module.exports = {
     let mediaAttachments = [];
     let textFiles = [];
     if (message.attachments.size > 0) {
-      const { processAttachmentsSafely } = require('../utils/attachmentProcessor');
       const attachResult = await processAttachmentsSafely(message.attachments);
       if (attachResult.blockedReason) {
         return await message.reply({ content: attachResult.blockedReason }).catch(() => {});
@@ -197,7 +212,6 @@ module.exports = {
 
     // Process custom emojis if present in message text
     if (cleanText.includes('<:') || cleanText.includes('<a:')) {
-      const { processCustomEmojisSafely } = require('../utils/attachmentProcessor');
       const emojiMedia = await processCustomEmojisSafely(cleanText);
       if (emojiMedia && emojiMedia.length > 0) {
         mediaAttachments.push(...emojiMedia);

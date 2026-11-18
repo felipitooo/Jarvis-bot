@@ -269,21 +269,34 @@ const fridayTools = [
   // 7. resumir_conversa
   {
     name: 'resumir_conversa',
-    description: 'Resume o histórico recente da conversa no canal atual.',
+    description: 'Resume de forma fiel, inteligente e contextual o histórico recente da conversa no canal atual (analisa até 300 mensagens).',
     parameters: {
       type: 'OBJECT',
       properties: {
-        limite: { type: 'INTEGER', description: 'Quantidade de mensagens anteriores a considerar (máx 20).' }
+        limite: { type: 'INTEGER', description: 'Quantidade de mensagens anteriores a analisar (padrão 100, máx 300).' }
       },
       required: []
     },
     riskLevel: 'LOW',
-    async execute({ limite = 10 }, context) {
-      if (!context.channelId || !context.memoryRepo) {
+    async execute({ limite = 100 }, context) {
+      const { channel, gossipService, llmAdapter, channelId, memoryRepo } = context;
+      const safeLimit = Math.min(300, Math.max(10, Number(limite) || 100));
+      const service = gossipService || (llmAdapter ? new (require('../../services/gossipService').GossipService)({ llmAdapter }) : null);
+
+      if (channel && typeof channel.messages?.fetch === 'function' && service) {
+        const rawMsgs = await service.fetchChannelMessages(channel, safeLimit);
+        const summary = await service.generateChatSummary(rawMsgs, channel.name || 'chat');
+        return {
+          status: 'sucesso',
+          totalMensagensAnalisadas: rawMsgs.length,
+          resumo: summary
+        };
+      }
+
+      if (!channelId || !memoryRepo) {
         return { status: 'vazio', resumo: 'Sem histórico disponível para resumir.' };
       }
-      const safeLimit = Math.min(Math.max(2, Number(limite) || 10), 20);
-      const history = context.memoryRepo.getRecentHistory(context.channelId, safeLimit);
+      const history = memoryRepo.getRecentHistory(channelId, Math.min(safeLimit, 50));
       if (history.length === 0) {
         return { status: 'vazio', resumo: 'Nenhuma mensagem recente encontrada para resumir.' };
       }
@@ -433,9 +446,8 @@ const fridayTools = [
       const service = gossipService || (llmAdapter ? new (require('../../services/gossipService').GossipService)({ llmAdapter }) : null);
       if (!service) throw new ValidationError('Serviço de inteligência artificial indisponível para gerar o boletim.');
 
-      const fetched = await channel.messages.fetch({ limit: 40 }).catch(() => null);
-      const messagesArray = fetched ? Array.from(fetched.values()) : [];
-      const bulletin = await service.generateGossipBulletin(messagesArray, channel.name || 'chat');
+      const rawMsgs = await service.fetchChannelMessages(channel, 300);
+      const bulletin = await service.generateGossipBulletin(rawMsgs, channel.name || 'chat');
 
       return {
         status: 'sucesso',

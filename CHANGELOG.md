@@ -5,6 +5,41 @@ Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [7.1.0] - 2026-11-18
+
+### Adicionado
+- **Temas Visuais de Painel das IAs de Tony Stark:**
+  - Presets estilizados e batizados literalmente com os nomes das IAs de Tony Stark: `jarvis` (Ciano Arc Reactor), `friday` (Verde Esmeralda Cibernético), `veronica` (Vermelho & Dourado Hulkbuster), `edith` (Azul Tático), `karen` (Âmbar Mark XLVII) e `jocasta` (Violeta Titânio).
+  - Seleção em 1 clique na interface do painel web com suporte a retrocompatibilidade de aliases antigos.
+- **Proteção Avançada Anti-Bot & Anti-Scam:**
+  - Detecção heurística de golpes, malwares, airdrops e links de phishing comuns disseminados por bots comprometidos (ex: falsos brindes do MrBeast, geradores de Discord Nitro, roubo de inventário Steam, airdrops cripto falsos e phishing de token).
+  - Ação punitiva configurável por servidor (`TIMEOUT`, `KICK` ou `BAN`) com exclusão imediata da mensagem fraudulenta e emissão de alerta no canal de auditoria.
+  - Interceptação de mensagens de bots antes do descarte padrão de automações para assegurar que bots comprometidos não disseminem links maliciosos.
+- **Sistema Multicanal de Alertas Sociais (YouTube, Reddit e Twitch):**
+  - Módulo nativo `SocialAlertService` com varredura automática a cada 5 minutos via RSS (YouTube) e endpoints públicos (Reddit e Twitch).
+  - Suporte completo a tags e templates customizáveis (`{title}`, `{url}`, `{author}`, `{platform}`).
+  - Comandos slash (`/alerta adicionar`, `listar`, `remover`, `testar`) e comandos prefixo (`+alerta add`, `+alerta list`, `+alerta del`, `+alerta test`).
+  - Suporte nativo e endpoints no Painel Web (`/api/guilds/:guildId/modules/social_alerts`).
+- **Resumo Inteligente e Estruturado do Chat (Até 300 Mensagens):**
+  - Aumento da capacidade de análise de histórico de 40 para até 300 mensagens em lotes paginados contínuos (`limit: 100`, `before: lastId`) sem perda de tempo de resposta.
+  - Geração de resumos factuais e estruturados (Tópicos Principais, Participantes & Linhas de Pensamento, Conclusões & Desfechos), desacoplados do boletim humorístico de fofoca.
+  - Novo comando slash `/resumo` com opções `tipo` (Resumo ou Fofoca) e `quantidade` (20 a 300 mensagens), além dos comandos prefixo `+resumo`, `+resumir` e `+resumodia`.
+  - Atualização da ferramenta de IA `resumir_conversa` em `fridayTools.js` para analisar diretamente as mensagens em tempo real do canal do Discord.
+- **Central e Utilitários de Backup do Servidor:**
+  - Suporte a backup estrutural de servidores (cargos, canais, categorias e permissões com validação criptográfica SHA-256) via `+backup server`, `+backup criar`, `+backup listar` e `+backup info`.
+  - Download direto do arquivo SQLite mantido com `+backup` / `+backup banco`.
+
+### Otimizações & Desempenho
+- **Aceleração Global de Tempo de Resposta:**
+  - Hoisting e eliminação de `require()` dinâmicos em manipuladores críticos de mensagens (`messageCreate.js`).
+  - Memoização com cache de expressões regulares de gatilhos de nome (`getNameRegexes`), evitando compilação repetitiva de RegExp a cada mensagem recebida.
+  - Uso de timers não-bloqueantes (`unref()`) em serviços de segundo plano para garantir encerramento gracioso e determinístico.
+- **Correção Definitiva de Status Customizado do Bot (Discord Presence):**
+  - Ajuste na montagem do payload de presença para `ActivityType.Custom` de acordo com o Gateway v10 do Discord, mantendo `name: 'Custom Status'` e passando o texto na propriedade `state`, permitindo atualização imediata e sem reversões no perfil do bot.
+
+### Testes & Qualidade
+- 100% dos testes unitários e de integração aprovados (360 testes passando, 71 suítes, 0 falhas).
+
 ## [7.0.0] - 2026-11-18
 
 ### Corrigido & Estabilizado

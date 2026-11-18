@@ -6249,31 +6249,31 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
 
           <!-- Presets de Cores em 1 Clique -->
           <div style="margin-bottom: 1.25rem;">
-            <label id="cfgHeadingPresets" style="display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.82rem; color: var(--text-muted); text-transform: uppercase;">Presets Prontos de Tema (1 Clique)</label>
+            <label id="cfgHeadingPresets" style="display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.82rem; color: var(--text-muted); text-transform: uppercase;">Presets de IAs do Tony Stark (1 Clique)</label>
             <div style="display: flex; flex-wrap: wrap; gap: 0.6rem;">
-              <button type="button" class="preset-theme-btn" data-preset="stark" style="background: #1e1b4b; border: 1px solid #6366f1; color: #c7d2fe; padding: 0.45rem 0.85rem; border-radius: 8px; cursor: pointer; font-size: 0.84rem; display: flex; align-items: center; gap: 6px;">
-                <span style="width: 12px; height: 12px; border-radius: 50%; background: #6366F1; display: inline-block;"></span>
-                Stark Violet (Padrão)
+              <button type="button" class="preset-theme-btn" data-preset="jarvis" style="background: #061528; border: 1px solid #00e5ff; color: #bae6fd; padding: 0.45rem 0.85rem; border-radius: 8px; cursor: pointer; font-size: 0.84rem; display: flex; align-items: center; gap: 6px;">
+                <span style="width: 12px; height: 12px; border-radius: 50%; background: #00E5FF; display: inline-block;"></span>
+                JARVIS (Ciano Arc)
               </button>
-              <button type="button" class="preset-theme-btn" data-preset="midas" style="background: #1c1917; border: 1px solid #f59e0b; color: #fde68a; padding: 0.45rem 0.85rem; border-radius: 8px; cursor: pointer; font-size: 0.84rem; display: flex; align-items: center; gap: 6px;">
-                <span style="width: 12px; height: 12px; border-radius: 50%; background: #F59E0B; display: inline-block;"></span>
-                Midas Gold (Ouro & Preto)
-              </button>
-              <button type="button" class="preset-theme-btn" data-preset="crimson" style="background: #200d11; border: 1px solid #ef4444; color: #fecaca; padding: 0.45rem 0.85rem; border-radius: 8px; cursor: pointer; font-size: 0.84rem; display: flex; align-items: center; gap: 6px;">
-                <span style="width: 12px; height: 12px; border-radius: 50%; background: #EF4444; display: inline-block;"></span>
-                Crimson Iron (Vermelho)
-              </button>
-              <button type="button" class="preset-theme-btn" data-preset="matrix" style="background: #061a14; border: 1px solid #10b981; color: #a7f3d0; padding: 0.45rem 0.85rem; border-radius: 8px; cursor: pointer; font-size: 0.84rem; display: flex; align-items: center; gap: 6px;">
+              <button type="button" class="preset-theme-btn" data-preset="friday" style="background: #061a14; border: 1px solid #10b981; color: #a7f3d0; padding: 0.45rem 0.85rem; border-radius: 8px; cursor: pointer; font-size: 0.84rem; display: flex; align-items: center; gap: 6px;">
                 <span style="width: 12px; height: 12px; border-radius: 50%; background: #10B981; display: inline-block;"></span>
-                Matrix Emerald (Verde Cyber)
+                FRIDAY (Esmeralda Cyber)
               </button>
-              <button type="button" class="preset-theme-btn" data-preset="ocean" style="background: #081d30; border: 1px solid #0ea5e9; color: #bae6fd; padding: 0.45rem 0.85rem; border-radius: 8px; cursor: pointer; font-size: 0.84rem; display: flex; align-items: center; gap: 6px;">
-                <span style="width: 12px; height: 12px; border-radius: 50%; background: #0EA5E9; display: inline-block;"></span>
-                Deep Ocean (Azul Elétrico)
+              <button type="button" class="preset-theme-btn" data-preset="veronica" style="background: #200d11; border: 1px solid #ef4444; color: #fecaca; padding: 0.45rem 0.85rem; border-radius: 8px; cursor: pointer; font-size: 0.84rem; display: flex; align-items: center; gap: 6px;">
+                <span style="width: 12px; height: 12px; border-radius: 50%; background: #EF4444; display: inline-block;"></span>
+                VERONICA (Hulkbuster Crimson)
               </button>
-              <button type="button" class="preset-theme-btn" data-preset="midnight" style="background: #111827; border: 1px solid #a855f7; color: #e9d5ff; padding: 0.45rem 0.85rem; border-radius: 8px; cursor: pointer; font-size: 0.84rem; display: flex; align-items: center; gap: 6px;">
-                <span style="width: 12px; height: 12px; border-radius: 50%; background: #A855F7; display: inline-block;"></span>
-                Midnight Purple (Roxo Neon)
+              <button type="button" class="preset-theme-btn" data-preset="edith" style="background: #081d30; border: 1px solid #3b82f6; color: #bae6fd; padding: 0.45rem 0.85rem; border-radius: 8px; cursor: pointer; font-size: 0.84rem; display: flex; align-items: center; gap: 6px;">
+                <span style="width: 12px; height: 12px; border-radius: 50%; background: #3B82F6; display: inline-block;"></span>
+                EDITH (Azul Tático)
+              </button>
+              <button type="button" class="preset-theme-btn" data-preset="karen" style="background: #1c1917; border: 1px solid #f59e0b; color: #fde68a; padding: 0.45rem 0.85rem; border-radius: 8px; cursor: pointer; font-size: 0.84rem; display: flex; align-items: center; gap: 6px;">
+                <span style="width: 12px; height: 12px; border-radius: 50%; background: #F59E0B; display: inline-block;"></span>
+                KAREN (Âmbar Mark XLVII)
+              </button>
+              <button type="button" class="preset-theme-btn" data-preset="jocasta" style="background: #111827; border: 1px solid #8b5cf6; color: #e9d5ff; padding: 0.45rem 0.85rem; border-radius: 8px; cursor: pointer; font-size: 0.84rem; display: flex; align-items: center; gap: 6px;">
+                <span style="width: 12px; height: 12px; border-radius: 50%; background: #8B5CF6; display: inline-block;"></span>
+                JOCASTA (Violeta Cibernético)
               </button>
             </div>
           </div>
@@ -12084,7 +12084,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         },
         cfg_colors: '🎨 Cores & Tema Visual do Painel Web',
         cfg_colors_desc: 'Personalize 100% da paleta visual da interface web. As alterações são aplicadas instantaneamente!',
-        cfg_presets: 'Presets Prontos de Tema (1 Clique)',
+        cfg_presets: 'Presets de IAs do Tony Stark (1 Clique)',
         cfg_embeds: '📜 Estilo das Mensagens (Embeds) no Discord',
         cfg_embeds_desc: 'Configure as cores das mensagens enviadas pelo bot nos canais do Discord.',
         cfg_branding: '🏷️ Identidade & Textos do Painel Web',
@@ -12199,7 +12199,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         },
         cfg_colors: '🎨 Web Dashboard Colors & Visual Theme',
         cfg_colors_desc: 'Customize 100% of the web interface color palette. Changes are applied instantly!',
-        cfg_presets: 'Ready-made Theme Presets (1-Click)',
+        cfg_presets: 'Tony Stark AI Theme Presets (1-Click)',
         cfg_embeds: '📜 Discord Embed Message Styling',
         cfg_embeds_desc: 'Configure the colors of messages sent by the bot across Discord channels.',
         cfg_branding: '🏷️ Branding & Web Dashboard Texts',
@@ -12414,78 +12414,85 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
     // TAB: CONFIGURAÇÕES GERAIS (WHITE-LABEL ENGINE)
     // ==========================================
     const PRESET_THEMES = {
-      stark: {
-        name: 'Stark Violet',
-        primary: '#6366F1',
+      jarvis: {
+        name: 'J.A.R.V.I.S. (Ciano Arc)',
+        primary: '#00E5FF',
         accent: '#38BDF8',
-        bgPage: '#0B0F19',
-        bgSurface: '#1E293B',
-        bgHeader: '#0F172A',
-        textMain: '#F8FAFC',
-        topbarBorder: 'rgba(99, 102, 241, 0.35)',
-        topbarBrand: '#818CF8',
-        topbarActiveTitle: '#F8FAFC'
-      },
-      midas: {
-        name: 'Midas Gold',
-        primary: '#F59E0B',
-        accent: '#FBBF24',
-        bgPage: '#0C0A06',
-        bgSurface: '#1C1914',
-        bgHeader: '#1A1408',
-        textMain: '#FEF3C7',
-        topbarBorder: 'rgba(245, 158, 11, 0.4)',
-        topbarBrand: '#FBBF24',
-        topbarActiveTitle: '#FDE68A'
-      },
-      crimson: {
-        name: 'Crimson Iron',
-        primary: '#EF4444',
-        accent: '#F87171',
-        bgPage: '#0D0507',
-        bgSurface: '#1F0B10',
-        bgHeader: '#1A070B',
-        textMain: '#FEE2E2',
-        topbarBorder: 'rgba(239, 68, 68, 0.4)',
-        topbarBrand: '#F87171',
-        topbarActiveTitle: '#FECACA'
-      },
-      matrix: {
-        name: 'Matrix Emerald',
-        primary: '#10B981',
-        accent: '#34D399',
-        bgPage: '#02120A',
-        bgSurface: '#062617',
-        bgHeader: '#031C0E',
-        textMain: '#ECFDF5',
-        topbarBorder: 'rgba(16, 185, 129, 0.4)',
-        topbarBrand: '#34D399',
-        topbarActiveTitle: '#A7F3D0'
-      },
-      ocean: {
-        name: 'Deep Ocean',
-        primary: '#0EA5E9',
-        accent: '#38BDF8',
-        bgPage: '#030E1E',
-        bgSurface: '#08213D',
-        bgHeader: '#04172C',
-        textMain: '#F0F9FF',
-        topbarBorder: 'rgba(14, 165, 233, 0.4)',
-        topbarBrand: '#38BDF8',
+        bgPage: '#040914',
+        bgSurface: '#0A192F',
+        bgHeader: '#061224',
+        textMain: '#E0F2FE',
+        topbarBorder: 'rgba(0, 229, 255, 0.4)',
+        topbarBrand: '#00E5FF',
         topbarActiveTitle: '#BAE6FD'
       },
-      midnight: {
-        name: 'Midnight Purple',
-        primary: '#A855F7',
+      friday: {
+        name: 'F.R.I.D.A.Y. (Esmeralda Cyber)',
+        primary: '#10B981',
+        accent: '#00F5D4',
+        bgPage: '#02140D',
+        bgSurface: '#062619',
+        bgHeader: '#041C13',
+        textMain: '#ECFDF5',
+        topbarBorder: 'rgba(16, 185, 129, 0.4)',
+        topbarBrand: '#10B981',
+        topbarActiveTitle: '#A7F3D0'
+      },
+      veronica: {
+        name: 'V.E.R.O.N.I.C.A. (Hulkbuster Crimson)',
+        primary: '#EF4444',
+        accent: '#F59E0B',
+        bgPage: '#140507',
+        bgSurface: '#260B10',
+        bgHeader: '#1F070B',
+        textMain: '#FEE2E2',
+        topbarBorder: 'rgba(239, 68, 68, 0.45)',
+        topbarBrand: '#EF4444',
+        topbarActiveTitle: '#FECACA'
+      },
+      edith: {
+        name: 'E.D.I.T.H. (Azul Tático)',
+        primary: '#3B82F6',
+        accent: '#60A5FA',
+        bgPage: '#040D1A',
+        bgSurface: '#0D1F3C',
+        bgHeader: '#08172E',
+        textMain: '#EFF6FF',
+        topbarBorder: 'rgba(59, 130, 246, 0.4)',
+        topbarBrand: '#60A5FA',
+        topbarActiveTitle: '#DBEAFE'
+      },
+      karen: {
+        name: 'K.A.R.E.N. (Âmbar Mark XLVII)',
+        primary: '#F59E0B',
+        accent: '#FB923C',
+        bgPage: '#140C04',
+        bgSurface: '#261708',
+        bgHeader: '#1F1206',
+        textMain: '#FEF3C7',
+        topbarBorder: 'rgba(245, 158, 11, 0.4)',
+        topbarBrand: '#F59E0B',
+        topbarActiveTitle: '#FDE68A'
+      },
+      jocasta: {
+        name: 'J.O.C.A.S.T.A. (Violeta Cibernético)',
+        primary: '#8B5CF6',
         accent: '#C084FC',
-        bgPage: '#0E061A',
-        bgSurface: '#1F0F38',
-        bgHeader: '#160829',
+        bgPage: '#0D071A',
+        bgSurface: '#1D1036',
+        bgHeader: '#160B29',
         textMain: '#FAF5FF',
-        topbarBorder: 'rgba(168, 85, 247, 0.4)',
-        topbarBrand: '#C084FC',
+        topbarBorder: 'rgba(139, 92, 246, 0.4)',
+        topbarBrand: '#A78BFA',
         topbarActiveTitle: '#E9D5FF'
-      }
+      },
+      // Aliases for backwards compatibility
+      stark: { get alias() { return PRESET_THEMES.jarvis; } },
+      midas: { get alias() { return PRESET_THEMES.karen; } },
+      crimson: { get alias() { return PRESET_THEMES.veronica; } },
+      matrix: { get alias() { return PRESET_THEMES.friday; } },
+      ocean: { get alias() { return PRESET_THEMES.edith; } },
+      midnight: { get alias() { return PRESET_THEMES.jocasta; } }
     };
 
     async function loadBotConfigTab() {
@@ -12638,8 +12645,9 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
 
     // 1-Click Preset Theme Applier with Immediate Persistence
     async function applyPresetTheme(presetKey) {
-      const theme = PRESET_THEMES[presetKey];
+      let theme = PRESET_THEMES[presetKey];
       if (!theme) return;
+      if (theme.alias) theme = theme.alias;
 
       // 1. Remove light theme class to enforce dark preset
       document.documentElement.classList.remove('theme-light');

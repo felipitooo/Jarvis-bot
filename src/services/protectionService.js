@@ -1,3 +1,4 @@
+const { EmbedBuilder } = require('discord.js');
 const { ValidationError } = require('../utils/errorHandler');
 const { logger } = require('../utils/logger');
 
@@ -21,13 +22,13 @@ class ProtectionService {
   }
 
   /**
-   * Inspects a new message for spam and flood abuse in real-time.
+   * Inspects a new message for spam, flood, and bot/phishing scam abuse in real-time.
    *
    * @param {import('discord.js').Message} message
    * @returns {Promise<{ isViolating: boolean, type?: string, actionTaken?: string }>}
    */
   async inspectMessage(message) {
-    if (!message.guild || message.author.bot) {
+    if (!message.guild || message.author.id === message.client?.user?.id) {
       return { isViolating: false };
     }
 
@@ -35,7 +36,54 @@ class ProtectionService {
     const userId = message.author.id;
     const config = this.modRepo.getAntiAbuseConfig(guildId);
 
-    if (!config.antiSpamEnabled) {
+    // 0. Anti-Bot / Anti-Scam Phishing Protection (e.g. MrBeast fake giveaways, token-grabbers, nitro scams)
+    if (config.antiBotScamEnabled) {
+      const scamDetected = this._detectBotScam(message);
+      if (scamDetected) {
+        protLogger.warn(`Anti-Bot Scam detected from ${userId} (${message.author.tag}): ${scamDetected.reason}`);
+
+        // Immediately delete the malicious message to protect members
+        try {
+          if (message.deletable) await message.delete();
+        } catch {}
+
+        const action = config.antiBotScamAction || 'TIMEOUT';
+        const timeoutDuration = config.antiBotScamTimeoutSeconds || 86400; // default 24h
+
+        await this._applyAutoMitigation(
+          message.guild,
+          message.member,
+          {
+            actionOnDetection: action,
+            timeoutDurationSeconds: timeoutDuration
+          },
+          `[Anti-Bot/Scam] ${scamDetected.reason}`
+        );
+
+        // Notify punishment channel or channel of incident
+        try {
+          const logChan = this.modRepo.getLogChannel(guildId, 'PUNISHMENTS');
+          const targetChan = logChan?.channel_id ? message.guild.channels.cache.get(logChan.channel_id) : message.channel;
+          if (targetChan && targetChan.send) {
+            const embed = new EmbedBuilder()
+              .setColor(0xED4245)
+              .setTitle('🛡️ Proteção Anti-Bot & Anti-Scam Ativada')
+              .setDescription(`Uma mensagem contendo tentativa de golpe/scam (**${scamDetected.reason}**) enviada por <@${userId}> (\`${message.author.tag}\`) foi imediatamente neutralizada.`)
+              .addFields(
+                { name: 'Punição Aplicada', value: `\`${action}\`${action === 'TIMEOUT' ? ` (${Math.round(timeoutDuration / 3600)}h)` : ''}`, inline: true },
+                { name: 'Canal', value: `<#${message.channel.id}>`, inline: true }
+              )
+              .setFooter({ text: 'J.A.R.V.I.S. • Segurança & Proteção de Servidor' })
+              .setTimestamp();
+            await targetChan.send({ embeds: [embed] }).catch(() => {});
+          }
+        } catch {}
+
+        return { isViolating: true, type: 'BOT_SCAM', actionTaken: action };
+      }
+    }
+
+    if (!config.antiSpamEnabled || message.author.bot) {
       return { isViolating: false };
     }
 
@@ -78,6 +126,45 @@ class ProtectionService {
     }
 
     return { isViolating: false };
+  }
+
+  /**
+   * Detects known bot-scam signatures (MrBeast fake promos, token stealers, fake Nitro).
+   * @param {import('discord.js').Message} message
+   * @returns {{ reason: string } | null}
+   */
+  _detectBotScam(message) {
+    if (!message || !message.content) return null;
+    const content = message.content.toLowerCase();
+
+    // 1. Fake MrBeast Giveaways & Money Promos
+    const mrBeastRegex = /\b(mr\s*beast|mrbeast)\b/i;
+    const giveawayMoneyRegex = /(\$|usd|dólares|reais|r\$)\s*[0-9]{3,}|[0-9]{3,}\s*(\$|usd)|(giveaway|sorteio|airdrop|prêmio|premio|gift\s*card|free\s*money|dinheiro\s*grátis|dinheiro\s*gratis)/i;
+    if (mrBeastRegex.test(content) && (giveawayMoneyRegex.test(content) || /https?:\/\/|t\.me\//i.test(content))) {
+      return { reason: 'Golpe de falso sorteio MrBeast / Phishing Financeiro' };
+    }
+
+    // 2. Fake Discord Nitro & Phishing Link Generators
+    const fakeNitroRegex = /\b(free\s*nitro|nitro\s*free|nitro\s*gr[aá]tis|claim\s*nitro|get\s*nitro)\b/i;
+    const suspiciousNitroDomain = /(dlscord|discrod|discorcl|nitro-drop|gift-discord|discord-airdrop|discord-gift|claim-nitro|boost-nitro|free-nitro)\./i;
+    if (fakeNitroRegex.test(content) && (/https?:\/\//i.test(content) || suspiciousNitroDomain.test(content))) {
+      return { reason: 'Phishing de falso Discord Nitro' };
+    }
+
+    // 3. Fake Steam / Crypto / Trade Offer Scams
+    const steamScamRegex = /(steamcommunity|steampowered)[^\s]*\.(ru|xyz|top|gift|link|trade|promo|club)/i;
+    const cryptoScamRegex = /\b(crypto\s*airdrop|claim\s*usdt|usdt\s*giveaway|binance\s*giveaway|eth\s*airdrop)\b/i;
+    if (steamScamRegex.test(content) || (cryptoScamRegex.test(content) && /https?:\/\//i.test(content))) {
+      return { reason: 'Golpe de Phishing Steam / Cripto Airdrop' };
+    }
+
+    // 4. Compromised Account Token-Grabber Copy-pastas
+    const massMention = message.mentions?.everyone || message.mentions?.roles?.size > 2;
+    if (massMention && (giveawayMoneyRegex.test(content) || fakeNitroRegex.test(content)) && /https?:\/\/|t\.me\//i.test(content)) {
+      return { reason: 'Bot/Conta comprometida disparando menções com links suspeitos' };
+    }
+
+    return null;
   }
 
   async _applyAutoMitigation(guild, member, config, reason) {

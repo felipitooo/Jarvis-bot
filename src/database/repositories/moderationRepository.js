@@ -209,7 +209,10 @@ class ModerationRepository {
         antiFloodDuplicateThreshold: 3,
         antiRaidEnabled: true,
         actionOnDetection: 'TIMEOUT',
-        timeoutDurationSeconds: 300
+        timeoutDurationSeconds: 300,
+        antiBotScamEnabled: true,
+        antiBotScamAction: 'TIMEOUT',
+        antiBotScamTimeoutSeconds: 86400
       };
     }
     return {
@@ -220,7 +223,10 @@ class ModerationRepository {
       antiFloodDuplicateThreshold: row.anti_flood_duplicate_threshold,
       antiRaidEnabled: Boolean(row.anti_raid_enabled),
       actionOnDetection: row.action_on_detection,
-      timeoutDurationSeconds: row.timeout_duration_seconds
+      timeoutDurationSeconds: row.timeout_duration_seconds,
+      antiBotScamEnabled: row.anti_bot_scam_enabled !== undefined && row.anti_bot_scam_enabled !== null ? Boolean(row.anti_bot_scam_enabled) : true,
+      antiBotScamAction: row.anti_bot_scam_action || 'TIMEOUT',
+      antiBotScamTimeoutSeconds: row.anti_bot_scam_timeout_seconds || 86400
     };
   }
 
@@ -228,13 +234,16 @@ class ModerationRepository {
     const now = new Date().toISOString();
     const existing = this.db.get('SELECT guild_id FROM anti_abuse_configs WHERE guild_id = ?', [guildId]);
 
-    const antiSpam = config.antiSpamEnabled ? 1 : 0;
+    const antiSpam = config.antiSpamEnabled !== false ? 1 : 0;
     const maxMsgs = config.maxMessagesPerInterval || 5;
     const intervalSecs = config.intervalSeconds || 5;
     const floodThresh = config.antiFloodDuplicateThreshold || 3;
-    const antiRaid = config.antiRaidEnabled ? 1 : 0;
+    const antiRaid = config.antiRaidEnabled !== false ? 1 : 0;
     const action = config.actionOnDetection || 'TIMEOUT';
     const timeoutSecs = config.timeoutDurationSeconds || 300;
+    const antiBotScam = config.antiBotScamEnabled !== false ? 1 : 0;
+    const antiBotAction = String(config.antiBotScamAction || 'TIMEOUT').toUpperCase();
+    const antiBotTimeoutSecs = Number(config.antiBotScamTimeoutSeconds) || 86400;
 
     if (existing) {
       this.db.run(
@@ -246,16 +255,19 @@ class ModerationRepository {
           anti_raid_enabled = ?,
           action_on_detection = ?,
           timeout_duration_seconds = ?,
+          anti_bot_scam_enabled = ?,
+          anti_bot_scam_action = ?,
+          anti_bot_scam_timeout_seconds = ?,
           updated_at = ?
          WHERE guild_id = ?`,
-        [antiSpam, maxMsgs, intervalSecs, floodThresh, antiRaid, action, timeoutSecs, now, guildId]
+        [antiSpam, maxMsgs, intervalSecs, floodThresh, antiRaid, action, timeoutSecs, antiBotScam, antiBotAction, antiBotTimeoutSecs, now, guildId]
       );
     } else {
       this.db.run(
         `INSERT INTO anti_abuse_configs 
-         (guild_id, anti_spam_enabled, max_messages_per_interval, interval_seconds, anti_flood_duplicate_threshold, anti_raid_enabled, action_on_detection, timeout_duration_seconds, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [guildId, antiSpam, maxMsgs, intervalSecs, floodThresh, antiRaid, action, timeoutSecs, now]
+         (guild_id, anti_spam_enabled, max_messages_per_interval, interval_seconds, anti_flood_duplicate_threshold, anti_raid_enabled, action_on_detection, timeout_duration_seconds, anti_bot_scam_enabled, anti_bot_scam_action, anti_bot_scam_timeout_seconds, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [guildId, antiSpam, maxMsgs, intervalSecs, floodThresh, antiRaid, action, timeoutSecs, antiBotScam, antiBotAction, antiBotTimeoutSecs, now]
       );
     }
 

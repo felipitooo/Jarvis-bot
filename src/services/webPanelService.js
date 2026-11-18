@@ -427,6 +427,13 @@ class WebPanelService {
         return botPresenceRepo ? botPresenceRepo.getPresence() : null;
       case 'ai_keys':
         return apiKeyRepo ? (apiKeyRepo.getKeysStatus ? apiKeyRepo.getKeysStatus(this.services.llmAdapter) : apiKeyRepo.getKeys()) : null;
+      case 'social_alerts':
+      case 'socialalerts':
+      case 'alerts':
+        return this.services.socialAlertRepo ? this.services.socialAlertRepo.listAlerts(guildId) : [];
+      case 'backup':
+      case 'backups':
+        return this.services.backupSecurityService ? this.services.backupSecurityService.listBackups(guildId) : [];
       default:
         throw new ValidationError(`Módulo desconhecido: "${moduleName}".`);
     }
@@ -614,7 +621,10 @@ class WebPanelService {
             antiFloodDuplicateThreshold: Number(ab.antiFloodDuplicateThreshold) || 3,
             antiRaidEnabled: ab.antiRaidEnabled !== undefined ? Boolean(ab.antiRaidEnabled) : true,
             actionOnDetection: ab.actionOnDetection || 'TIMEOUT',
-            timeoutDurationSeconds: (Number(ab.timeoutDurationMinutes) || 5) * 60
+            timeoutDurationSeconds: (Number(ab.timeoutDurationMinutes) || 5) * 60,
+            antiBotScamEnabled: ab.antiBotScamEnabled !== undefined ? Boolean(ab.antiBotScamEnabled) : true,
+            antiBotScamAction: ab.antiBotScamAction || 'TIMEOUT',
+            antiBotScamTimeoutSeconds: ab.antiBotScamTimeoutMinutes ? Number(ab.antiBotScamTimeoutMinutes) * 60 : (Number(ab.antiBotScamTimeoutSeconds) || 86400)
           });
         }
         updated = {
@@ -997,6 +1007,36 @@ class WebPanelService {
           channelId,
           channelName: channel.name
         };
+        break;
+      }
+      case 'social_alerts':
+      case 'socialalerts':
+      case 'alerts': {
+        const { socialAlertService, socialAlertRepo } = this.services;
+        if (!socialAlertService || !socialAlertRepo) throw new Error('Serviço de alertas sociais indisponível.');
+        if (updates.action === 'CREATE' || updates.add) {
+          socialAlertService.addAlert(guildId, updates.platform, updates.sourceId, updates.channelTargetId, updates.customMessage);
+        } else if (updates.action === 'DELETE' || updates.delete) {
+          socialAlertService.removeAlert(guildId, updates.id);
+        } else if (updates.action === 'TEST') {
+          await socialAlertService.dispatchTestAlert(this.botClient, updates.id, guildId);
+        }
+        updated = socialAlertRepo.listAlerts(guildId);
+        break;
+      }
+      case 'backup':
+      case 'backups': {
+        const { backupSecurityService } = this.services;
+        if (!backupSecurityService) throw new Error('Serviço de backups indisponível.');
+        if (updates.action === 'CREATE' || updates.create) {
+          const guild = this.botClient?.guilds?.cache?.get(guildId) || { id: guildId, name: 'Servidor', roles: { cache: new Map() }, channels: { cache: new Map() } };
+          backupSecurityService.createBackup(guild, updates.name || `backup_${Date.now()}`, session.userId);
+        } else if (updates.action === 'DELETE' || updates.delete) {
+          if (backupSecurityService.backupRepo) {
+            backupSecurityService.backupRepo.deleteBackup(updates.id);
+          }
+        }
+        updated = backupSecurityService.listBackups(guildId);
         break;
       }
       default:

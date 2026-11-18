@@ -32,6 +32,8 @@ tmp/
 audit_bot.js
 check_gifs.js
 *.png
+*.rar
+*.zip
 
 # OS & Editor Files
 .DS_Store
