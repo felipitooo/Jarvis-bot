@@ -58,6 +58,9 @@ const { ReviewService } = require('./services/reviewService');
 const { CommunityService } = require('./services/communityService');
 const { WebPanelService } = require('./services/webPanelService');
 const { AutomationService } = require('./services/automationService');
+const { BadgeService } = require('./services/badgeService');
+const { PredictionService } = require('./services/predictionService');
+const { GossipService } = require('./services/gossipService');
 
 // Web Server
 const { WebServer } = require('./web/server');
@@ -376,6 +379,11 @@ function createAppContext(customDbPath = null) {
     model: activeBotConfig.ai?.model || process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite'
   });
 
+  const badgeService = new BadgeService(dbManager);
+  const predictionService = new PredictionService(dbManager);
+  const gossipService = new GossipService({ llmAdapter, botConfig });
+  loanService.badgeService = badgeService;
+
   const webPanelService = new WebPanelService({
     webSessionRepo,
     identityService,
@@ -404,7 +412,10 @@ function createAppContext(customDbPath = null) {
       botPresenceRepo,
       apiKeyRepo,
       llmAdapter,
-      memoryRepo
+      memoryRepo,
+      badgeService,
+      predictionService,
+      gossipService
     },
     botClient: client
   });
@@ -623,6 +634,9 @@ function createAppContext(customDbPath = null) {
     communityService,
     webPanelService,
     automationService,
+    badgeService,
+    predictionService,
+    gossipService,
     webServer,
     llmAdapter,
     toolRegistry,

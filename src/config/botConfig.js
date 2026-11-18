@@ -23,6 +23,7 @@ const DEFAULT_CONFIG = {
     model: process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite',
     temperature: 0.65,
     maxTokens: 1024,
+    humorMode: 'normal',
     persona: {
       role: 'Inteligência artificial central e assistente pessoal de alta fidelidade.',
       tone: 'Aristocrático, elegante, polido britânico, com humor seco e sarcasmo refinado.',

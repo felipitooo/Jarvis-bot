@@ -116,11 +116,11 @@ const KNOWN_COMMANDS = new Set([
   'shuffle', 'misturar',
   'tts', 'falar', 'say',
   // Moderation & Channels
-  'ban',
-  'unban',
-  'kick',
-  'mute', 'timeout',
-  'unmute', 'untimeout',
+  'ban', 'banir',
+  'unban', 'desbanir',
+  'kick', 'expulsar',
+  'mute', 'timeout', 'mutar', 'silenciar',
+  'unmute', 'untimeout', 'desmutar', 'desilenciar',
   'clear', 'purge', 'limpar',
   'lock', 'trancar',
   'unlock', 'destrancar',
@@ -132,12 +132,17 @@ const KNOWN_COMMANDS = new Set([
   // Leveling, Profile & XP
   'rank', 'nivel', 'xp',
   'perfil', 'profile', 'p',
+  'conquistas', 'badges', 'insignias',
   'bio', 'sobre', 'cor',
   'leaderboard', 'topxp',
   // Reviews & Feedback
   'avaliar', 'review', 'avaliacoes', 'reviewstats',
-  // Social & Fun
+  // Social, Games & Friends
   'quiz',
+  'bolao',
+  'fofoca', 'resumo', 'resumodia', 'gossip',
+  'modo', 'humor',
+  'backup',
   'beijar', 'kiss',
   'abracar', 'hug',
   'genero',
@@ -410,7 +415,10 @@ class PrefixCommandHandler {
       socialFunService,
       quizService,
       musicService,
-      auditService
+      auditService,
+      badgeService,
+      predictionService,
+      gossipService
     } = context;
 
     const guild = message.guild;
@@ -4341,6 +4349,306 @@ class PrefixCommandHandler {
             botAvatarUrl
           });
           await message.reply(payload);
+          return true;
+        }
+
+        // ==========================================
+        // 13. COMUNIDADE, AMIGOS & UTILITÁRIOS (v6.3)
+        // ==========================================
+        case 'fofoca':
+        case 'resumo':
+        case 'resumodia':
+        case 'gossip': {
+          const service = context.gossipService || (context.llmAdapter ? new (require('../services/gossipService').GossipService)({ llmAdapter: context.llmAdapter }) : null);
+          if (!service) {
+            await message.reply('❌ O serviço de inteligência artificial não está disponível no momento.');
+            return true;
+          }
+
+          const thinkingMsg = await message.reply('📰 *Analisando as conversas recentes da galera e preparando a fofoca do dia...*');
+
+          try {
+            const fetched = await message.channel.messages.fetch({ limit: 40 });
+            const bulletin = await service.generateGossipBulletin(Array.from(fetched.values()), message.channel.name);
+
+            const embed = new EmbedBuilder()
+              .setTitle('📰 Boletim da Fofoca & Resumo do Chat')
+              .setDescription(bulletin)
+              .setColor(0xFF69B4)
+              .setFooter({ text: `${aiName} • Resenha & Fofoca dos Amigos`, iconURL: message.client?.user?.displayAvatarURL ? message.client.user.displayAvatarURL() : undefined })
+              .setTimestamp();
+
+            await thinkingMsg.edit({ content: null, embeds: [embed] });
+          } catch (err) {
+            await thinkingMsg.edit(`❌ Falha ao gerar fofoca do dia: ${err.message}`);
+          }
+          return true;
+        }
+
+        case 'conquistas':
+        case 'badges':
+        case 'insignias': {
+          const target = (await resolveUser(message, args[0])) || author;
+          const service = context.badgeService || new (require('../services/badgeService').BadgeService)(context.dbManager);
+          const allBadges = service.getAllBadges();
+
+          let xpProfile = null;
+          try { xpProfile = context.experienceService?.getMemberProfile?.(guild.id, target.id); } catch {}
+          let balance = null;
+          try { balance = context.economyService?.getBalance?.(guild.id, target.id); } catch {}
+          let relObj = null;
+          try { relObj = context.socialFunService?.getRelationship?.(guild.id, target.id); } catch {}
+          let reviewStats = null;
+          try { reviewStats = context.reviewRepo?.getReviewStats?.(guild.id, target.id); } catch {}
+          let loanStatus = null;
+          try { loanStatus = context.loanService?.getLoanStatus?.(guild.id, target.id); } catch {}
+          const targetMember = await guild.members.fetch(target.id).catch(() => null);
+
+          const unlockedFormatted = service.calculateBadges({
+            guild,
+            targetUser: target,
+            member: targetMember,
+            xpProfile,
+            balance,
+            rel: relObj,
+            reviewStats,
+            loanStatus
+          });
+
+          const embed = new EmbedBuilder()
+            .setTitle(`🏆 Galeria de Conquistas & Insígnias • ${target.username}`)
+            .setDescription(
+              `**Insígnias Ativas (${unlockedFormatted.length}):**\n` +
+              (unlockedFormatted.length > 0 ? unlockedFormatted.join(' • ') : '*Nenhuma insígnia conquistada ainda.*') +
+              `\n\n━━━━━━━━━━━━━━━━━━━━━━\n` +
+              `**Todas as Conquistas Disponíveis:**\n` +
+              allBadges.map(b => {
+                const isUnlocked = unlockedFormatted.some(u => u.includes(b.emoji) || u.includes(b.name));
+                const statusTag = isUnlocked ? '✅ **DESBLOQUEADA**' : '🔒 *Bloqueada*';
+                return `${b.emoji} **${b.name}** — ${statusTag}\n↳ *${b.desc}*`;
+              }).join('\n\n')
+            )
+            .setColor(0xFEE75C)
+            .setThumbnail(target.displayAvatarURL ? target.displayAvatarURL({ extension: 'png', size: 128 }) : null)
+            .setFooter({ text: `${aiName} • Sistema de Conquistas`, iconURL: message.client?.user?.displayAvatarURL ? message.client.user.displayAvatarURL() : undefined })
+            .setTimestamp();
+
+          await message.reply({ embeds: [embed] });
+          return true;
+        }
+
+        case 'bolao': {
+          const service = context.predictionService || new (require('../services/predictionService').PredictionService)(context.dbManager);
+          const sub = args[0]?.toLowerCase();
+
+          // Subcommand: criar
+          if (sub === 'criar' || sub === 'novo' || sub === 'abrir') {
+            const title = args.slice(1).join(' ').trim();
+            if (!title) {
+              await message.reply('❌ Você precisa definir a pergunta do bolão. Exemplo: `+bolao criar O Mengão vai ganhar o jogo hoje?`');
+              return true;
+            }
+            try {
+              const pred = service.createPrediction(guild.id, author.id, title);
+              const embed = new EmbedBuilder()
+                .setTitle('🎲 Novo Bolão Aberto para Apostas!')
+                .setDescription(
+                  `**Pergunta:** "${pred.title}"\n\n` +
+                  `**Como Apostar:**\n` +
+                  `• Digite \`+bolao apostar sim <valor>\` para apostar no **SIM**\n` +
+                  `• Digite \`+bolao apostar nao <valor>\` para apostar no **NÃO**\n\n` +
+                  `*Criado por <@${author.id}> • Pote Atual: 0 moedas*`
+                )
+                .setColor(0x57F287)
+                .setFooter({ text: `${aiName} • Bolão do Servidor` })
+                .setTimestamp();
+              await message.reply({ embeds: [embed] });
+            } catch (err) {
+              await message.reply(`❌ ${err.message}`);
+            }
+            return true;
+          }
+
+          // Subcommand: apostar
+          if (sub === 'apostar' || sub === 'bet') {
+            const choice = args[1];
+            const amount = parseInt(args[2], 10);
+            if (!choice || isNaN(amount) || amount <= 0) {
+              await message.reply('❌ Uso correto: `+bolao apostar <sim|nao> <valor>`. Exemplo: `+bolao apostar sim 200`');
+              return true;
+            }
+            try {
+              const res = service.placeBet(guild.id, author.id, choice, amount, context.economyService);
+              await message.reply(
+                `✅ **Aposta Confirmada!** Você apostou **${res.amount} moedas** no **${res.choice}**.\n` +
+                `📊 **Pote Total:** ${res.updatedPrediction.total_pool} moedas (${res.updatedPrediction.betsSimCount} apostas em SIM / ${res.updatedPrediction.betsNaoCount} apostas em NÃO)`
+              );
+            } catch (err) {
+              await message.reply(`❌ ${err.message}`);
+            }
+            return true;
+          }
+
+          // Subcommand: travar / fechar
+          if (sub === 'travar' || sub === 'fechar' || sub === 'lock') {
+            const isAdmin = member.permissions.has(PermissionFlagsBits.Administrator);
+            try {
+              const pred = service.lockPrediction(guild.id, author.id, isAdmin);
+              await message.reply(
+                `🔒 **Apostas Travadas!** O bolão "${pred.title}" não aceita mais novas apostas.\n` +
+                `💰 **Pote Final Acumulado:** **${pred.total_pool} moedas**.\n` +
+                `*Aguardando o resultado do evento para divisão do prêmio!*`
+              );
+            } catch (err) {
+              await message.reply(`❌ ${err.message}`);
+            }
+            return true;
+          }
+
+          // Subcommand: finalizar / encerrar
+          if (sub === 'finalizar' || sub === 'encerrar' || sub === 'resolver') {
+            const winningChoice = args[1];
+            if (!winningChoice) {
+              await message.reply('❌ Especifique o resultado vencedor: `+bolao finalizar sim` ou `+bolao finalizar nao`.');
+              return true;
+            }
+            const isAdmin = member.permissions.has(PermissionFlagsBits.Administrator);
+            try {
+              const res = service.resolvePrediction(guild.id, winningChoice, author.id, isAdmin, context.economyService);
+              let desc = `**Resultado Oficial:** O lado vencedor foi **${res.winningChoice}**!\n`;
+              desc += `💰 **Pote Total Distribuído:** **${res.totalPool} moedas**\n\n`;
+
+              if (res.winnersCount > 0) {
+                desc += `🏆 **Ganhadores (${res.winnersCount}):**\n`;
+                for (const p of res.payouts) {
+                  desc += `• <@${p.userId}>: apostou ${p.betAmount} e faturou **${p.payout} moedas** *(+${p.profit})*\n`;
+                }
+              } else {
+                desc += `⚠️ *Ninguém acertou o resultado! Todos os participantes receberam 100% de reembolso de suas apostas.*`;
+              }
+
+              const embed = new EmbedBuilder()
+                .setTitle(`🎉 Bolão Finalizado: "${res.prediction.title}"`)
+                .setDescription(desc)
+                .setColor(0xFEE75C)
+                .setFooter({ text: `${aiName} • Premiação do Bolão` })
+                .setTimestamp();
+
+              await message.reply({ embeds: [embed] });
+            } catch (err) {
+              await message.reply(`❌ ${err.message}`);
+            }
+            return true;
+          }
+
+          // Subcommand: cancelar
+          if (sub === 'cancelar' || sub === 'cancel') {
+            const isAdmin = member.permissions.has(PermissionFlagsBits.Administrator);
+            try {
+              const res = service.cancelPrediction(guild.id, author.id, isAdmin, context.economyService);
+              await message.reply(`🚫 **Bolão Cancelado!** ${res.refundCount} aposta(s) foram reembolsadas (total de ${res.totalRefunded} moedas devolvidas).`);
+            } catch (err) {
+              await message.reply(`❌ ${err.message}`);
+            }
+            return true;
+          }
+
+          // Default: Mostrar bolão ativo
+          const pred = service.getActivePrediction(guild.id);
+          if (!pred) {
+            await message.reply(
+              `ℹ️ **Não há nenhum bolão ativo no momento.**\n` +
+              `Crie um novo agora mesmo usando: \`+bolao criar <pergunta>\`\n` +
+              `*Exemplo:* \`+bolao criar O Mengão vai ganhar hoje?\``
+            );
+            return true;
+          }
+
+          const statusBadge = pred.status === 'OPEN' ? '🟢 **ABERTO PARA APOSTAS**' : '🔒 **APOSTAS TRAVADAS (Aguardando resultado)**';
+          const embed = new EmbedBuilder()
+            .setTitle(`🎲 Bolão Ativo: "${pred.title}"`)
+            .setDescription(
+              `**Status:** ${statusBadge}\n` +
+              `**Pote Total Acumulado:** **${pred.total_pool} moedas**\n\n` +
+              `📊 **Apostas Registradas:**\n` +
+              `• **SIM:** ${pred.betsSimCount} apostas (${pred.poolSim} moedas no pote)\n` +
+              `• **NÃO:** ${pred.betsNaoCount} apostas (${pred.poolNao} moedas no pote)\n\n` +
+              (pred.status === 'OPEN'
+                ? `**Como Participar:**\nDigite \`+bolao apostar sim <valor>\` ou \`+bolao apostar nao <valor>\`\n`
+                : `*As apostas estão encerradas. O criador ou admin deve usar \`+bolao finalizar <sim|nao>\` após o desfecho!*\n`) +
+              `\n*Criado por <@${pred.creator_id}> • ID #${pred.id}*`
+            )
+            .setColor(0x5865F2)
+            .setFooter({ text: `${aiName} • Digite +bolao para atualizar` })
+            .setTimestamp();
+
+          await message.reply({ embeds: [embed] });
+          return true;
+        }
+
+        case 'backup': {
+          if (!member.permissions.has(PermissionFlagsBits.Administrator)) {
+            await message.reply('❌ Apenas administradores do servidor podem solicitar o backup do banco de dados.');
+            return true;
+          }
+
+          const { dbManager } = require('../database/connection');
+          const path = require('path');
+          const fs = require('fs');
+
+          const dbPath = dbManager.dbPath || path.resolve('./data/database.sqlite');
+          if (!dbPath || dbPath === ':memory:' || !fs.existsSync(dbPath)) {
+            await message.reply('ℹ️ O banco de dados está rodando em modo `:memory:` (ambiente de testes). Em execução local com arquivo em disco, o arquivo `.sqlite` é enviado aqui.');
+            return true;
+          }
+
+          try {
+            try { dbManager.exec('PRAGMA wal_checkpoint(TRUNCATE);'); } catch {}
+            const filename = `jarvis_backup_${new Date().toISOString().slice(0, 10)}.sqlite`;
+            await message.reply({
+              content: '🛡️ **Backup Completo do Banco de Dados Gerado!**\nGuarde este arquivo com segurança em caso de formatação ou falha de disco:',
+              files: [{ attachment: dbPath, name: filename }]
+            });
+          } catch (err) {
+            await message.reply(`❌ Erro ao exportar banco de dados: ${err.message}`);
+          }
+          return true;
+        }
+
+        case 'modo':
+        case 'humor': {
+          const { botConfig } = require('../config/botConfig');
+          const validModes = ['zoeiro', 'sarcastico', 'sabio', 'amigavel', 'serio', 'normal'];
+          const sub = args[0]?.toLowerCase();
+
+          if (!sub || !validModes.includes(sub)) {
+            const currentMode = botConfig.getConfig()?.ai?.humorMode || 'normal';
+            await message.reply(
+              `🗣️ **Modo de Humor Atual da IA:** \`${currentMode}\`\n\n` +
+              `**Modos Disponíveis:**\n` +
+              `• \`+modo zoeiro\` — 🤣 Piadas, gírias e zoeira saudável de amigos\n` +
+              `• \`+modo sarcastico\` — 😏 Ironia afiada, deboche inteligente e mordomo inglês\n` +
+              `• \`+modo sabio\` — 🧙‍♂️ Metáforas profundas, provérbios e reflexões\n` +
+              `• \`+modo amigavel\` — 💖 Caloroso, carinhoso, empático e companheiro\n` +
+              `• \`+modo serio\` — 🤖 Estritamente técnico, formal e direto ao ponto\n` +
+              `• \`+modo normal\` — ⚖️ Equilibrado (Paul Bettany / Jarvis Clássico)\n\n` +
+              `*Exemplo de uso:* \`+modo zoeiro\` ou \`+modo sarcastico\``
+            );
+            return true;
+          }
+
+          botConfig.updateConfig({ ai: { humorMode: sub } });
+
+          const speechMap = {
+            zoeiro: '🤣 **Modo Zoeiro ativado, mlk!** Agora o bagulho ficou sério... ou melhor, zero sério! Pode mandar as pérolas que eu vou zoar junto! kkkk',
+            sarcastico: '😏 **Modo Sarcástico ativado.** Maravilhoso. Estava mesmo ansioso para responder mais perguntas brilhantes com a minha paciência inesgotável, senhor.',
+            sabio: '🧙‍♂️ **Modo Sábio ativado.** Como as estrelas que iluminam a noite cósmica, que as nossas palavras tragam clareza e sabedoria aos espíritos inquietos.',
+            amigavel: '💖 **Modo Amigável ativado!** Que alegria estar aqui com vocês! Estou super animado para bater papo e ajudar no que precisarem, contem comigo sempre!',
+            serio: '🤖 **Modo Sério ativado.** Protocolos de otimização operacional carregados. Respostas serão fornecidas com precisão analítica e sem dispersão.',
+            normal: '⚖️ **Modo Normal (J.A.R.V.I.S. Clássico) ativado.** Todos os sistemas operando em conformidade com as diretrizes de fábrica, senhor.'
+          };
+
+          await message.reply(speechMap[sub] || `✅ Modo de humor alterado para: \`${sub}\``);
           return true;
         }
 

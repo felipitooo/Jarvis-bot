@@ -6217,6 +6217,18 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           </div>
 
           <div class="form-group">
+            <label>Modo de Humor da IA</label>
+            <select id="cfgAiHumorMode">
+              <option value="normal">⚖️ Normal / Equilibrado (Paul Bettany / Jarvis Clássico)</option>
+              <option value="zoeiro">🤣 Zoeiro & Comediante (Gírias, piadas e zoeira saudável com amigos)</option>
+              <option value="sarcastico">😏 Sarcástico & Debochado (Ironia refinada e deboche inteligente)</option>
+              <option value="amigavel">💖 Amigável & Acolhedor (Carinhoso, empático e companheiro)</option>
+              <option value="sabio">🧙‍♂️ Sábio & Filosófico (Metáforas profundas e reflexões)</option>
+              <option value="serio">🤖 Sério & Estritamente Técnico (Focado em dados e sem rodeios)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
             <label>Diretrizes de Personalidade (Uma por linha)</label>
             <textarea id="cfgAiGuidelines" rows="3" placeholder="Insira as regras de personalidade da IA..."></textarea>
           </div>
@@ -6490,6 +6502,21 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
               </div>
               <input type="checkbox" id="cfgModQuiz" style="width: 20px; height: 20px; accent-color: var(--primary);">
             </label>
+          </div>
+        </div>
+
+        <!-- 7. BACKUP DO BANCO DE DADOS LOCAL (1-CLIQUE) -->
+        <div class="card" style="grid-column: 1 / -1; border-color: rgba(99, 102, 241, 0.4); background: linear-gradient(180deg, rgba(99, 102, 241, 0.05) 0%, rgba(15, 23, 42, 0.4) 100%);">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+            <div>
+              <h2 style="display: flex; align-items: center; gap: 0.5rem; color: var(--accent);">💾 Backup do Banco de Dados Local</h2>
+              <p style="margin: 0.25rem 0 0 0; color: var(--text-subtle); max-width: 750px;">
+                Como o J.A.R.V.I.S. roda localmente na sua máquina, você pode baixar uma cópia de segurança completa do seu banco de dados SQLite (moedas, empresas, casamentos, histórico de níveis de XP, memórias da IA e bolões) a qualquer momento com 1 clique.
+              </p>
+            </div>
+            <a href="/api/backup/download" class="primary-btn" style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.65rem 1.25rem; font-weight: 700;" download>
+              📥 Baixar Backup (.sqlite)
+            </a>
           </div>
         </div>
       </div>
@@ -12483,6 +12510,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       if (document.getElementById('cfgAiSalutation')) document.getElementById('cfgAiSalutation').value = cfg.ai?.persona?.salutation || '';
       if (document.getElementById('cfgAiGuidelines')) document.getElementById('cfgAiGuidelines').value = (cfg.ai?.persona?.guidelines || []).join('\\n');
       if (document.getElementById('cfgAiModel')) document.getElementById('cfgAiModel').value = cfg.ai?.model || 'gemini-3.5-flash-lite';
+      if (document.getElementById('cfgAiHumorMode')) document.getElementById('cfgAiHumorMode').value = cfg.ai?.humorMode || 'normal';
       if (document.getElementById('cfgAiTemp')) {
         document.getElementById('cfgAiTemp').value = cfg.ai?.temperature !== undefined ? cfg.ai.temperature : 0.65;
         if (document.getElementById('cfgAiTempDisplay')) document.getElementById('cfgAiTempDisplay').innerText = document.getElementById('cfgAiTemp').value;
@@ -12737,6 +12765,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         ai: {
           model: document.getElementById('cfgAiModel')?.value || 'gemini-3.5-flash-lite',
           temperature: parseFloat(document.getElementById('cfgAiTemp')?.value || '0.65'),
+          humorMode: document.getElementById('cfgAiHumorMode')?.value || 'normal',
           persona: {
             role: document.getElementById('cfgAiRole')?.value?.trim() || '',
             tone: document.getElementById('cfgAiTone')?.value?.trim() || '',

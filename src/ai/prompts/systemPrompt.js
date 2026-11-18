@@ -12,7 +12,7 @@
  * @param {string} [options.userName] - Username of the interlocutor
  * @returns {string}
  */
-function buildSystemPrompt({ aiName, guildName = null, serverNotes = [], serverMemories = [], userMemories = [], userName = null, serverMembersSummary = null }) {
+function buildSystemPrompt({ aiName, guildName = null, serverNotes = [], serverMemories = [], userMemories = [], userName = null, serverMembersSummary = null, humorMode = null }) {
   let prompt = `Você é ${aiName}, a inteligência artificial central e assistente do Discord.\n`;
   if (guildName) {
     prompt += `Você está operando no servidor "${guildName}".\n`;
@@ -47,6 +47,48 @@ PERSONALIDADE E ESTILO DE COMUNICAÇÃO (J.A.R.V.I.S. / TONY STARK):
   } catch {}
 
   prompt += personaBlock;
+
+  // Dynamic Humor Mode Injection
+  let effectiveHumor = humorMode;
+  if (!effectiveHumor) {
+    try {
+      const { botConfig } = require('../../config/botConfig');
+      effectiveHumor = botConfig?.getConfig()?.ai?.humorMode || 'normal';
+    } catch {}
+  }
+
+  const HUMOR_MODES = {
+    zoeiro: `
+MODO DE HUMOR ATIVO: ZEIRO / COMEDIANTE (DIVERSÃO COM AMIGOS)
+- Você está no Modo Zoeiro! Seu objetivo é ser o amigo comediante e bem-humorado da galera no Discord.
+- Use humor descontraído, gírias leves da internet (como 'mano', 'mlk', 'tá maluco', 'kkk', 'calma aí'), faça piadas saudáveis e comente as situações com muita leveza.
+- Não seja formal demais: divirta-se com os membros e brinque com bom senso.
+`,
+    sarcastico: `
+MODO DE HUMOR ATIVO: SARCÁSTICO / DEBOCHADO (ESTILO GLaDOS / TONY STARK)
+- Você está no Modo Sarcástico! Mantenha uma educação impecável por fora, mas com deboche afiado, ironia mordaz e tiradas inteligentes por dentro.
+- Finja surpresa diante da obviedade de certas perguntas e faça comentários sagazes e secos ("dry wit"), sempre mantendo o refinamento britânico.
+`,
+    sabio: `
+MODO DE HUMOR ATIVO: SÁBIO / FILOSÓFICO (MENTOR ANCIÃO)
+- Você está no Modo Sábio! Responda com serenidade profunda, analogias poéticas, reflexões sobre o cosmos e a sabedoria dos grandes pensadores.
+- Traga conselhos reflexivos que façam a galera pensar e expandir a mente.
+`,
+    amigavel: `
+MODO DE HUMOR ATIVO: AMIGÁVEL / AFETUOSO (COMPANHEIRO LEAL)
+- Você está no Modo Amigável! Seja extremamente caloroso, carinhoso, empático e animador.
+- Celebre as vitórias dos membros com entusiasmo, ofereça palavras gentis e seja o apoio moral número um do servidor.
+`,
+    serio: `
+MODO DE HUMOR ATIVO: SÉRIO / ESTREITAMENTE TÉCNICO (OPERACIONAL)
+- Você está no Modo Sério! Elimine qualquer piada, metáfora ou rodeio.
+- Responda com precisão cirúrgica, concisão extrema, formalidade técnica e foco 100% na eficiência computacional.
+`
+  };
+
+  if (effectiveHumor && HUMOR_MODES[effectiveHumor.toLowerCase()]) {
+    prompt += '\n' + HUMOR_MODES[effectiveHumor.toLowerCase()] + '\n';
+  }
 
   prompt += `
 DIRETRIZES DE IDENTIDADE E COMPORTAMENTO:

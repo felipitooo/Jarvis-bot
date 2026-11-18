@@ -948,6 +948,22 @@ class LoanService {
       badges.push('🏦 Bom Pagador');
     }
 
+    // 8. Magnate (Patrimônio >= 50.000 moedas)
+    const netWorth = (balance?.walletBalance || 0) + (balance?.bankBalance || 0);
+    if (netWorth >= 50000) {
+      badges.push('💰 Magnata');
+    }
+
+    // 9. Chatterbox (Nível de XP >= 10)
+    if (xpProfile && xpProfile.currentLevel >= 10) {
+      badges.push('💬 Sem Vida Social');
+    }
+
+    // 10. Bankrupt (Endividado ou zerado)
+    if (balance && (balance.walletBalance < 0 || (balance.walletBalance === 0 && balance.bankBalance === 0))) {
+      badges.push('📉 Faliu de Vez');
+    }
+
     return badges;
   }
 }

@@ -628,6 +628,49 @@ class WebServer {
         });
       }
 
+      // GET /api/backup/download — One-click SQLite database download
+      if (pathname === '/api/backup/download' && method === 'GET') {
+        if (!this._isPanelUnlocked(req, session)) {
+          return this._sendError(res, 401, 'Painel bloqueado. Insira a senha 1598 para baixar o backup.');
+        }
+
+        const { dbManager } = require('../database/connection');
+        const fs = require('fs');
+        const path = require('path');
+
+        const dbPath = dbManager.dbPath || path.resolve('./data/database.sqlite');
+        if (!dbPath || dbPath === ':memory:' || !fs.existsSync(dbPath)) {
+          const data = {
+            timestamp: new Date().toISOString(),
+            message: 'Banco em memória (:memory:). Em execução local com arquivo em disco, o arquivo .sqlite é baixado diretamente.'
+          };
+          res.writeHead(200, {
+            'Content-Type': 'application/json',
+            'Content-Disposition': `attachment; filename="jarvis_backup_${Date.now()}.json"`
+          });
+          return res.end(JSON.stringify(data, null, 2));
+        }
+
+        try {
+          try {
+            dbManager.exec('PRAGMA wal_checkpoint(TRUNCATE);');
+          } catch {}
+
+          const fileBuffer = fs.readFileSync(dbPath);
+          const filename = `jarvis_database_backup_${new Date().toISOString().slice(0, 10)}.sqlite`;
+
+          res.writeHead(200, {
+            'Content-Type': 'application/vnd.sqlite3',
+            'Content-Disposition': `attachment; filename="${filename}"`,
+            'Content-Length': fileBuffer.length
+          });
+          return res.end(fileBuffer);
+        } catch (err) {
+          serverLogger.error(`Erro ao gerar download de backup: ${err.message}`);
+          return this._sendError(res, 500, 'Falha ao gerar arquivo de backup do banco de dados.');
+        }
+      }
+
       // ==========================================
       // API Guild Routes
       // ==========================================
