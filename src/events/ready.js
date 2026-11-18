@@ -88,8 +88,22 @@ module.exports = {
 
       let presenceCfg = botPresenceRepo ? botPresenceRepo.getPresence() : null;
 
-      // If bot_config.json has a customized presence text, ensure it takes precedence and syncs to DB
-      if (configPresence?.activityText && configPresence.activityText !== 'Protocolos ativos | +help') {
+      // Bidirectional presence synchronization between SQLite and bot_config.json:
+      // If DB has a custom presence, sync it to botConfig so bot_config.json stays fresh across reboots
+      if (presenceCfg && presenceCfg.activityName && presenceCfg.activityName !== 'J.A.R.V.I.S | +ajuda') {
+        try {
+          botConfig.updateConfig({
+            identity: {
+              presence: {
+                status: presenceCfg.botStatus || 'online',
+                activityType: presenceCfg.activityType || 'Custom',
+                activityText: presenceCfg.activityName,
+                activityUrl: presenceCfg.activityUrl || null
+              }
+            }
+          });
+        } catch {}
+      } else if (configPresence?.activityText && configPresence.activityText !== 'Protocolos ativos | +help') {
         presenceCfg = {
           botStatus: configPresence.status || presenceCfg?.botStatus || 'online',
           activityType: configPresence.activityType || presenceCfg?.activityType || 'Custom',
@@ -97,7 +111,7 @@ module.exports = {
           activityUrl: configPresence.activityUrl || presenceCfg?.activityUrl || null
         };
         if (botPresenceRepo) {
-          try { botPresenceRepo.savePresence(presenceCfg); } catch {}
+          try { botPresenceRepo.updatePresence(presenceCfg); } catch {}
         }
       } else if (!presenceCfg) {
         presenceCfg = {

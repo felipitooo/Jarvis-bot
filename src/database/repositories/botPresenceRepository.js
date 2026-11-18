@@ -48,6 +48,10 @@ class BotPresenceRepository {
 
     return this.getPresence();
   }
+
+  savePresence(presence) {
+    return this.updatePresence(presence);
+  }
 }
 
 module.exports = { BotPresenceRepository };

@@ -404,6 +404,10 @@ class WebPanelService {
       case 'botspeak':
       case 'send_message':
         return { status: 'ready' };
+      case 'bot_presence':
+      case 'botpresence':
+      case 'presence':
+        return botPresenceRepo ? botPresenceRepo.getPresence() : null;
       default:
         throw new ValidationError(`Módulo desconhecido: "${moduleName}".`);
     }
@@ -834,12 +838,33 @@ class WebPanelService {
         updated = { multipliers: xpRepo.getMultipliersAndBlocks(guildId) };
         break;
       }
-      case 'bot_presence': {
+      case 'bot_presence':
+      case 'botpresence':
+      case 'presence': {
         const { botPresenceRepo } = this.services;
         if (!botPresenceRepo) throw new Error('Serviço de presença do bot indisponível.');
         const updatedPresence = botPresenceRepo.updatePresence(updates);
+
+        // Synchronize to bot_config.json so it survives restarts and never gets reverted
+        try {
+          const { botConfig } = require('../config/botConfig');
+          botConfig.updateConfig({
+            identity: {
+              presence: {
+                status: updatedPresence.botStatus,
+                activityType: updatedPresence.activityType,
+                activityText: updatedPresence.activityName,
+                activityUrl: updatedPresence.activityUrl
+              }
+            }
+          });
+        } catch (cfgErr) {
+          logger.warn(`Failed to sync presence to botConfig: ${cfgErr.message}`);
+        }
+
+        const client = this.botClient || this.services?.botClient || this.services?.webServer?.botClient;
         const { applyBotPresence } = require('../utils/presenceHelper');
-        applyBotPresence(this.botClient, updatedPresence);
+        applyBotPresence(client, updatedPresence);
         updated = updatedPresence;
         break;
       }

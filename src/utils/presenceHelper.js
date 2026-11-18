@@ -18,7 +18,10 @@ const ACTIVITY_TYPE_MAP = {
  * @param {object} presenceConfig
  */
 function applyBotPresence(client, presenceConfig) {
-  if (!client || !client.user) return false;
+  if (!client || !client.user) {
+    presenceLogger.warn('Cannot apply bot presence: Discord client or client.user is unavailable.');
+    return false;
+  }
 
   try {
     const rawStatus = (presenceConfig.botStatus || 'online').toLowerCase();
@@ -28,10 +31,17 @@ function applyBotPresence(client, presenceConfig) {
     const typeEnum = ACTIVITY_TYPE_MAP[rawType] !== undefined ? ACTIVITY_TYPE_MAP[rawType] : ActivityType.Custom;
 
     const activityName = presenceConfig.activityName || 'J.A.R.V.I.S | +ajuda';
+    const isCustom = typeEnum === ActivityType.Custom;
+
     const activityObj = {
-      name: activityName,
+      name: isCustom ? (activityName || 'Custom Status') : activityName,
       type: typeEnum
     };
+
+    if (isCustom) {
+      // In Discord Gateway v10, custom status text on bot accounts must be set on `state`
+      activityObj.state = activityName;
+    }
 
     if (typeEnum === ActivityType.Streaming && presenceConfig.activityUrl) {
       activityObj.url = presenceConfig.activityUrl;

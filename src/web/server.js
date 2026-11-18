@@ -592,6 +592,20 @@ class WebServer {
           }
         }
 
+        // Keep SQLite bot_presence_configs synchronized with botConfig
+        if (this.webPanelService?.services?.botPresenceRepo && updated.identity?.presence) {
+          try {
+            this.webPanelService.services.botPresenceRepo.updatePresence({
+              botStatus: updated.identity.presence.status,
+              activityType: updated.identity.presence.activityType,
+              activityName: updated.identity.presence.activityText,
+              activityUrl: updated.identity.presence.activityUrl
+            });
+          } catch (dbErr) {
+            serverLogger.warn(`Erro ao sincronizar presença com banco SQLite: ${dbErr.message}`);
+          }
+        }
+
         // Update default AI display name in IdentityService if available
         if (this.webPanelService?.identityService && updated.identity?.name) {
           this.webPanelService.identityService.defaultName = updated.identity.name;

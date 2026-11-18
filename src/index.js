@@ -732,7 +732,10 @@ async function bootstrap() {
     partials: [Partials.Channel, Partials.Message, Partials.Reaction, Partials.GuildMember, Partials.User]
   });
 
-  // Link WebServer to live Discord client for guild & channel inspection
+  // Link WebServer and WebPanelService to live Discord client for guild & channel inspection
+  if (context.webPanelService) {
+    context.webPanelService.setBotClient(client);
+  }
   if (context.webServer) {
     context.webServer.botClient = client;
   }
