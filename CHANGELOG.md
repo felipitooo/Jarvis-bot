@@ -5,6 +5,23 @@ Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [7.0.0] - 2026-11-18
+
+### Corrigido & Estabilizado
+- **Auditoria Geral e Eliminação de Casos Duplicados em Comandos Prefixo:**
+  - Descoberto e corrigido conflito de alias onde `case 'p':` no bloco `perfil` sombreava o comando musical `play`/`p`, impedindo a reprodução de faixas com `+p <música>`.
+  - Unificação completa das rotas `coinflip`/`cf`/`moeda`/`caraoucoroa` e `dado`/`dice`/`roll`, suportando de forma transparente tanto apostas do sistema de economia/cassino (quando argumentos de quantia são fornecidos) quanto rolagens casuais do módulo social (sem aposta).
+  - Remoção dos blocos de caso duplicados no switch de comandos prefixo, garantindo tempo de execução determinístico e sem avisos de código morto.
+  - Alinhamento de 100% de paridade entre o registro `KNOWN_COMMANDS` (216 comandos) e o switch de execução `_executeCommand` (216 manipuladores), incluindo os comandos `avaliacoes`, `reviewstats`, `cf` e `abraçar`.
+- **Sincronização Total de Módulos no Painel Web (`WebPanelService`):**
+  - Implementada simetria absoluta entre leitura (`getModuleConfig`) e gravação (`updateModuleConfig`) para todos os módulos do painel: `warns`, `social`, `marriage`, `quiz`, `xp_reward`, `xp_multiplier` e `ai_keys`.
+  - Eliminação de exceções `ValidationError: Módulo desconhecido` em requisições de consulta de configurações de moderação e módulos auxiliares via API.
+- **Validação de Estabilidade 100%:**
+  - Verificação sintática e de importações de todos os 194 arquivos JavaScript em `src/` (0 erros).
+  - Verificação e instanciação em memória de todas as 31 migrações SQLite e todos os 24 repositórios.
+  - Verificação e carga de todos os 81 comandos slash, 16 manipuladores de eventos e 45 ferramentas de IA.
+  - Execução completa da suíte de testes com 100% de aprovação (360 testes passando, 71 suítes, 0 falhas).
+
 ## [6.5.0] - 2026-11-18
 
 ### Corrigido

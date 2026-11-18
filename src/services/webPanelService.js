@@ -340,7 +340,9 @@ class WebPanelService {
       musicVoiceRepo,
       economyRepo,
       xpRepo,
-      botPresenceRepo
+      botPresenceRepo,
+      quizRepo,
+      apiKeyRepo
     } = this.services;
 
     switch (mod) {
@@ -358,9 +360,15 @@ class WebPanelService {
         return communityRepo ? communityRepo.getStarboardConfig(guildId) : null;
       case 'briefing':
         return automationRepo ? automationRepo.getBriefingConfig(guildId) : null;
-      case 'moderation': {
+      case 'moderation':
+      case 'warns': {
         const row = modRepo ? modRepo.getLogChannel(guildId, 'PUNISHMENTS') : null;
-        return { logChannelId: row?.channel_id || null };
+        return {
+          logChannelId: row?.channel_id || null,
+          warnRules: modRepo ? modRepo.getEscalationRules(guildId) : [],
+          escalations: modRepo ? modRepo.getEscalationRules(guildId) : [],
+          antiAbuse: modRepo ? modRepo.getAntiAbuseConfig(guildId) : null
+        };
       }
       case 'audit': {
         const settings = this.settingsService.getSettings(guildId);
@@ -368,6 +376,11 @@ class WebPanelService {
       }
       case 'music':
         return musicVoiceRepo ? musicVoiceRepo.getMusicConfig(guildId) : null;
+      case 'social':
+      case 'marriage':
+        return musicVoiceRepo ? musicVoiceRepo.getSocialConfig(guildId) : null;
+      case 'quiz':
+        return quizRepo ? quizRepo.getQuizConfig(guildId) : null;
       case 'economy':
         return economyRepo ? {
           ...economyRepo.getGuildConfig(guildId),
@@ -392,6 +405,10 @@ class WebPanelService {
       }
       case 'xp':
         return xpRepo ? xpRepo.getXpConfig(guildId) : null;
+      case 'xp_reward':
+        return xpRepo ? { rewards: xpRepo.getLevelRewards(guildId) } : { rewards: [] };
+      case 'xp_multiplier':
+        return xpRepo ? { multipliers: xpRepo.getMultipliersAndBlocks(guildId) } : { multipliers: [] };
       case 'aimemory':
       case 'ai_memory':
       case 'memories': {
@@ -408,6 +425,8 @@ class WebPanelService {
       case 'botpresence':
       case 'presence':
         return botPresenceRepo ? botPresenceRepo.getPresence() : null;
+      case 'ai_keys':
+        return apiKeyRepo ? (apiKeyRepo.getKeysStatus ? apiKeyRepo.getKeysStatus(this.services.llmAdapter) : apiKeyRepo.getKeys()) : null;
       default:
         throw new ValidationError(`Módulo desconhecido: "${moduleName}".`);
     }

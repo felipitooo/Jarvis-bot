@@ -101,7 +101,7 @@ const KNOWN_COMMANDS = new Set([
   'slots', 'slot', 'cacaniqueis',
   'roleta', 'roulette', 'aposta', 'apostar', 'gamble', 'bet', 'cassino', 'casino',
   'dado', 'dice', 'roll',
-  'coinflip', 'moeda', 'caraoucoroa',
+  'coinflip', 'cf', 'moeda', 'caraoucoroa',
   'duelo', 'x1', 'pvp',
   // Music & Voice
   'play', 'p', 'tocar',
@@ -131,7 +131,7 @@ const KNOWN_COMMANDS = new Set([
   'unwarn', 'clearwarn', 'clearwarns', 'limparwarns',
   // Leveling, Profile & XP
   'rank', 'nivel', 'xp',
-  'perfil', 'profile', 'p',
+  'perfil', 'profile',
   'conquistas', 'badges', 'insignias',
   'bio', 'sobre', 'cor',
   'leaderboard', 'topxp',
@@ -144,7 +144,7 @@ const KNOWN_COMMANDS = new Set([
   'modo', 'humor',
   'backup',
   'beijar', 'kiss',
-  'abracar', 'hug',
+  'abracar', 'abraçar', 'hug',
   'genero',
   'marry', 'casar', 'casamento',
   'divorce', 'divorciar', 'separar',
@@ -460,8 +460,7 @@ class PrefixCommandHandler {
         }
 
         case 'perfil':
-        case 'profile':
-        case 'p': {
+        case 'profile': {
           const target = (await resolveUser(message, args[0])) || author;
           let member = null;
           try {
@@ -793,6 +792,51 @@ class PrefixCommandHandler {
           } catch (err) {
             await message.reply(`❌ ${err.message}`);
           }
+          return true;
+        }
+
+        case 'avaliacoes':
+        case 'reviewstats': {
+          if (!context.reviewService) {
+            await message.reply('❌ Módulo de avaliações temporariamente indisponível.');
+            return true;
+          }
+          const targetStaff = (await resolveUser(message, args[0])) || null;
+          const stats = context.reviewService.getStats(guild.id, targetStaff ? targetStaff.id : null);
+          if (stats.total === 0) {
+            await message.reply(
+              targetStaff
+                ? `📊 <@${targetStaff.id}> ainda não possui avaliações registradas.`
+                : '📊 Ainda não há avaliações registradas neste servidor.'
+            );
+            return true;
+          }
+
+          const starsDisplay = '⭐'.repeat(Math.round(stats.average)) + '☆'.repeat(5 - Math.round(stats.average));
+          const breakdownText = [
+            `⭐ 5 estrelas: **${stats.breakdown[5]}**`,
+            `⭐ 4 estrelas: **${stats.breakdown[4]}**`,
+            `⭐ 3 estrelas: **${stats.breakdown[3]}**`,
+            `⭐ 2 estrelas: **${stats.breakdown[2]}**`,
+            `⭐ 1 estrela: **${stats.breakdown[1]}**`
+          ].join('\n');
+
+          const embed = new EmbedBuilder()
+            .setColor(0xFEE75C)
+            .setTitle(
+              targetStaff
+                ? `🌟 Reputação de ${targetStaff.username}`
+                : `🌟 Reputação Geral do Servidor — ${guild.name}`
+            )
+            .addFields(
+              { name: 'Média de Satisfação', value: `**${stats.average}** / 5.0\n${starsDisplay}`, inline: true },
+              { name: 'Total de Avaliações', value: `**${stats.total}** feedbacks`, inline: true },
+              { name: 'Distribuição das Notas', value: breakdownText, inline: false }
+            )
+            .setFooter({ text: `${aiName} • Estatísticas de Atendimento` })
+            .setTimestamp();
+
+          await message.reply({ embeds: [embed] });
           return true;
         }
 
@@ -1291,62 +1335,95 @@ class PrefixCommandHandler {
 
         case 'coinflip':
         case 'cf':
+        case 'moeda':
         case 'caraoucoroa': {
-          if (!args[0] || !args[1]) {
-            await message.reply('🪙 **Cara ou Coroa:** Uso: `+coinflip <cara|coroa> <quantia> [moeda]`\nExemplo: `+coinflip cara 500` ou `+coinflip coroa 2 ouro`');
+          let hasBet = false;
+          let choice = null;
+          let amount = NaN;
+          let currencyCode = null;
+
+          if (args.length >= 2) {
+            const first = (args[0] || '').toLowerCase();
+            const second = (args[1] || '').toLowerCase();
+            if (['cara', 'coroa'].includes(first) && !isNaN(parseInt(second, 10))) {
+              choice = first;
+              amount = parseInt(second, 10);
+              currencyCode = args[2] || null;
+              hasBet = true;
+            } else if (['cara', 'coroa'].includes(second) && !isNaN(parseInt(first, 10))) {
+              choice = second;
+              amount = parseInt(first, 10);
+              currencyCode = args[2] || null;
+              hasBet = true;
+            }
+          }
+
+          if (hasBet && amount > 0) {
+            try {
+              const res = economyService.coinflip(guild.id, author.id, choice, amount, currencyCode);
+              const embed = new EmbedBuilder()
+                .setColor(res.success ? 0x57F287 : 0xED4245)
+                .setTitle(res.success ? '🪙 VITÓRIA NO CARA OU COROA!' : '🪙 DERROTA NO CARA OU COROA!')
+                .setDescription(res.message)
+                .setFooter({ text: `${aiName} • Cassino & Apostas` })
+                .setTimestamp();
+              await message.reply({ embeds: [embed] });
+            } catch (err) {
+              await message.reply(`❌ ${err.message}`);
+            }
             return true;
           }
-          let choice = args[0].toLowerCase();
-          let amount = parseInt(args[1], 10);
-          let currencyCode = args[2] || null;
-          if (!['cara', 'coroa'].includes(choice) && ['cara', 'coroa'].includes((args[1] || '').toLowerCase())) {
-            choice = args[1].toLowerCase();
-            amount = parseInt(args[0], 10);
-          }
-          if (!['cara', 'coroa'].includes(choice) || isNaN(amount) || amount <= 0) {
-            await message.reply('❌ Uso correto: `+coinflip <cara|coroa> <quantia> [moeda]`');
-            return true;
-          }
-          try {
-            const res = economyService.coinflip(guild.id, author.id, choice, amount, currencyCode);
-            const embed = new EmbedBuilder()
-              .setColor(res.success ? 0x57F287 : 0xED4245)
-              .setTitle(res.success ? '🪙 VITÓRIA NO CARA OU COROA!' : '🪙 DERROTA NO CARA OU COROA!')
-              .setDescription(res.message)
-              .setFooter({ text: `${aiName} • Cassino & Apostas` })
-              .setTimestamp();
-            await message.reply({ embeds: [embed] });
-          } catch (err) {
-            await message.reply(`❌ ${err.message}`);
-          }
+
+          const flipRes = socialFunService.coinflip();
+          await message.reply(flipRes.message);
           return true;
         }
 
         case 'dado':
-        case 'dice': {
-          if (!args[0] || !args[1]) {
-            await message.reply('🎲 **Jogo do Dado (1 a 6):** Uso: `+dado <1-6> <quantia> [moeda]` (Paga 6x!)\nExemplo: `+dado 6 200` ou `+dado 6 1 ouro`');
+        case 'dice':
+        case 'roll': {
+          let hasBet = false;
+          let guess = NaN;
+          let amount = NaN;
+          let currencyCode = null;
+
+          if (args.length >= 2) {
+            const p0 = parseInt(args[0], 10);
+            const p1 = parseInt(args[1], 10);
+            if (!isNaN(p0) && !isNaN(p1)) {
+              if (p0 >= 1 && p0 <= 6 && p1 > 0) {
+                guess = p0;
+                amount = p1;
+                currencyCode = args[2] || null;
+                hasBet = true;
+              } else if (p1 >= 1 && p1 <= 6 && p0 > 0) {
+                guess = p1;
+                amount = p0;
+                currencyCode = args[2] || null;
+                hasBet = true;
+              }
+            }
+          }
+
+          if (hasBet && amount > 0 && guess >= 1 && guess <= 6) {
+            try {
+              const res = economyService.dice(guild.id, author.id, guess, amount, currencyCode);
+              const embed = new EmbedBuilder()
+                .setColor(res.success ? 0x57F287 : 0xED4245)
+                .setTitle(res.success ? '🎲 VITÓRIA NO DADO (6x)!' : '🎲 DERROTA NO DADO!')
+                .setDescription(res.message)
+                .setFooter({ text: `${aiName} • Cassino & Apostas` })
+                .setTimestamp();
+              await message.reply({ embeds: [embed] });
+            } catch (err) {
+              await message.reply(`❌ ${err.message}`);
+            }
             return true;
           }
-          const guess = parseInt(args[0], 10);
-          const amount = parseInt(args[1], 10);
-          const currencyCode = args[2] || null;
-          if (isNaN(guess) || guess < 1 || guess > 6 || isNaN(amount) || amount <= 0) {
-            await message.reply('❌ Uso correto: `+dado <número de 1 a 6> <quantia> [moeda]`');
-            return true;
-          }
-          try {
-            const res = economyService.dice(guild.id, author.id, guess, amount, currencyCode);
-            const embed = new EmbedBuilder()
-              .setColor(res.success ? 0x57F287 : 0xED4245)
-              .setTitle(res.success ? '🎲 VITÓRIA NO DADO (6x)!' : '🎲 DERROTA NO DADO!')
-              .setDescription(res.message)
-              .setFooter({ text: `${aiName} • Cassino & Apostas` })
-              .setTimestamp();
-            await message.reply({ embeds: [embed] });
-          } catch (err) {
-            await message.reply(`❌ ${err.message}`);
-          }
+
+          const sides = parseInt(args[0], 10) || 6;
+          const rollRes = socialFunService.rollDice(sides);
+          await message.reply(rollRes.message);
           return true;
         }
 
@@ -3271,78 +3348,6 @@ class PrefixCommandHandler {
           } catch (err) {
             await message.reply(`❌ ${err.message}`);
           }
-          return true;
-        }
-
-        case 'dado':
-        case 'dice':
-        case 'roll': {
-          if (args.length >= 2) {
-            let amount = parseInt(args[0], 10);
-            let guess = parseInt(args[1], 10);
-            if (guess > 6 && amount <= 6) {
-              const tmp = amount;
-              amount = guess;
-              guess = tmp;
-            }
-            if (!isNaN(amount) && amount > 0 && !isNaN(guess) && guess >= 1 && guess <= 6) {
-              try {
-                const res = economyService.dice(guild.id, author.id, guess, amount);
-                const embed = new EmbedBuilder()
-                  .setColor(res.success ? 0x57F287 : 0xED4245)
-                  .setTitle(res.success ? '🎲 VITÓRIA NO DADO!' : '🎲 DERROTA NO DADO!')
-                  .setDescription(res.message)
-                  .addFields(
-                    { name: '💰 Saldo em Carteira', value: `${res.walletBalance.toLocaleString('pt-BR')} moedas`, inline: true }
-                  )
-                  .setFooter({ text: `${aiName} • Cassino & Apostas` })
-                  .setTimestamp();
-                await message.reply({ embeds: [embed] });
-                return true;
-              } catch (err) {
-                await message.reply(`❌ ${err.message}`);
-                return true;
-              }
-            }
-          }
-          const sides = parseInt(args[0], 10) || 6;
-          const rollRes = socialFunService.rollDice(sides);
-          await message.reply(rollRes.message);
-          return true;
-        }
-
-        case 'coinflip':
-        case 'moeda':
-        case 'caraoucoroa': {
-          if (args.length >= 2) {
-            let amount = parseInt(args[0], 10);
-            let choice = args[1]?.toLowerCase();
-            if (isNaN(amount) && !isNaN(parseInt(args[1], 10))) {
-              amount = parseInt(args[1], 10);
-              choice = args[0]?.toLowerCase();
-            }
-            if (!isNaN(amount) && amount > 0 && (choice === 'cara' || choice === 'coroa')) {
-              try {
-                const res = economyService.coinflip(guild.id, author.id, choice, amount);
-                const embed = new EmbedBuilder()
-                  .setColor(res.success ? 0x57F287 : 0xED4245)
-                  .setTitle(res.success ? '🪙 VITÓRIA NA MOEDA!' : '🪙 DERROTA NA MOEDA!')
-                  .setDescription(res.message)
-                  .addFields(
-                    { name: '💰 Saldo em Carteira', value: `${res.walletBalance.toLocaleString('pt-BR')} moedas`, inline: true }
-                  )
-                  .setFooter({ text: `${aiName} • Cassino & Apostas` })
-                  .setTimestamp();
-                await message.reply({ embeds: [embed] });
-                return true;
-              } catch (err) {
-                await message.reply(`❌ ${err.message}`);
-                return true;
-              }
-            }
-          }
-          const flipRes = socialFunService.coinflip();
-          await message.reply(flipRes.message);
           return true;
         }
 
