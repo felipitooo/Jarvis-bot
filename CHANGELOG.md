@@ -5,6 +5,32 @@ Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [6.4.0] - 2026-11-18
+
+### Corrigido
+- **Sincronização em Tempo Real de Presença & Status no Discord:**
+  - Correção da sincronização em tempo real entre o Painel Web e o cliente Discord ao alterar status e atividade (online, ausente, dnd, invisível e personalizado).
+  - Envio explícito do campo `state` exigido pelo Discord Gateway v10 para exibição correta de status personalizados (`ActivityType.Custom`) em contas de bot.
+  - Sincronização bidirecional atômica entre a tabela SQLite (`bot_presence_configs`) e o arquivo de configuração `data/bot_config.json`.
+  - Reconciliação inteligente no startup (`ready.js`): impede que configurações antigas ou estáticas de `bot_config.json` revertam os status salvos no painel.
+  - Vinculação garantida do cliente Discord no `WebPanelService` (`setBotClient`).
+  - Suporte ao endpoint `GET /api/guilds/:guildId/modules/bot_presence` e método `savePresence` no repositório.
+
+## [6.3.0] - 2026-11-18
+
+### Adicionado
+- **Boletim de Fofocas IA (`+fofoca` / `/fofoca`):** Geração humorística e contextual de acontecimentos recentes do chat sem menções invasivas.
+- **Galeria de Emblemas & Conquistas (`+emblemas` / `/emblemas`):** Conquistas desbloqueáveis para membros (Pioneiro, Veterano, Magnata, Apostador, etc.).
+- **Bolão de Apostas do Servidor (`+bolao` / `/bolao`):** Criação de previsões e apostas coletivas com distribuição automática de prêmios.
+- **Modos de Humor da IA (`+modo` / `/modo`):** Alternância instantânea de personalidade da IA entre Normal, Sarcástico, Debochado e Sério.
+- **Backup em 1 Clique no Painel Web:** Criação, download e download direto de snapshots SQLite seguros pelo navegador.
+
+## [6.2.0] - 2026-11-17
+
+### Corrigido
+- Separação da aba de configurações gerais e identidade visual da IA no painel web.
+- Aliases bilíngues em português para comandos moderativos e utilitários.
+
 ## [6.0.0] - 2026-11-17
 
 ### Adicionado
