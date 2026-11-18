@@ -22,17 +22,20 @@ const moderationTools = [
       const { guild, member: modMember, moderationService } = context;
       if (!guild || !moderationService) throw new ValidationError('Requer contexto de servidor.');
 
+      const cleanMemberId = String(membro_id || '').replace(/\D/g, '');
+      if (!cleanMemberId) throw new ValidationError('ID ou menção de membro inválido.');
+
       const cleanTipo = tipo.toUpperCase().trim();
       const botMember = guild.members.me;
 
       if (cleanTipo === 'WARN') {
-        const targetMember = await guild.members.fetch(membro_id).catch(() => null);
+        const targetMember = await guild.members.fetch(cleanMemberId).catch(() => null);
         if (!targetMember) throw new ValidationError('Membro não encontrado.');
         return await moderationService.warn(botMember, modMember, targetMember, { reason: motivo, evidenceUrl: evidencia_url });
       }
 
       if (cleanTipo === 'TIMEOUT') {
-        const targetMember = await guild.members.fetch(membro_id).catch(() => null);
+        const targetMember = await guild.members.fetch(cleanMemberId).catch(() => null);
         if (!targetMember) throw new ValidationError('Membro não encontrado.');
         return await moderationService.timeout(botMember, modMember, targetMember, {
           durationSeconds: Number(duracao_segundos) || 300,
@@ -42,26 +45,26 @@ const moderationTools = [
       }
 
       if (cleanTipo === 'UNTIMEOUT') {
-        const targetMember = await guild.members.fetch(membro_id).catch(() => null);
+        const targetMember = await guild.members.fetch(cleanMemberId).catch(() => null);
         if (!targetMember) throw new ValidationError('Membro não encontrado.');
         return await moderationService.untimeout(botMember, modMember, targetMember, { reason: motivo });
       }
 
       if (cleanTipo === 'KICK') {
-        const targetMember = await guild.members.fetch(membro_id).catch(() => null);
+        const targetMember = await guild.members.fetch(cleanMemberId).catch(() => null);
         if (!targetMember) throw new ValidationError('Membro não encontrado.');
         return await moderationService.kick(botMember, modMember, targetMember, { reason: motivo, evidenceUrl: evidencia_url });
       }
 
       if (cleanTipo === 'BAN') {
-        const targetMember = await guild.members.fetch(membro_id).catch(() => null);
-        const targetUser = targetMember ? targetMember.user : await guild.client.users.fetch(membro_id).catch(() => null);
+        const targetMember = await guild.members.fetch(cleanMemberId).catch(() => null);
+        const targetUser = targetMember ? targetMember.user : await guild.client.users.fetch(cleanMemberId).catch(() => null);
         if (!targetUser) throw new ValidationError('Usuário não encontrado.');
         return await moderationService.ban(botMember, modMember, targetUser, targetMember, { reason: motivo, evidenceUrl: evidencia_url });
       }
 
       if (cleanTipo === 'UNBAN') {
-        return await moderationService.unban(guild, modMember, membro_id, { reason: motivo });
+        return await moderationService.unban(guild, modMember, cleanMemberId, { reason: motivo });
       }
 
       throw new ValidationError(`Tipo de punição não suportado: "${tipo}".`);
@@ -83,7 +86,9 @@ const moderationTools = [
     async execute({ membro_id }, context) {
       const { guild, moderationService } = context;
       if (!guild || !moderationService) throw new ValidationError('Requer servidor.');
-      const history = moderationService.getDisciplinaryHistory(guild.id, membro_id);
+      const cleanMemberId = String(membro_id || '').replace(/\D/g, '');
+      if (!cleanMemberId) throw new ValidationError('ID ou menção de membro inválido.');
+      const history = moderationService.getDisciplinaryHistory(guild.id, cleanMemberId);
       return { status: 'sucesso', total: history.length, historico: history };
     }
   },
@@ -99,12 +104,13 @@ const moderationTools = [
       },
       required: ['membro_id']
     },
-    requiredPermission: PermissionFlagsBits.ManageGuild,
     riskLevel: 'HIGH',
     async execute({ membro_id }, context) {
       const { guild, member: modMember, moderationService } = context;
       if (!guild || !moderationService) throw new ValidationError('Requer servidor.');
-      return moderationService.clearWarns(guild.id, membro_id, modMember);
+      const cleanMemberId = String(membro_id || '').replace(/\D/g, '');
+      if (!cleanMemberId) throw new ValidationError('ID ou menção de membro inválido.');
+      return moderationService.clearWarns(guild.id, cleanMemberId, modMember);
     }
   },
 

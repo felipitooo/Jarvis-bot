@@ -85,7 +85,7 @@ const KNOWN_COMMANDS = new Set([
   'crime', 'criminoso',
   'daily', 'diario',
   'weekly', 'semanal',
-  'bank', 'banco', 'bal', 'saldo', 'carteira',
+  'bank', 'banco', 'bal', 'saldo', 'carteira', 'balance', 'money',
   'dep', 'deposit', 'depositar',
   'sac', 'sacar', 'withdraw',
   'pay', 'pagar', 'transfer', 'pix',
@@ -99,7 +99,7 @@ const KNOWN_COMMANDS = new Set([
   // Casino & Games
   'bj', 'blackjack', '21',
   'slots', 'slot', 'cacaniqueis',
-  'roleta', 'roulette', 'aposta', 'apostar', 'gamble',
+  'roleta', 'roulette', 'aposta', 'apostar', 'gamble', 'bet', 'cassino', 'casino',
   'dado', 'dice', 'roll',
   'coinflip', 'moeda', 'caraoucoroa',
   'duelo', 'x1', 'pvp',
@@ -1023,6 +1023,7 @@ class PrefixCommandHandler {
         case 'bank':
         case 'banco':
         case 'saldo':
+        case 'balance':
         case 'bal':
         case 'money':
         case 'carteira': {
@@ -1237,6 +1238,29 @@ class PrefixCommandHandler {
           return true;
         }
 
+        case 'cassino':
+        case 'casino': {
+          const embed = new EmbedBuilder()
+            .setColor(0xF1C40F)
+            .setTitle(`🎰 Cassino & Jogos de Apostas • ${aiName}`)
+            .setDescription(
+              `Bem-vindo ao Cassino do servidor! Teste sua sorte e multiplique suas moedas:\n\n` +
+              `• \`${activePrefix}apostar <quantia> [moeda]\` (ou \`+bet\`, \`+gamble\`) — Aposta rápida de sorte (50/50)\n` +
+              `• \`${activePrefix}roleta <quantia> [moeda]\` (ou \`+roulette\`) — Roleta clássica\n` +
+              `• \`${activePrefix}blackjack <quantia> [moeda]\` (ou \`+bj\`, \`+21\`) — Jogo de 21 contra a banca\n` +
+              `• \`${activePrefix}cacaniqueis <quantia> [moeda]\` (ou \`+slots\`) — Máquina de caça-níqueis\n` +
+              `• \`${activePrefix}dado <quantia> [moeda]\` (ou \`+dice\`) — Jogo de dados\n` +
+              `• \`${activePrefix}coinflip <cara|coroa> <quantia>\` — Cara ou coroa valendo moedas\n` +
+              `• \`${activePrefix}duelo <@membro> <quantia>\` (ou \`+x1\`) — Duelo PvP ou Roleta Russa\n` +
+              `• \`${activePrefix}bolao\` — Apostas comunitárias em eventos do servidor`
+            )
+            .setFooter({ text: `${aiName} • Jogue com responsabilidade` })
+            .setTimestamp();
+          await message.reply({ embeds: [embed] });
+          return true;
+        }
+
+        case 'bet':
         case 'gamble':
         case 'apostar':
         case 'aposta': {

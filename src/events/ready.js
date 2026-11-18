@@ -79,16 +79,36 @@ module.exports = {
       }
     }
 
-    // Apply customizable bot presence & status restored from database
+    // Apply customizable bot presence & status restored from database or botConfig
     try {
       const { applyBotPresence } = require('../utils/presenceHelper');
-      const presenceCfg = botPresenceRepo ? botPresenceRepo.getPresence() : {
-        botStatus: 'online',
-        activityType: 'Custom',
-        activityName: `${defaultName} | +help`
-      };
+      const { botConfig } = require('../config/botConfig');
+      const activeConfig = botConfig?.getConfig?.();
+      const configPresence = activeConfig?.identity?.presence;
+
+      let presenceCfg = botPresenceRepo ? botPresenceRepo.getPresence() : null;
+
+      // If bot_config.json has a customized presence text, ensure it takes precedence and syncs to DB
+      if (configPresence?.activityText && configPresence.activityText !== 'Protocolos ativos | +help') {
+        presenceCfg = {
+          botStatus: configPresence.status || presenceCfg?.botStatus || 'online',
+          activityType: configPresence.activityType || presenceCfg?.activityType || 'Custom',
+          activityName: configPresence.activityText,
+          activityUrl: configPresence.activityUrl || presenceCfg?.activityUrl || null
+        };
+        if (botPresenceRepo) {
+          try { botPresenceRepo.savePresence(presenceCfg); } catch {}
+        }
+      } else if (!presenceCfg) {
+        presenceCfg = {
+          botStatus: 'online',
+          activityType: 'Custom',
+          activityName: `${defaultName} | +help`
+        };
+      }
+
       applyBotPresence(client, presenceCfg);
-      readyLogger.info(`Restored bot presence from database: status=${presenceCfg.botStatus}, type=${presenceCfg.activityType}, name="${presenceCfg.activityName}"`);
+      readyLogger.info(`Restored bot presence: status=${presenceCfg.botStatus}, type=${presenceCfg.activityType}, name="${presenceCfg.activityName}"`);
     } catch (presenceErr) {
       readyLogger.warn(`Failed to apply bot presence: ${presenceErr.message}`);
       client.user.setActivity({

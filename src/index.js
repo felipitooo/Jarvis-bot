@@ -485,7 +485,12 @@ function createAppContext(customDbPath = null) {
       automationService,
       lockdownService,
       backupSecurityService,
-      userRepo
+      userRepo,
+      badgeService,
+      predictionService,
+      gossipService,
+      dbManager,
+      llmAdapter
     }
   });
 

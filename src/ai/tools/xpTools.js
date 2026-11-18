@@ -15,10 +15,12 @@ const xpTools = [
     },
     riskLevel: 'LOW',
     async execute({ membro_id }, context) {
-      const { guild, experienceService } = context;
+      const { guild, user, experienceService } = context;
       if (!guild || !experienceService) throw new ValidationError('Requer contexto de servidor.');
 
-      const profile = experienceService.getMemberProfile(guild.id, membro_id);
+      const rawTargetId = membro_id || user?.id;
+      const cleanMemberId = String(rawTargetId || '').replace(/\D/g, '') || user?.id;
+      const profile = experienceService.getMemberProfile(guild.id, cleanMemberId);
       return { status: 'sucesso', perfil: profile };
     }
   },
@@ -103,7 +105,8 @@ const xpTools = [
       const { guild, member: modMember, experienceService } = context;
       if (!guild || !experienceService) throw new ValidationError('Requer servidor.');
 
-      const targetMember = await guild.members.fetch(membro_id).catch(() => null);
+      const cleanMemberId = String(membro_id || '').replace(/\D/g, '');
+      const targetMember = await guild.members.fetch(cleanMemberId).catch(() => null);
       if (!targetMember) throw new ValidationError('Membro não encontrado.');
 
       const cleanAcao = acao.toUpperCase().trim();

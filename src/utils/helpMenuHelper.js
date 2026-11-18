@@ -107,8 +107,8 @@ function buildHomeEmbed(aiName = 'Jarvis', prefix = '+', botAvatarUrl = null) {
         inline: false
       },
       {
-        name: '🎰 Cassino & Apostas (5 cmds)',
-        value: '`+bj` `+slots` `+roleta` `+dado` `+coinflip`',
+        name: '🎰 Cassino & Apostas (7 cmds)',
+        value: '`+bj` `+slots` `+roleta` `+dado` `+coinflip` `+bolao` `+cassino`',
         inline: false
       },
       {
@@ -122,13 +122,13 @@ function buildHomeEmbed(aiName = 'Jarvis', prefix = '+', botAvatarUrl = null) {
         inline: false
       },
       {
-        name: '🎖️ Níveis, XP & Recompensas (2 cmds)',
-        value: '`+rank` `+leaderboard` • Recompensas automáticas de cargo por nível configuráveis.',
+        name: '🎖️ Níveis, XP & Recompensas (3 cmds)',
+        value: '`+rank` `+conquistas` `+leaderboard` • Recompensas automáticas de cargo por nível configuráveis.',
         inline: false
       },
       {
-        name: '🎉 Social, Romance & Diversão (10 cmds)',
-        value: '`+quiz` `+beijar` `+abracar` `+genero` `+marry` `+divorce` `+ship` `+8ball` `+interact` `+raffle`',
+        name: '🎉 Social, Romance & Diversão (11 cmds)',
+        value: '`+fofoca` `+quiz` `+beijar` `+abracar` `+genero` `+marry` `+divorce` `+ship` `+8ball` `+interact` `+raffle`',
         inline: false
       },
       {
@@ -137,8 +137,8 @@ function buildHomeEmbed(aiName = 'Jarvis', prefix = '+', botAvatarUrl = null) {
         inline: false
       },
       {
-        name: '⚙️ Administração & Inteligência Artificial (7 cmds)',
-        value: '`/ai-name` `/config` `/backup` `/memory` • IA Gemini com memória de longo prazo.',
+        name: '⚙️ Administração & Inteligência Artificial (9 cmds)',
+        value: '`+modo` `+backup` `+prefixo` `/ai-name` `/config` `/backup` `/memory` • IA Gemini com modos de humor.',
         inline: false
       }
     )
@@ -198,6 +198,8 @@ function buildCategoryEmbed(categoryKey, aiName = 'Jarvis', prefix = '+', botAva
         `*Aposte com sabedoria para não zerar sua carteira.*`
       );
       embed.addFields(
+        { name: `\`${prefix}bolao [criar|apostar|finalizar]\``, value: 'Crie ou aposte no bolão comunitário do servidor com pote compartilhado!', inline: false },
+        { name: `\`${prefix}cassino\``, value: 'Menu central com todos os jogos e regras de apostas do servidor.', inline: false },
         { name: `\`${prefix}bj <quantia>\``, value: 'Blackjack (21) interativo contra a banca com botões Hit, Stand e Dobrar!', inline: false },
         { name: `\`${prefix}slots <quantia>\``, value: 'Caça-níqueis com 3 cilindros girando e multiplicadores de até 10x.', inline: true },
         { name: `\`${prefix}roleta <quantia> <aposta>\``, value: 'Roleta europeia: aposte em vermelho, preto, par, ímpar ou números 0-36 (até 36x).', inline: true },
@@ -259,6 +261,7 @@ function buildCategoryEmbed(categoryKey, aiName = 'Jarvis', prefix = '+', botAva
       );
       embed.addFields(
         { name: `\`${prefix}rank [@user]\``, value: 'Exibe o cartão de nível do membro, contendo XP atual, meta e colocação no ranking.', inline: false },
+        { name: `\`${prefix}conquistas [@user]\``, value: 'Galeria interativa de insígnias e troféus desbloqueados por participação.', inline: false },
         { name: `\`${prefix}leaderboard\``, value: 'Apresenta o placar dos membros mais ativos e com maior nível do servidor.', inline: false },
         { name: '✨ Recompensas Automáticas', value: 'Cargos são atribuídos automaticamente quando um membro atinge determinado level de XP!', inline: false }
       );
@@ -271,6 +274,7 @@ function buildCategoryEmbed(categoryKey, aiName = 'Jarvis', prefix = '+', botAva
         `Interações afetivas em estilo anime, perfil de gênero, relacionamentos formais e minigames descontraídos!`
       );
       embed.addFields(
+        { name: `\`${prefix}fofoca\` (ou \`${prefix}resumo\`)`, value: 'Boletim bem-humorado de fofocas e resumo das conversas recentes da galera!', inline: false },
         { name: `\`${prefix}quiz [categoria] [rodadas]\``, value: 'Desafio neural no chat com placar e prêmios! Modos: games, animes, futebol, geral, marvel ou misto.', inline: false },
         { name: `\`${prefix}beijar @user\``, value: 'Dá um beijo romântico em anime com GIFs customizados por gênero e botão de retribuir sem fim!', inline: false },
         { name: `\`${prefix}abracar @user\``, value: 'Dá um abraço caloroso em anime com contador persistente e botão de retribuir!', inline: false },
@@ -303,11 +307,12 @@ function buildCategoryEmbed(categoryKey, aiName = 'Jarvis', prefix = '+', botAva
         `Controles administrativos avançados e inteligência artificial conectada ao Google Gemini.`
       );
       embed.addFields(
+        { name: `\`${prefix}modo <zoeiro|sarcastico|sabio|amigavel|serio|normal>\``, value: 'Altera o modo de humor e tom de conversa da IA.', inline: false },
+        { name: `\`${prefix}backup\``, value: 'Gera e envia o arquivo .sqlite do banco de dados completo.', inline: true },
+        { name: `\`${prefix}prefixo <novo_prefixo>\``, value: 'Altera o prefixo de comandos no servidor.', inline: true },
         { name: '`/ai-name <nome>`', value: 'Muda o nome com o qual o assistente se identifica no servidor.', inline: true },
         { name: '`/config`', value: 'Abre o menu interativo de seleção de canais de logs e regras.', inline: true },
-        { name: '`/backup`', value: 'Gera uma cópia de segurança dos dados e parâmetros do servidor.', inline: true },
-        { name: '`/memory`', value: 'Consulta e gerencia as memórias e instruções aprendidas pela IA.', inline: true },
-        { name: '`/settings`', value: 'Consulta e ajusta as principais diretrizes e canais do servidor.', inline: false }
+        { name: '`/memory`', value: 'Consulta e gerencia as memórias e instruções aprendidas pela IA.', inline: true }
       );
       break;
     }

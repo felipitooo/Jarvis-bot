@@ -413,6 +413,132 @@ const fridayTools = [
         content: conteudo
       };
     }
+  },
+
+  // 12. obter_fofoca_chat
+  {
+    name: 'obter_fofoca_chat',
+    description: 'Gera um boletim bem-humorado de fofocas e resumo das conversas recentes dos membros no canal de texto atual.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {},
+      required: []
+    },
+    riskLevel: 'LOW',
+    async execute({}, context) {
+      const { channel, gossipService, llmAdapter } = context;
+      if (!channel || typeof channel.messages?.fetch !== 'function') {
+        throw new ValidationError('Esta ferramenta requer execução em um canal de texto de servidor.');
+      }
+      const service = gossipService || (llmAdapter ? new (require('../../services/gossipService').GossipService)({ llmAdapter }) : null);
+      if (!service) throw new ValidationError('Serviço de inteligência artificial indisponível para gerar o boletim.');
+
+      const fetched = await channel.messages.fetch({ limit: 40 }).catch(() => null);
+      const messagesArray = fetched ? Array.from(fetched.values()) : [];
+      const bulletin = await service.generateGossipBulletin(messagesArray, channel.name || 'chat');
+
+      return {
+        status: 'sucesso',
+        boletim: bulletin,
+        mensagem: bulletin
+      };
+    }
+  },
+
+  // 13. consultar_conquistas_membro
+  {
+    name: 'consultar_conquistas_membro',
+    description: 'Consulta as insígnias, troféus e conquistas desbloqueadas por um membro no servidor.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        membro_id: { type: 'STRING', description: 'ID ou menção do membro a consultar (se omitido, consulta o próprio usuário).' }
+      },
+      required: []
+    },
+    riskLevel: 'LOW',
+    async execute({ membro_id }, context) {
+      const { guild, user, badgeService, experienceService, economyService, socialFunService, reviewRepo, loanService, dbManager } = context;
+      if (!guild) throw new ValidationError('Requer contexto de servidor.');
+
+      const service = badgeService || new (require('../../services/badgeService').BadgeService)(dbManager);
+      const rawTargetId = membro_id || user.id;
+      const targetId = String(rawTargetId).replace(/\D/g, '') || user.id;
+
+      let xpProfile = null;
+      try { xpProfile = experienceService?.getMemberProfile?.(guild.id, targetId); } catch {}
+      let balance = null;
+      try { balance = economyService?.getBalance?.(guild.id, targetId); } catch {}
+      let relObj = null;
+      try { relObj = socialFunService?.getRelationship?.(guild.id, targetId); } catch {}
+      let reviewStats = null;
+      try { reviewStats = reviewRepo?.getReviewStats?.(guild.id, targetId); } catch {}
+      let loanStatus = null;
+      try { loanStatus = loanService?.getLoanStatus?.(guild.id, targetId); } catch {}
+      const targetMember = await guild.members.fetch(targetId).catch(() => null);
+      const targetUser = targetMember ? targetMember.user : { id: targetId, username: 'Membro' };
+
+      const unlocked = service.calculateBadges({
+        guild,
+        targetUser,
+        member: targetMember,
+        xpProfile,
+        balance,
+        rel: relObj,
+        reviewStats,
+        loanStatus
+      });
+
+      const unlockedList = unlocked.map(b => `${b.icon} **${b.name}** — ${b.desc}`).join('\n');
+      return {
+        status: 'sucesso',
+        membro_id: targetId,
+        total_desbloqueadas: unlocked.length,
+        conquistas: unlocked,
+        mensagem: unlocked.length > 0
+          ? `🏆 **Conquistas Desbloqueadas (${unlocked.length}):**\n${unlockedList}`
+          : 'Nenhuma conquista desbloqueada ainda. Participe do chat, suba de nível e acumule moedas para desbloquear insígnias!'
+      };
+    }
+  },
+
+  // 14. alterar_modo_humor_ia
+  {
+    name: 'alterar_modo_humor_ia',
+    description: 'Altera o modo de humor e tom de conversa da IA Jarvis. Modos válidos: "zoeiro", "sarcastico", "sabio", "amigavel", "serio", "normal".',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        modo: { type: 'STRING', description: 'Modo de humor: "zoeiro", "sarcastico", "sabio", "amigavel", "serio" ou "normal".' }
+      },
+      required: ['modo']
+    },
+    riskLevel: 'LOW',
+    async execute({ modo }) {
+      const validModes = ['zoeiro', 'sarcastico', 'sabio', 'amigavel', 'serio', 'normal'];
+      const cleanMode = String(modo || '').toLowerCase().trim();
+      if (!validModes.includes(cleanMode)) {
+        throw new ValidationError(`Modo inválido: "${cleanMode}". Modos aceitos: ${validModes.join(', ')}.`);
+      }
+
+      const { botConfig } = require('../../config/botConfig');
+      botConfig.updateConfig({ ai: { humorMode: cleanMode } });
+
+      const speechMap = {
+        zoeiro: '🤣 Modo Zoeiro ativado! Prepare-se para zoeira saudável e piadas.',
+        sarcastico: '😏 Modo Sarcástico ativado. A sua inteligência me deslumbra, senhor.',
+        sabio: '🧙‍♂️ Modo Sábio ativado. Que a sabedoria guie cada uma de nossas palavras.',
+        amigavel: '💖 Modo Amigável ativado! Que alegria estar aqui com vocês!',
+        serio: '🤖 Modo Sério ativado. Foco em precisão técnica e eficiência sem desvios.',
+        normal: '⚖️ Modo Normal (J.A.R.V.I.S. Clássico) restabelecido com perfeição.'
+      };
+
+      return {
+        status: 'sucesso',
+        novo_modo: cleanMode,
+        mensagem: speechMap[cleanMode] || `Modo de humor alterado para: ${cleanMode}.`
+      };
+    }
   }
 ];
 

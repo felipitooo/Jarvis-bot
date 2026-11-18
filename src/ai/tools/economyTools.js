@@ -1,6 +1,14 @@
 const { PermissionFlagsBits } = require('discord.js');
 const { ValidationError, PermissionDeniedError } = require('../../utils/errorHandler');
 
+function extractTargetId(rawId, fallback = '') {
+  if (!rawId) return fallback;
+  const str = String(rawId).trim();
+  const mentionMatch = str.match(/^<@!?(\d+)>$/);
+  if (mentionMatch) return mentionMatch[1];
+  return str.replace(/[<@!>]/g, '').trim() || fallback;
+}
+
 const economyTools = [
   // 1. consultar_saldo_membro
   {
@@ -18,7 +26,7 @@ const economyTools = [
       const { guild, user, economyService } = context;
       if (!guild || !economyService) throw new ValidationError('Requer contexto de servidor e serviço de economia.');
 
-      const targetId = membro_id || user.id;
+      const targetId = extractTargetId(membro_id, user.id);
       const balance = economyService.getBalance(guild.id, targetId);
 
       return {
@@ -55,12 +63,14 @@ const economyTools = [
       const { guild, user, economyService } = context;
       if (!guild || !economyService) throw new ValidationError('Requer contexto de servidor e serviço de economia.');
 
-      const result = economyService.transfer(guild.id, user.id, destinatario_id, quantia);
+      const cleanDestId = extractTargetId(destinatario_id);
+      if (!cleanDestId) throw new ValidationError('Destinatário inválido.');
+      const result = economyService.transfer(guild.id, user.id, cleanDestId, quantia);
 
       return {
         status: 'sucesso',
         remetente_id: user.id,
-        destinatario_id,
+        destinatario_id: cleanDestId,
         quantia: result.amount,
         formatado: result.formattedAmount
       };
@@ -92,9 +102,12 @@ const economyTools = [
         throw new PermissionDeniedError('Permissão Gerenciar Servidor necessária para alterar economia de membros.');
       }
 
+      const cleanTargetId = extractTargetId(membro_id);
+      if (!cleanTargetId) throw new ValidationError('Membro inválido.');
+
       const result = economyService.adminAdjust(
         guild.id,
-        membro_id,
+        cleanTargetId,
         campo,
         acao,
         quantia,
@@ -104,7 +117,7 @@ const economyTools = [
 
       return {
         status: 'sucesso',
-        membro_id,
+        membro_id: cleanTargetId,
         campo: result.field,
         acao: result.action,
         quantia: result.amount,

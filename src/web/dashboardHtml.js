@@ -7406,11 +7406,14 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
 
         // Custom Commands & Prefix
         if (mods.serverPrefix) {
-          if (document.getElementById('serverPrefixInput')) document.getElementById('serverPrefixInput').value = mods.serverPrefix;
-          if (document.getElementById('cfgBotPrefix')) document.getElementById('cfgBotPrefix').value = mods.serverPrefix;
+          const sPref = document.getElementById('serverPrefixInput');
+          if (sPref) sPref.value = mods.serverPrefix;
+          const cPref = document.getElementById('cfgBotPrefix');
+          if (cPref) cPref.value = mods.serverPrefix;
         }
-        if (document.getElementById('prefixlessModeCheckbox')) {
-          document.getElementById('prefixlessModeCheckbox').checked = !!mods.prefixlessMode;
+        const pCheck = document.getElementById('prefixlessModeCheckbox');
+        if (pCheck) {
+          pCheck.checked = !!mods.prefixlessMode;
         }
         renderCustomCommands(mods.customCommands || []);
 
@@ -10524,7 +10527,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
 
     document.getElementById('saveAiNameBtn')?.addEventListener('click', async () => {
       if (!currentGuildId) currentGuildId = document.getElementById('guildSelector')?.value || '${initialServerId || ''}';
-      const newName = document.getElementById('aiNameInput').value?.trim();
+      const newName = document.getElementById('aiNameInput')?.value?.trim();
       if (!newName) return showToast('Digite um nome para a IA!', 'warning');
       try {
         const activeCsrf = window.csrfToken || currentCsrfToken || csrfToken;
