@@ -577,35 +577,6 @@ class WebServer {
         const { botConfig } = require('../config/botConfig');
         const updated = botConfig.updateConfig(body);
 
-        // Update live Discord presence if client is ready
-        if (this.botClient?.user && updated.identity?.presence) {
-          try {
-            const { applyBotPresence } = require('../utils/presenceHelper');
-            applyBotPresence(this.botClient, {
-              botStatus: updated.identity.presence.status || 'online',
-              activityType: updated.identity.presence.activityType || 'Custom',
-              activityName: updated.identity.presence.activityText || `${updated.identity.name} | +help`,
-              activityUrl: updated.identity.presence.activityUrl || null
-            });
-          } catch (e) {
-            serverLogger.warn(`Erro ao atualizar presença do bot via config: ${e.message}`);
-          }
-        }
-
-        // Keep SQLite bot_presence_configs synchronized with botConfig
-        if (this.webPanelService?.services?.botPresenceRepo && updated.identity?.presence) {
-          try {
-            this.webPanelService.services.botPresenceRepo.updatePresence({
-              botStatus: updated.identity.presence.status,
-              activityType: updated.identity.presence.activityType,
-              activityName: updated.identity.presence.activityText,
-              activityUrl: updated.identity.presence.activityUrl
-            });
-          } catch (dbErr) {
-            serverLogger.warn(`Erro ao sincronizar presença com banco SQLite: ${dbErr.message}`);
-          }
-        }
-
         // Update default AI display name in IdentityService if available
         if (this.webPanelService?.identityService && updated.identity?.name) {
           this.webPanelService.identityService.defaultName = updated.identity.name;

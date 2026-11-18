@@ -5,6 +5,14 @@ Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [6.5.0] - 2026-11-18
+
+### Corrigido
+- **Remoção Definitiva da Função Residual de Presença nas Configurações Gerais:**
+  - Removido o manipulador residual de atualização de presença no endpoint `POST /api/bot/config`, garantindo que salvar o nome, prefixo ou cores nas Configurações Gerais nunca mais afete ou reverta o status do bot no Discord.
+  - Exclusão do objeto `presence` do modelo padrão de `bot_config.json` e `DEFAULT_CONFIG`, centralizando 100% o controle de status e presença exclusivamente na aba "Identidade & Presença" (`bot_presence_configs` no SQLite).
+  - Reconciliação no boot (`ready.js`) simplificada para consultar estritamente o banco SQLite como fonte única de verdade, impedindo contaminação por status antigos.
+
 ## [6.4.0] - 2026-11-18
 
 ### Corrigido

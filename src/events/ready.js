@@ -79,41 +79,12 @@ module.exports = {
       }
     }
 
-    // Apply customizable bot presence & status restored from database or botConfig
+    // Apply customizable bot presence & status restored from database
     try {
       const { applyBotPresence } = require('../utils/presenceHelper');
-      const { botConfig } = require('../config/botConfig');
-      const activeConfig = botConfig?.getConfig?.();
-      const configPresence = activeConfig?.identity?.presence;
-
       let presenceCfg = botPresenceRepo ? botPresenceRepo.getPresence() : null;
 
-      // Bidirectional presence synchronization between SQLite and bot_config.json:
-      // If DB has a custom presence, sync it to botConfig so bot_config.json stays fresh across reboots
-      if (presenceCfg && presenceCfg.activityName && presenceCfg.activityName !== 'J.A.R.V.I.S | +ajuda') {
-        try {
-          botConfig.updateConfig({
-            identity: {
-              presence: {
-                status: presenceCfg.botStatus || 'online',
-                activityType: presenceCfg.activityType || 'Custom',
-                activityText: presenceCfg.activityName,
-                activityUrl: presenceCfg.activityUrl || null
-              }
-            }
-          });
-        } catch {}
-      } else if (configPresence?.activityText && configPresence.activityText !== 'Protocolos ativos | +help') {
-        presenceCfg = {
-          botStatus: configPresence.status || presenceCfg?.botStatus || 'online',
-          activityType: configPresence.activityType || presenceCfg?.activityType || 'Custom',
-          activityName: configPresence.activityText,
-          activityUrl: configPresence.activityUrl || presenceCfg?.activityUrl || null
-        };
-        if (botPresenceRepo) {
-          try { botPresenceRepo.updatePresence(presenceCfg); } catch {}
-        }
-      } else if (!presenceCfg) {
+      if (!presenceCfg || !presenceCfg.activityName) {
         presenceCfg = {
           botStatus: 'online',
           activityType: 'Custom',

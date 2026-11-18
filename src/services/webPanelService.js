@@ -845,23 +845,6 @@ class WebPanelService {
         if (!botPresenceRepo) throw new Error('Serviço de presença do bot indisponível.');
         const updatedPresence = botPresenceRepo.updatePresence(updates);
 
-        // Synchronize to bot_config.json so it survives restarts and never gets reverted
-        try {
-          const { botConfig } = require('../config/botConfig');
-          botConfig.updateConfig({
-            identity: {
-              presence: {
-                status: updatedPresence.botStatus,
-                activityType: updatedPresence.activityType,
-                activityText: updatedPresence.activityName,
-                activityUrl: updatedPresence.activityUrl
-              }
-            }
-          });
-        } catch (cfgErr) {
-          logger.warn(`Failed to sync presence to botConfig: ${cfgErr.message}`);
-        }
-
         const client = this.botClient || this.services?.botClient || this.services?.webServer?.botClient;
         const { applyBotPresence } = require('../utils/presenceHelper');
         applyBotPresence(client, updatedPresence);

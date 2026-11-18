@@ -11,12 +11,7 @@ const DEFAULT_CONFIG = {
     name: process.env.BOT_NAME || 'J.A.R.V.I.S.',
     systemId: 'jarvis-core',
     defaultPrefix: process.env.DEFAULT_PREFIX || '+',
-    triggerNames: ['Jarvis', 'J.A.R.V.I.S', 'Cell'],
-    presence: {
-      status: 'online',
-      activityType: 'Custom',
-      activityText: 'Protocolos ativos | +help'
-    }
+    triggerNames: ['Jarvis', 'J.A.R.V.I.S', 'Cell']
   },
   ai: {
     provider: 'gemini',
