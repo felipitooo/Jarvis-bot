@@ -78,7 +78,27 @@ if ($stagedFiles) {
     Write-Host "[INFO] Sem novas alteracoes para commitar. Verificando envio ao GitHub..." -ForegroundColor Yellow
 }
 
-# 5. Push para o GitHub
+# 5. Tag Automática de Versão (baseada no package.json)
+if (Test-Path "package.json") {
+    try {
+        $pkg = Get-Content "package.json" -Raw | ConvertFrom-Json
+        $rawVer = $pkg.version
+        if ($rawVer) {
+            # Se a versao for 6.5.0, vira v6.5 (ou v6.5.0)
+            $parts = $rawVer.Split(".")
+            $tagVer = if ($parts.Length -ge 2) { "v" + $parts[0] + "." + $parts[1] } else { "v" + $rawVer }
+            $existingTag = git tag -l $tagVer
+            if (-not $existingTag) {
+                Write-Host "[*] Criando tag de versao automatica: $tagVer" -ForegroundColor Cyan
+                git tag -a $tagVer -m "Release $tagVer"
+            }
+        }
+    } catch {
+        Write-Host "[!] Nao foi possivel ler a versao do package.json para criar tag." -ForegroundColor Yellow
+    }
+}
+
+# 6. Push para o GitHub (Branch + Tags)
 $hasRemote = git remote
 if (-not $hasRemote) {
     Write-Host "`n[AVISO] Nenhum repositorio remoto (GitHub) configurado ainda!" -ForegroundColor Yellow
@@ -89,8 +109,9 @@ if (-not $hasRemote) {
     Exit 0
 }
 
-Write-Host "`n[*] Enviando alteracoes para o repositorio privado no GitHub..." -ForegroundColor Cyan
+Write-Host "`n[*] Enviando alteracoes e tags para o repositorio privado no GitHub..." -ForegroundColor Cyan
 git push -u origin main
+git push origin --tags
 
 if ($LASTEXITCODE -eq 0) {
     Write-Host "`n[SUCESSO] Projeto sincronizado com seguranca no seu GitHub Privado!" -ForegroundColor Green
