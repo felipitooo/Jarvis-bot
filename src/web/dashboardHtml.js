@@ -116,6 +116,26 @@ function renderDashboardHtml({
       object-fit: contain !important;
       background: transparent !important;
     }
+    .emoji-input-trigger {
+      background: rgba(0, 229, 255, 0.12) !important;
+      border: 1px solid rgba(0, 229, 255, 0.35) !important;
+      color: #00e5ff !important;
+      border-radius: 6px !important;
+      padding: 0 0.65rem !important;
+      font-size: 1.05rem !important;
+      cursor: pointer !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      transition: all 0.15s ease !important;
+      user-select: none !important;
+      min-height: 38px !important;
+    }
+    .emoji-input-trigger:hover {
+      background: rgba(0, 229, 255, 0.25) !important;
+      border-color: #00e5ff !important;
+      transform: scale(1.05) !important;
+    }
     :root {
       color-scheme: dark;
       --bg-page: ${activeConfig.theme?.panel?.bgPage || '#0B0F19'};
@@ -2895,7 +2915,10 @@ function renderDashboardHtml({
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem;">
             <div class="form-group">
               <label>Nome de Exibição da IA no Servidor</label>
-              <input type="text" id="aiNameInput" value="${aiDisplayName}" placeholder="Ex: J.A.R.V.I.S, FRIDAY, Sexta-Feira">
+              <div style="display: flex; gap: 0.4rem;">
+                <input type="text" id="aiNameInput" value="${aiDisplayName}" placeholder="Ex: J.A.R.V.I.S, FRIDAY, Sexta-Feira" style="flex: 1;">
+                <button type="button" class="emoji-input-trigger" onclick="openEmojiPicker('aiNameInput')" title="Inserir Emoji">😀</button>
+              </div>
             </div>
             <div class="form-group">
               <label>Prefixo de Comandos no Servidor</label>
@@ -2943,7 +2966,10 @@ function renderDashboardHtml({
             </div>
             <div class="form-group">
               <label>Texto da Atividade / Mensagem</label>
-              <input type="text" id="botActivityNameInput" value="J.A.R.V.I.S | +ajuda" placeholder="Ex: J.A.R.V.I.S | +ajuda">
+              <div style="display: flex; gap: 0.4rem;">
+                <input type="text" id="botActivityNameInput" value="J.A.R.V.I.S | +ajuda" placeholder="Ex: J.A.R.V.I.S | +ajuda" style="flex: 1;">
+                <button type="button" class="emoji-input-trigger" onclick="openEmojiPicker('botActivityNameInput')" title="Inserir Emoji">😀</button>
+              </div>
             </div>
           </div>
           <div class="form-group" id="botActivityUrlGroup" style="display: none;">
@@ -3658,7 +3684,10 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           </div>
 
           <div class="form-group">
-            <label>Mensagem de Entrada</label>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+              <label style="margin: 0;">Mensagem de Entrada</label>
+              <button type="button" class="emoji-input-trigger" onclick="openEmojiPicker('welcomeMsgInput')" title="Inserir Emoji" style="min-height: 28px; height: 28px; font-size: 0.85rem; padding: 0 0.5rem;">😀 Emojis</button>
+            </div>
             <textarea id="welcomeMsgInput" rows="3">Bem-vindo(a) {user} ao servidor {server}! Agora somos {members} membros! 🎉</textarea>
             <small style="color: var(--text-muted); font-size: 0.78rem; display: block; margin-top: 0.3rem;">
               Tags dinâmicas: <code>{user}</code>, <code>{username}</code>, <code>{server}</code>, <code>{members}</code>.
@@ -3707,7 +3736,10 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           </div>
 
           <div class="form-group">
-            <label>Mensagem de Saída</label>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+              <label style="margin: 0;">Mensagem de Saída</label>
+              <button type="button" class="emoji-input-trigger" onclick="openEmojiPicker('goodbyeMsgInput')" title="Inserir Emoji" style="min-height: 28px; height: 28px; font-size: 0.85rem; padding: 0 0.5rem;">😀 Emojis</button>
+            </div>
             <textarea id="goodbyeMsgInput" rows="3">O membro {username} deixou o servidor {server}. Agora somos {members} membros restantes. Até logo! 👋</textarea>
             <small style="color: var(--text-muted); font-size: 0.78rem; display: block; margin-top: 0.3rem;">
               Tags dinâmicas: <code>{username}</code>, <code>{server}</code>, <code>{members}</code>.
@@ -5810,6 +5842,14 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
               <small style="color: var(--text-muted); font-size: 0.75rem;">Canal onde o bot publicará os embeds de destaque.</small>
             </div>
             <div class="form-group">
+              <label>Emoji de Destaque Monitorado</label>
+              <div style="display: flex; gap: 0.4rem;">
+                <input type="text" id="starboardEmojiInput" value="⭐" placeholder="⭐" style="flex: 1;">
+                <button type="button" class="emoji-input-trigger" onclick="openEmojiPicker('starboardEmojiInput')" title="Escolher Emoji">😀</button>
+              </div>
+              <small style="color: var(--text-muted); font-size: 0.75rem;">Emoji padrão ou do servidor que ativará o mural (ex: ⭐, 🌟, 🔥, 🏆).</small>
+            </div>
+            <div class="form-group">
               <label>Estrelas Mínimas para Destaque</label>
               <input type="number" id="starboardMinInput" value="3" min="1" max="25">
               <small style="color: var(--text-muted); font-size: 0.75rem;">Quantidade mínima de reações ⭐ que uma mensagem precisa atingir.</small>
@@ -6784,7 +6824,10 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
               </div>
               <div class="form-group">
                 <label>Frase de Atividade</label>
-                <input type="text" id="mbCfgPresenceText" placeholder="Ex: Protegendo o Servidor | +ajuda">
+                <div style="display: flex; gap: 0.4rem;">
+                  <input type="text" id="mbCfgPresenceText" placeholder="Ex: Protegendo o Servidor | +ajuda" style="flex: 1;">
+                  <button type="button" class="emoji-input-trigger" onclick="openEmojiPicker('mbCfgPresenceText')" title="Inserir Emoji">😀</button>
+                </div>
               </div>
               <div class="form-group">
                 <label>URL de Transmissão (Opcional)</label>
@@ -6818,7 +6861,10 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem;">
               <div class="form-group">
                 <label>Nome de Exibição da IA desta Instância</label>
-                <input type="text" id="mbCfgAiName" placeholder="Ex: FRIDAY">
+                <div style="display: flex; gap: 0.4rem;">
+                  <input type="text" id="mbCfgAiName" placeholder="Ex: FRIDAY" style="flex: 1;">
+                  <button type="button" class="emoji-input-trigger" onclick="openEmojiPicker('mbCfgAiName')" title="Inserir Emoji">😀</button>
+                </div>
               </div>
               <div class="form-group">
                 <label>Modelo Gemini</label>
@@ -6959,7 +7005,10 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
               </div>
               <div class="form-group">
                 <label>Símbolo da Moeda</label>
-                <input type="text" id="mbCfgEcoSymbol" placeholder="🪙">
+                <div style="display: flex; gap: 0.4rem;">
+                  <input type="text" id="mbCfgEcoSymbol" placeholder="🪙" style="flex: 1;">
+                  <button type="button" class="emoji-input-trigger" onclick="openEmojiPicker('mbCfgEcoSymbol')" title="Escolher Emoji">😀</button>
+                </div>
               </div>
               <div class="form-group">
                 <label>Recompensa Diária (+daily)</label>
@@ -7029,7 +7078,10 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem;">
               <div class="form-group">
                 <label>Título do Painel de Tickets</label>
-                <input type="text" id="mbCfgTicketTitle" placeholder="🎫 Central de Atendimento">
+                <div style="display: flex; gap: 0.4rem;">
+                  <input type="text" id="mbCfgTicketTitle" placeholder="🎫 Central de Atendimento" style="flex: 1;">
+                  <button type="button" class="emoji-input-trigger" onclick="openEmojiPicker('mbCfgTicketTitle')" title="Inserir Emoji">😀</button>
+                </div>
               </div>
               <div class="form-group">
                 <label>Limite de Tickets Abertos por Usuário</label>
@@ -7045,7 +7097,10 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
               </div>
             </div>
             <div class="form-group">
-              <label>Descrição do Painel de Tickets</label>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+                <label style="margin: 0;">Descrição do Painel de Tickets</label>
+                <button type="button" class="emoji-input-trigger" onclick="openEmojiPicker('mbCfgTicketDesc')" title="Inserir Emoji" style="min-height: 28px; height: 28px; font-size: 0.85rem; padding: 0 0.5rem;">😀 Emojis</button>
+              </div>
               <textarea id="mbCfgTicketDesc" rows="3"></textarea>
             </div>
           </div>
@@ -7309,7 +7364,10 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
             </div>
 
             <div class="form-group">
-              <label>Mensagem de Texto Normal (Suporta {server}, {members}, @everyone, @here)</label>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+                <label style="margin: 0;">Mensagem de Texto Normal (Suporta {server}, {members}, @everyone, @here)</label>
+                <button type="button" class="emoji-input-trigger" onclick="openEmojiPicker('mbSpeakContentInput')" title="Inserir Emoji" style="min-height: 28px; height: 28px; font-size: 0.85rem; padding: 0 0.5rem;">😀 Emojis</button>
+              </div>
               <textarea id="mbSpeakContentInput" rows="3" placeholder="Digite a mensagem que este bot enviará no canal..."></textarea>
             </div>
 
@@ -7322,7 +7380,10 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
               <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.85rem;">
                 <div class="form-group">
                   <label>Título da Embed</label>
-                  <input type="text" id="mbSpeakEmbedTitle" placeholder="Ex: Comunicado Oficial">
+                  <div style="display: flex; gap: 0.4rem;">
+                    <input type="text" id="mbSpeakEmbedTitle" placeholder="Ex: Comunicado Oficial" style="flex: 1;">
+                    <button type="button" class="emoji-input-trigger" onclick="openEmojiPicker('mbSpeakEmbedTitle')" title="Inserir Emoji">😀</button>
+                  </div>
                 </div>
                 <div class="form-group">
                   <label>URL do Título (Opcional)</label>
@@ -7339,13 +7400,19 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
               </div>
 
               <div class="form-group">
-                <label>Descrição / Corpo da Embed (Suporta Markdown)</label>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+                  <label style="margin: 0;">Descrição / Corpo da Embed (Suporta Markdown)</label>
+                  <button type="button" class="emoji-input-trigger" onclick="openEmojiPicker('mbSpeakEmbedDesc')" title="Inserir Emoji" style="min-height: 28px; height: 28px; font-size: 0.85rem; padding: 0 0.5rem;">😀 Emojis</button>
+                </div>
                 <textarea id="mbSpeakEmbedDesc" rows="3" placeholder="Escreva o conteúdo formatado da embed..."></textarea>
               </div>
 
               <div class="form-group" style="margin-bottom: 0;">
                 <label>Rodapé da Embed (Opcional)</label>
-                <input type="text" id="mbSpeakEmbedFooter" placeholder="Ex: Transmitido pela Instância">
+                <div style="display: flex; gap: 0.4rem;">
+                  <input type="text" id="mbSpeakEmbedFooter" placeholder="Ex: Transmitido pela Instância" style="flex: 1;">
+                  <button type="button" class="emoji-input-trigger" onclick="openEmojiPicker('mbSpeakEmbedFooter')" title="Inserir Emoji">😀</button>
+                </div>
               </div>
             </div>
 
@@ -7401,11 +7468,17 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
             </div>
             <div class="form-group">
               <label>Mensagem de Boas-Vindas (Tags: {user}, {username}, {server})</label>
-              <input type="text" id="mbCfgWelcomeMsg" placeholder="Bem-vindo(a) {user} ao **{server}**! 🎉">
+              <div style="display: flex; gap: 0.4rem;">
+                <input type="text" id="mbCfgWelcomeMsg" placeholder="Bem-vindo(a) {user} ao **{server}**! 🎉" style="flex: 1;">
+                <button type="button" class="emoji-input-trigger" onclick="openEmojiPicker('mbCfgWelcomeMsg')" title="Inserir Emoji">😀</button>
+              </div>
             </div>
             <div class="form-group">
               <label>Mensagem de Despedida</label>
-              <input type="text" id="mbCfgGoodbyeMsg" placeholder="**{username}** saiu do servidor.">
+              <div style="display: flex; gap: 0.4rem;">
+                <input type="text" id="mbCfgGoodbyeMsg" placeholder="**{username}** saiu do servidor." style="flex: 1;">
+                <button type="button" class="emoji-input-trigger" onclick="openEmojiPicker('mbCfgGoodbyeMsg')" title="Inserir Emoji">😀</button>
+              </div>
             </div>
           </div>
         </div>
@@ -7421,7 +7494,10 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
               </div>
               <div class="form-group">
                 <label>Emoji Monitorado</label>
-                <input type="text" id="mbCfgStarEmoji" value="⭐">
+                <div style="display: flex; gap: 0.4rem;">
+                  <input type="text" id="mbCfgStarEmoji" value="⭐" style="flex: 1;">
+                  <button type="button" class="emoji-input-trigger" onclick="openEmojiPicker('mbCfgStarEmoji')" title="Escolher Emoji">😀</button>
+                </div>
               </div>
               <div class="form-group">
                 <label>Mínimo de Estrelas para Destaque</label>
@@ -7962,12 +8038,13 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
 
       <!-- TABS & SEARCH -->
       <div style="padding: 0.75rem 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; gap: 0.6rem; background: rgba(255,255,255,0.015);">
-        <div style="display: flex; gap: 0.5rem;">
-          <button type="button" id="emojiTabCurrentBtn" class="primary-btn" onclick="switchEmojiTab('current')" style="flex: 1; padding: 0.45rem; font-size: 0.85rem; border-radius: 6px; font-weight: 600;">Meu Servidor (<span id="emojiCurrentCount">0</span>)</button>
-          <button type="button" id="emojiTabOtherBtn" class="secondary-btn" onclick="switchEmojiTab('other')" style="flex: 1; padding: 0.45rem; font-size: 0.85rem; border-radius: 6px; font-weight: 600;">Outros Servidores (<span id="emojiOtherCount">0</span>)</button>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <button type="button" id="emojiTabStandardBtn" class="primary-btn" onclick="switchEmojiTab('standard')" style="flex: 1; min-width: 130px; padding: 0.45rem; font-size: 0.82rem; border-radius: 6px; font-weight: 600;">✨ Padrão & Globais (<span id="emojiStandardCount">72</span>)</button>
+          <button type="button" id="emojiTabCurrentBtn" class="secondary-btn" onclick="switchEmojiTab('current')" style="flex: 1; min-width: 120px; padding: 0.45rem; font-size: 0.82rem; border-radius: 6px; font-weight: 600;">Meu Servidor (<span id="emojiCurrentCount">0</span>)</button>
+          <button type="button" id="emojiTabOtherBtn" class="secondary-btn" onclick="switchEmojiTab('other')" style="flex: 1; min-width: 120px; padding: 0.45rem; font-size: 0.82rem; border-radius: 6px; font-weight: 600;">Outros Servidores (<span id="emojiOtherCount">0</span>)</button>
         </div>
         <div style="position: relative;">
-          <input type="text" id="emojiSearchInput" placeholder="Pesquisar emoji por nome (ex: ellie, pepe)..." oninput="filterEmojiGrid()" style="width: 100%; padding: 0.55rem 0.85rem; background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; color: #fff; font-size: 0.85rem; outline: none;">
+          <input type="text" id="emojiSearchInput" placeholder="Pesquisar emoji (ex: fogo, diamante, robo, ellie)..." oninput="filterEmojiGrid()" style="width: 100%; padding: 0.55rem 0.85rem; background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; color: #fff; font-size: 0.85rem; outline: none;">
         </div>
       </div>
 
@@ -9073,6 +9150,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         if (mods.reviews?.requireModeration !== undefined) document.getElementById('modReviewsStatus').value = String(Boolean(mods.reviews.requireModeration));
         if (mods.starboard?.starboardChannelId) document.getElementById('starboardChannelSelect').value = mods.starboard.starboardChannelId;
         if (mods.starboard?.starsRequired) document.getElementById('starboardMinInput').value = mods.starboard.starsRequired;
+        if (mods.starboard?.emoji && document.getElementById('starboardEmojiInput')) document.getElementById('starboardEmojiInput').value = mods.starboard.emoji;
         if (mods.briefing?.briefingChannelId) document.getElementById('briefingChannelSelect').value = mods.briefing.briefingChannelId;
 
         // AI Channel & Server Settings
@@ -9659,16 +9737,112 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       return out;
     }
 
+    window.emojiCurrentTab = 'standard';
+    window.standardEmojis = [
+      // Expressões & Reações
+      { name: 'sorriso', tag: '😀', category: 'Expressões' },
+      { name: 'sorriso_olhos', tag: '😃', category: 'Expressões' },
+      { name: 'feliz', tag: '😄', category: 'Expressões' },
+      { name: 'gargalhada', tag: '😆', category: 'Expressões' },
+      { name: 'chorando_de_rir', tag: '😂', category: 'Expressões' },
+      { name: 'rolando_de_rir', tag: '🤣', category: 'Expressões' },
+      { name: 'piscadela', tag: '😉', category: 'Expressões' },
+      { name: 'apaixonado', tag: '😍', category: 'Expressões' },
+      { name: 'beijo', tag: '😘', category: 'Expressões' },
+      { name: 'legal', tag: '😎', category: 'Expressões' },
+      { name: 'festa', tag: '🥳', category: 'Expressões' },
+      { name: 'pensando', tag: '🤔', category: 'Expressões' },
+      { name: 'silencio', tag: '🤫', category: 'Expressões' },
+      { name: 'surpreso', tag: '😲', category: 'Expressões' },
+      { name: 'choro', tag: '😭', category: 'Expressões' },
+      { name: 'raiva', tag: '😡', category: 'Expressões' },
+      { name: 'palhaco', tag: '🤡', category: 'Expressões' },
+      { name: 'caveira', tag: '💀', category: 'Expressões' },
+      { name: 'fantasma', tag: '👻', category: 'Expressões' },
+      { name: 'alien', tag: '👽', category: 'Expressões' },
+      { name: 'robo', tag: '🤖', category: 'Expressões' },
+      { name: 'coracao', tag: '❤️', category: 'Expressões' },
+      { name: 'fogo', tag: '🔥', category: 'Expressões' },
+      { name: 'estrela', tag: '⭐', category: 'Expressões' },
+      { name: 'brilho', tag: '✨', category: 'Expressões' },
+      { name: 'raio', tag: '⚡', category: 'Expressões' },
+      { name: 'joinha', tag: '👍', category: 'Expressões' },
+      { name: 'joinha_baixo', tag: '👎', category: 'Expressões' },
+      { name: 'palmas', tag: '👏', category: 'Expressões' },
+      { name: 'aperto_de_mao', tag: '🤝', category: 'Expressões' },
+      { name: 'forca', tag: '💪', category: 'Expressões' },
+
+      // Economia & Cassino
+      { name: 'moeda', tag: '🪙', category: 'Economia' },
+      { name: 'diamante', tag: '💎', category: 'Economia' },
+      { name: 'saco_de_dinheiro', tag: '💰', category: 'Economia' },
+      { name: 'dinheiro', tag: '💵', category: 'Economia' },
+      { name: 'cartao_credito', tag: '💳', category: 'Economia' },
+      { name: 'banco', tag: '🏦', category: 'Economia' },
+      { name: 'grafico_subindo', tag: '📈', category: 'Economia' },
+      { name: 'grafico_descendo', tag: '📉', category: 'Economia' },
+      { name: 'empresa_predio', tag: '🏢', category: 'Economia' },
+      { name: 'fabrica', tag: '🏭', category: 'Economia' },
+      { name: 'ouro_trofeu', tag: '🏆', category: 'Economia' },
+      { name: 'medalha_ouro', tag: '🥇', category: 'Economia' },
+      { name: 'slot_cassino', tag: '🎰', category: 'Economia' },
+      { name: 'dado', tag: '🎲', category: 'Economia' },
+      { name: 'cartas_baralho', tag: '🃏', category: 'Economia' },
+      { name: 'alvo', tag: '🎯', category: 'Economia' },
+
+      // Moderação & Segurança
+      { name: 'escudo', tag: '🛡️', category: 'Moderação' },
+      { name: 'espadas', tag: '⚔️', category: 'Moderação' },
+      { name: 'martelo', tag: '🔨', category: 'Moderação' },
+      { name: 'cadeado_fechado', tag: '🔒', category: 'Moderação' },
+      { name: 'cadeado_aberto', tag: '🔓', category: 'Moderação' },
+      { name: 'chave', tag: '🔑', category: 'Moderação' },
+      { name: 'sirene_alerta', tag: '🚨', category: 'Moderação' },
+      { name: 'atencao', tag: '⚠️', category: 'Moderação' },
+      { name: 'proibido', tag: '🚫', category: 'Moderação' },
+      { name: 'pare', tag: '🛑', category: 'Moderação' },
+      { name: 'sinal_cruz', tag: '❌', category: 'Moderação' },
+      { name: 'check_verde', tag: '✅', category: 'Moderação' },
+      { name: 'sino_notificacao', tag: '🔔', category: 'Moderação' },
+      { name: 'megafone', tag: '📢', category: 'Moderação' },
+
+      // Social & Atendimento
+      { name: 'ticket_ingresso', tag: '🎫', category: 'Social' },
+      { name: 'ticket_cinema', tag: '🎟️', category: 'Social' },
+      { name: 'envelope_carta', tag: '✉️', category: 'Social' },
+      { name: 'caixa_pacote', tag: '📦', category: 'Social' },
+      { name: 'alianca_anel', tag: '💍', category: 'Social' },
+      { name: 'coroa', tag: '👑', category: 'Social' },
+      { name: 'cafe', tag: '☕', category: 'Social' },
+      { name: 'cerveja', tag: '🍺', category: 'Social' },
+      { name: 'champanhe', tag: '🍾', category: 'Social' },
+      { name: 'bolo_festa', tag: '🎂', category: 'Social' },
+      { name: 'pizza', tag: '🍕', category: 'Social' },
+      { name: 'musica_nota', tag: '🎵', category: 'Social' },
+      { name: 'notas_musicais', tag: '🎶', category: 'Social' },
+      { name: 'microfone', tag: '🎤', category: 'Social' },
+      { name: 'fone_ouvido', tag: '🎧', category: 'Social' },
+      { name: 'controle_game', tag: '🎮', category: 'Social' },
+      { name: 'foguete', tag: '🚀', category: 'Social' },
+      { name: 'lampada_ideia', tag: '💡', category: 'Social' },
+      { name: 'ampulheta', tag: '⏳', category: 'Social' },
+      { name: 'relogio', tag: '⏰', category: 'Social' }
+    ];
+
     function updateEmojiCounters() {
+      const stdCount = window.standardEmojis?.length || 0;
       const curCount = window.emojiCatalog?.currentGuild?.length || 0;
       const othCount = window.emojiCatalog?.otherGuilds?.length || 0;
+      const elStd = document.getElementById('emojiStandardCount');
       const elCur = document.getElementById('emojiCurrentCount');
       const elOth = document.getElementById('emojiOtherCount');
+      if (elStd) elStd.innerText = stdCount;
       if (elCur) elCur.innerText = curCount;
       if (elOth) elOth.innerText = othCount;
     }
 
     async function ensureEmojiCatalogLoaded() {
+      updateEmojiCounters();
       if (!currentGuildId) return;
       if (window.emojiCatalog && ((window.emojiCatalog.currentGuild && window.emojiCatalog.currentGuild.length > 0) || (window.emojiCatalog.otherGuilds && window.emojiCatalog.otherGuilds.length > 0))) {
         return;
@@ -9708,17 +9882,12 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
 
     function switchEmojiTab(tab) {
       window.emojiCurrentTab = tab;
+      const btnStd = document.getElementById('emojiTabStandardBtn');
       const btnCur = document.getElementById('emojiTabCurrentBtn');
       const btnOth = document.getElementById('emojiTabOtherBtn');
-      if (btnCur && btnOth) {
-        if (tab === 'current') {
-          btnCur.className = 'primary-btn';
-          btnOth.className = 'secondary-btn';
-        } else {
-          btnCur.className = 'secondary-btn';
-          btnOth.className = 'primary-btn';
-        }
-      }
+      if (btnStd) btnStd.className = tab === 'standard' ? 'primary-btn' : 'secondary-btn';
+      if (btnCur) btnCur.className = tab === 'current' ? 'primary-btn' : 'secondary-btn';
+      if (btnOth) btnOth.className = tab === 'other' ? 'primary-btn' : 'secondary-btn';
       renderEmojiGrid();
     }
 
@@ -9731,19 +9900,24 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       if (!grid) return;
 
       const query = (document.getElementById('emojiSearchInput')?.value || '').toLowerCase().trim();
-      const list = window.emojiCurrentTab === 'current'
-        ? (window.emojiCatalog?.currentGuild || [])
-        : (window.emojiCatalog?.otherGuilds || []);
+      let list = [];
+      if (window.emojiCurrentTab === 'standard') {
+        list = window.standardEmojis || [];
+      } else if (window.emojiCurrentTab === 'current') {
+        list = window.emojiCatalog?.currentGuild || [];
+      } else {
+        list = window.emojiCatalog?.otherGuilds || [];
+      }
 
       const filtered = query
-        ? list.filter(e => e.name.toLowerCase().includes(query) || (e.guildName && e.guildName.toLowerCase().includes(query)))
+        ? list.filter(e => (e.name && e.name.toLowerCase().includes(query)) || (e.category && e.category.toLowerCase().includes(query)) || (e.guildName && e.guildName.toLowerCase().includes(query)))
         : list;
 
       updateEmojiCounters();
 
       if (filtered.length === 0) {
         grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #949ba4; padding: 2.5rem 1rem; font-size: 0.88rem;">' +
-          (query ? 'Nenhum emoji encontrado para "' + escapeHtml(query) + '".' : (window.emojiCurrentTab === 'current' ? 'Nenhum emoji personalizado cadastrado neste servidor.' : 'Nenhum emoji de outros servidores disponível.')) +
+          (query ? 'Nenhum emoji encontrado para "' + escapeHtml(query) + '".' : (window.emojiCurrentTab === 'current' ? 'Nenhum emoji personalizado cadastrado neste servidor.' : (window.emojiCurrentTab === 'other' ? 'Nenhum emoji de outros servidores disponível.' : 'Nenhum emoji disponível.'))) +
         '</div>';
         return;
       }
@@ -9751,10 +9925,16 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       grid.innerHTML = filtered.map(emoji => {
         const tagEsc = escapeHtml(emoji.tag);
         const nameEsc = escapeHtml(emoji.name);
-        const titleText = ':' + nameEsc + ':' + (emoji.guildName ? ' (' + escapeHtml(emoji.guildName) + ')' : '');
-        return '<button type="button" class="emoji-picker-btn" data-tag="' + tagEsc + '" title="' + titleText + '">' +
-          '<img src="' + emoji.url + '" alt=":' + nameEsc + ':" loading="lazy">' +
-        '</button>';
+        const titleText = ':' + nameEsc + ':' + (emoji.guildName ? ' (' + escapeHtml(emoji.guildName) + ')' : (emoji.category ? ' [' + escapeHtml(emoji.category) + ']' : ''));
+        if (emoji.url) {
+          return '<button type="button" class="emoji-picker-btn" data-tag="' + tagEsc + '" title="' + titleText + '">' +
+            '<img src="' + emoji.url + '" alt=":' + nameEsc + ':" loading="lazy">' +
+          '</button>';
+        } else {
+          return '<button type="button" class="emoji-picker-btn" data-tag="' + tagEsc + '" title="' + titleText + '" style="font-size: 1.55rem; line-height: 1;">' +
+            emoji.tag +
+          '</button>';
+        }
       }).join('');
 
       grid.querySelectorAll('.emoji-picker-btn').forEach(btn => {
@@ -9771,7 +9951,15 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       if (!target) return;
 
       const cleanTag = tag.trim();
-      const isSingleEmojiField = target.id === 'currencySymbolInput' || target.id === 'compTypeEmojiInput' || target.id === 'compTypeSupplyEmojiInput';
+      const singleFields = [
+        'currencySymbolInput',
+        'compTypeEmojiInput',
+        'compTypeSupplyEmojiInput',
+        'mbCfgEcoSymbol',
+        'mbCfgStarEmoji',
+        'starboardEmojiInput'
+      ];
+      const isSingleEmojiField = singleFields.includes(target.id);
 
       if (isSingleEmojiField) {
         target.value = cleanTag;
@@ -9786,7 +9974,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
 
       // Trigger input event to update live preview
       target.dispatchEvent(new Event('input', { bubbles: true }));
-      updateBotSpeakPreview();
+      if (typeof updateBotSpeakPreview === 'function') updateBotSpeakPreview();
 
       const info = document.getElementById('emojiSelectedInfo');
       if (info) {
@@ -11989,7 +12177,8 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
     document.getElementById('saveStarboardBtn')?.addEventListener('click', () => {
       saveModule('starboard', {
         channelId: document.getElementById('starboardChannelSelect').value,
-        starsRequired: parseInt(document.getElementById('starboardMinInput').value, 10) || 3
+        starsRequired: parseInt(document.getElementById('starboardMinInput').value, 10) || 3,
+        emoji: document.getElementById('starboardEmojiInput')?.value?.trim() || '⭐'
       });
     });
 

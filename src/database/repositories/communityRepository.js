@@ -209,6 +209,7 @@ class CommunityRepository {
         guildId,
         starboardChannelId: null,
         starsRequired: 3,
+        starboardEmoji: '⭐',
         isEnabled: true
       };
     }
@@ -217,6 +218,7 @@ class CommunityRepository {
       guildId: row.guild_id,
       starboardChannelId: row.starboard_channel_id,
       starsRequired: row.stars_required,
+      starboardEmoji: row.starboard_emoji || '⭐',
       isEnabled: Boolean(row.is_enabled)
     };
   }
@@ -227,17 +229,19 @@ class CommunityRepository {
     const now = new Date().toISOString();
 
     this.db.run(
-      `INSERT INTO community_starboards (guild_id, starboard_channel_id, stars_required, is_enabled, updated_at)
-       VALUES (?, ?, ?, ?, ?)
+      `INSERT INTO community_starboards (guild_id, starboard_channel_id, stars_required, starboard_emoji, is_enabled, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?)
        ON CONFLICT(guild_id) DO UPDATE SET
          starboard_channel_id = excluded.starboard_channel_id,
          stars_required = excluded.stars_required,
+         starboard_emoji = excluded.starboard_emoji,
          is_enabled = excluded.is_enabled,
          updated_at = excluded.updated_at`,
       [
         guildId,
         updated.starboardChannelId,
         updated.starsRequired,
+        updated.starboardEmoji || updated.emoji || '⭐',
         updated.isEnabled ? 1 : 0,
         now
       ]

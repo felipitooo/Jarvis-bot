@@ -282,9 +282,18 @@ class MultiBotManager {
       }
     }
 
+    const isNotDefaultJarvis = Boolean(botName && !['jarvis', 'j.a.r.v.i.s.'].includes(botName.toLowerCase().trim()));
+    const rawAiName = cfgRow.ai_name || '';
+    const resolvedAiName = (rawAiName && rawAiName !== 'J.A.R.V.I.S.') ? rawAiName : (isNotDefaultJarvis ? botName : defaults.aiName);
+
+    const rawPresText = cfgRow.presence_activity_text !== undefined ? cfgRow.presence_activity_text : '';
+    const resolvedPresText = (rawPresText && rawPresText !== 'J.A.R.V.I.S | +ajuda')
+      ? rawPresText
+      : (isNotDefaultJarvis ? `${botName} | ${cfgRow.prefix || defaults.prefix}ajuda` : (rawPresText || defaults.presenceActivityText));
+
     return {
       prefix: cfgRow.prefix || defaults.prefix,
-      aiName: cfgRow.ai_name || defaults.aiName,
+      aiName: resolvedAiName,
       aiModel: cfgRow.ai_model || defaults.aiModel,
       aiTemperature: cfgRow.ai_temperature !== undefined ? Number(cfgRow.ai_temperature) : defaults.aiTemperature,
       aiHumorMode: cfgRow.ai_humor_mode || defaults.aiHumorMode,
@@ -292,7 +301,7 @@ class MultiBotManager {
       aiPersonaTone: cfgRow.ai_persona_tone !== undefined ? cfgRow.ai_persona_tone : defaults.aiPersonaTone,
       presenceStatus: cfgRow.presence_status || defaults.presenceStatus,
       presenceActivityType: cfgRow.presence_activity_type || defaults.presenceActivityType,
-      presenceActivityText: cfgRow.presence_activity_text !== undefined ? cfgRow.presence_activity_text : defaults.presenceActivityText,
+      presenceActivityText: resolvedPresText,
       presenceActivityUrl: cfgRow.presence_activity_url || defaults.presenceActivityUrl,
       modules: mergedModules,
       commands: { ...defaults.commands, ...safeJsonParse(cfgRow.commands_config_json, {}) },

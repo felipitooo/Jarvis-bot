@@ -29,23 +29,22 @@ module.exports = {
       if (!isAllowedHere) return;
     }
 
-    // Modular gating for Button / SelectMenu / Modal interactions
+    // Modular gating for Button / SelectMenu / Modal interactions (isolated per instance or primary bot)
     if (interaction.customId && (interaction.guildId || interaction.guild?.id)) {
       const gId = interaction.guildId || interaction.guild.id;
-      if (context?.guildModuleService) {
-        const modCheck = context.guildModuleService.checkInteractionAllowed(gId, interaction.customId);
-        if (!modCheck.allowed) {
-          return await interaction.reply({
-            content: `⚠️ **Módulo Desativado!**\nO módulo **${modCheck.moduleName}** está atualmente desativado neste servidor.`,
-            ephemeral: true
-          }).catch(() => {});
-        }
-      }
       if (context?.botInstanceId && context?.multiBotManager) {
         const instModCheck = context.multiBotManager.checkInteractionAllowedForInstance(context.botInstanceId, interaction.customId);
         if (!instModCheck.allowed) {
           return await interaction.reply({
             content: `⚠️ **Módulo Desativado na Instância!**\nO módulo **${instModCheck.moduleName}** está desativado para este bot.`,
+            ephemeral: true
+          }).catch(() => {});
+        }
+      } else if (context?.guildModuleService) {
+        const modCheck = context.guildModuleService.checkInteractionAllowed(gId, interaction.customId);
+        if (!modCheck.allowed) {
+          return await interaction.reply({
+            content: `⚠️ **Módulo Desativado!**\nO módulo **${modCheck.moduleName}** está atualmente desativado neste servidor.`,
             ephemeral: true
           }).catch(() => {});
         }
@@ -1045,18 +1044,7 @@ module.exports = {
       });
     }
 
-    // 1. Modular system check: is this module enabled for this guild?
-    if (guildId && context.guildModuleService) {
-      const check = context.guildModuleService.checkCommandAllowed(guildId, commandName);
-      if (!check.allowed) {
-        return interaction.reply({
-          content: `⚠️ **Módulo Desativado!**\nO módulo **${check.moduleName}** está atualmente desativado pela administração deste servidor.`,
-          ephemeral: true
-        });
-      }
-    }
-
-    // 2. Multi-Bot Instance modular & command check
+    // 1. Modular system check: isolated per Multi-Bot instance or primary bot
     if (context.botInstanceId && context.multiBotManager) {
       const instCheck = context.multiBotManager.checkCommandAllowedForInstance(context.botInstanceId, commandName);
       if (!instCheck.allowed) {
@@ -1064,6 +1052,14 @@ module.exports = {
           content: instCheck.reason === 'COMMAND_DISABLED'
             ? `⚠️ **Comando Desativado!**\nO comando \`/${commandName}\` está desativado nas configurações desta instância.`
             : `⚠️ **Módulo Desativado na Instância!**\nO módulo **${instCheck.moduleName}** está desativado para este bot.`,
+          ephemeral: true
+        });
+      }
+    } else if (guildId && context.guildModuleService) {
+      const check = context.guildModuleService.checkCommandAllowed(guildId, commandName);
+      if (!check.allowed) {
+        return interaction.reply({
+          content: `⚠️ **Módulo Desativado!**\nO módulo **${check.moduleName}** está atualmente desativado pela administração deste servidor.`,
           ephemeral: true
         });
       }

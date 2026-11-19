@@ -658,18 +658,16 @@ describe('OPERAÇÃO DE CORREÇÃO TOTAL V8.5.0 — Persistência Real, Isolamen
       // Como casino depende de economy, casino também deve ter sido desativado automaticamente
       assert.equal(patchModRes.json.config.casino, false);
 
-      // 4. Tentar executar comando +saldo com módulo desativado -> Deve bloquear execução real!
+      // 4. Tentar executar comando +saldo com módulo desativado -> Deve bloquear execução real e SILENCIAR completamente (não poluir o chat com aviso)
       const msg2 = discordMock.addArtificialMessage(channelGeneral, {
         authorId: 'user_stark_1',
         username: 'TonyStark',
         content: '+saldo'
       });
 
-      await prefixCommandHandler.handle(msg2, context);
-      assert.ok(msg2._replies.length > 0);
-      const rawReply = msg2._replies[0];
-      const replyText = typeof rawReply === 'string' ? rawReply : (rawReply?.content || '');
-      assert.ok(replyText.includes('Módulo Desativado'), `Expected disabled module notice, got: ${replyText}`);
+      const handledDisabled = await prefixCommandHandler.handle(msg2, context);
+      assert.equal(handledDisabled, false, 'Comando de módulo desativado deve retornar false');
+      assert.equal(msg2._replies.length, 0, 'Bot deve permanecer 100% silencioso ao ignorar módulo desativado');
 
       // 5. Confirmar que desativar o módulo NÃO apagou os dados do usuário no SQLite!
       const accountWhileDisabled = context.economyRepo.getAccount(guildA.id, 'user_stark_1');
@@ -1050,7 +1048,7 @@ describe('OPERAÇÃO DE CORREÇÃO TOTAL V8.5.0 — Persistência Real, Isolamen
         assert.equal(check.moduleKey, 'moderation');
       }
 
-      // Testar execução real no chat simulado: "+mute @virzinho"
+      // Testar execução real no chat simulado: "+mute @virzinho" no bot primário com moderação desativada -> Silêncio absoluto, nenhuma resposta no chat!
       const muteMsg = discordMock.addArtificialMessage(channelGeneral, {
         id: 'msg_test_mute_block_1',
         authorId: 'user_admin_1',
@@ -1058,10 +1056,20 @@ describe('OPERAÇÃO DE CORREÇÃO TOTAL V8.5.0 — Persistência Real, Isolamen
         content: '!mute <@user_target_1>'
       });
       const handled = await prefixCommandHandler.handle(muteMsg, context);
-      assert.equal(handled, true);
-      assert.equal(muteMsg._replies.length, 1);
-      const replyTxt = typeof muteMsg._replies[0] === 'string' ? muteMsg._replies[0] : muteMsg._replies[0].content;
-      assert.ok(replyTxt.includes('Módulo Desativado'), `Expected "!mute" to return Módulo Desativado, got: ${replyTxt}`);
+      assert.equal(handled, false, 'Comando com módulo desativado não deve ser executado');
+      assert.equal(muteMsg._replies.length, 0, 'Bot primário deve ficar completamente silencioso ao ignorar módulo desativado');
+
+      // Testar que bot secundário ("Dumb") que tem moderação ativa na sua instância NÃO é bloqueado pela desativação do Jarvis
+      const dumbChildCtx = {
+        ...context,
+        botInstanceId: 'inst_dumb_unit_test',
+        botInstanceConfig: { prefix: '!' },
+        multiBotManager: {
+          checkCommandAllowedForInstance: (botId, cmd) => ({ allowed: true, moduleKey: 'moderation', moduleName: 'Moderação' })
+        }
+      };
+      const handledDumb = await prefixCommandHandler.handle(muteMsg, dumbChildCtx);
+      assert.equal(handledDumb, true, 'Bot secundário com moderação ativa deve processar o comando independentemente do Jarvis');
 
       // Reativar moderação
       context.guildModuleService.setModuleEnabled(guildA.id, 'moderation', true, 'admin_local');

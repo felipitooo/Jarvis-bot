@@ -646,6 +646,9 @@ class WebPanelService {
           payload.starboardChannelId = updates.channelId || null;
           payload.isEnabled = Boolean(updates.channelId);
         }
+        if (updates.emoji) {
+          payload.starboardEmoji = updates.emoji;
+        }
         updated = communityRepo.upsertStarboardConfig(guildId, payload);
         break;
       }

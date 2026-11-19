@@ -5,6 +5,28 @@ Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [9.1.0] - 2026-11-19
+
+### Adicionado
+- **SELETOR UNIVERSAL DE EMOJIS EM TODAS AS TELAS E CAMPOS DO BOT:**
+  - **Catálogo de Emojis Padrão & Globais (Unicode Integrado):** Adicionada nova aba **✨ Padrão & Globais** com 72+ emojis categorizados (Expressões, Economia & Cassino, Moderação & Segurança, Social & Atendimento) acessíveis instantaneamente mesmo em servidores sem emojis customizados.
+  - **Botão Seletor de Emojis (`😀`) em Todos os Campos:** Integrado o botão de inserção de emoji ao lado de todos os inputs do painel:
+    - *Status & Presença do Bot Principal* (`botActivityNameInput`) e *Instâncias Secundárias* (`mbCfgPresenceText`).
+    - *Identidade e Nome da IA* (`aiNameInput`, `mbCfgAiName`).
+    - *Boas-Vindas & Despedidas* (`welcomeMsgInput`, `goodbyeMsgInput`, `mbCfgWelcomeMsg`, `mbCfgGoodbyeMsg`).
+    - *Economia & Starboard* (`currencySymbolInput`, `mbCfgEcoSymbol`, `starboardEmojiInput`, `mbCfgStarEmoji`).
+    - *Central de Tickets* (`mbCfgTicketTitle`, `mbCfgTicketDesc`).
+    - *Transmissor Falar pelo Bot* (`speakContentInput`, `speakEmbedDesc`, `mbSpeakContentInput`, `mbSpeakEmbedTitle`, `mbSpeakEmbedDesc`, `mbSpeakEmbedFooter`).
+  - **Migração `035_starboard_custom_emoji.sql`:** Adicionada coluna `starboard_emoji` na tabela `community_starboards`, permitindo configurar qualquer emoji personalizado ou padrão para acionar o mural.
+
+### Corrigido
+- **Silenciamento Completo de Módulos/Comandos Desativados:**
+  - Quando um comando de prefixo pertence a um módulo desativado (ou comando desativado na instância), o bot agora permanece **completamente silencioso** (`return false`), sem enviar mensagens de aviso ou poluir o canal de chat do servidor com `⚠️ Módulo Desativado!`.
+- **Isolamento Modular Independente para Instâncias Multi-Bot (`Dumb`, etc.):**
+  - Corrigido o bug onde desativar um módulo no painel principal do Jarvis (`GuildModuleService`) desativava o módulo para todos os bots secundários do servidor.
+  - O `prefixCommandHandler` e o `interactionCreate` agora verificam primeiro e exclusivamente o `multiBotManager.checkCommandAllowedForInstance()` para instâncias secundárias (`context.botInstanceId`), garantindo que se o Jarvis estiver com moderação desligada, o bot secundário (`Dumb`) continue executando suas funções de moderação normalmente.
+  - Corrigido o fallback de presença para instâncias secundárias em `multiBotManager.getInstanceConfig()`: instâncias com nome próprio (ex: `Dumb`) nunca mais herdam `J.A.R.V.I.S | +ajuda`.
+
 ## [9.0.0] - 2026-11-19
 
 ### Adicionado

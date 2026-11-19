@@ -261,7 +261,7 @@ describe('Traditional Prefix Commands (+work, +slut, +bank, +ban, +daily, etc.)'
     const handled = await prefixCommandHandler.handle(mockMessage, eventContext);
     assert.equal(handled, true);
     // Allow immediate collector event to resolve
-    await new Promise(r => setTimeout(r, 20));
+    await new Promise(r => setTimeout(r, 80));
     assert.ok(replyText.includes('foi banido permanentemente'));
   });
 

@@ -452,25 +452,20 @@ class PrefixCommandHandler {
     const member = message.member;
     const aiName = identityService?.getDisplayName(guild.id) || 'Jarvis';
 
-    // 1. Check Guild-level modular system gating (26 switchable modules per guild)
-    if (context.guildModuleService) {
-      const check = context.guildModuleService.checkCommandAllowed(guild.id, cmdName);
-      if (!check.allowed) {
-        await message.reply(`⚠️ **Módulo Desativado!**\nO módulo **${check.moduleName}** está atualmente desativado pela administração deste servidor.`);
-        return true;
-      }
-    }
-
-    // 2. Check Multi-Bot Instance-level modular gating & disabled commands
+    // 1. Modular gating & command execution permissions (isolated per Multi-Bot instance or primary bot)
     if (context.botInstanceId && context.multiBotManager) {
+      // Secondary Bot Instance: Governed by its OWN isolated configuration (assigned modules & disabled commands)
       const instCheck = context.multiBotManager.checkCommandAllowedForInstance(context.botInstanceId, cmdName);
       if (!instCheck.allowed) {
-        if (instCheck.reason === 'COMMAND_DISABLED') {
-          await message.reply(`⚠️ **Comando Desativado!**\nO comando \`${activePrefix}${cmdName}\` está desativado nas configurações desta instância (**${aiName}**).`);
-        } else {
-          await message.reply(`⚠️ **Módulo Desativado na Instância!**\nO módulo **${instCheck.moduleName}** está desativado para o bot **${aiName}**.`);
-        }
-        return true;
+        // Silently ignore disabled commands/modules - do NOT speak in chat!
+        return false;
+      }
+    } else if (context.guildModuleService) {
+      // Primary Bot (Jarvis): Governed by guild-level modular system toggles
+      const check = context.guildModuleService.checkCommandAllowed(guild.id, cmdName);
+      if (!check.allowed) {
+        // Silently ignore disabled commands/modules - do NOT speak in chat!
+        return false;
       }
     }
 

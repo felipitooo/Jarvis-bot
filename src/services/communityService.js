@@ -207,14 +207,16 @@ class CommunityService {
   // ==========================================
 
   async handleStarReaction(reaction, user) {
-    if (reaction.emoji.name !== '⭐' && reaction.emoji.name !== '🌟') return;
-
     const message = reaction.message;
     if (!message || !message.guild) return;
 
     const guild = message.guild;
     const config = this.communityRepo.getStarboardConfig(guild.id);
     if (!config.isEnabled || !config.starboardChannelId) return;
+
+    const targetEmoji = config.starboardEmoji || '⭐';
+    const isMatchingEmoji = reaction.emoji.name === targetEmoji || reaction.emoji.id === targetEmoji || reaction.emoji.toString() === targetEmoji || (targetEmoji === '⭐' && reaction.emoji.name === '🌟');
+    if (!isMatchingEmoji) return;
 
     const starCount = reaction.count || 0;
     if (starCount < config.starsRequired) return;
@@ -246,7 +248,7 @@ class CommunityService {
         const starMsg = await starboardChannel.messages.fetch(existing.starboardMessageId);
         if (starMsg) {
           await starMsg.edit({
-            content: `⭐ **${starCount}** | <#${message.channel.id}>`,
+            content: `${targetEmoji} **${starCount}** | <#${message.channel.id}>`,
             embeds: [embed]
           });
           this.communityRepo.saveStarredMessage(guild.id, {
@@ -263,7 +265,7 @@ class CommunityService {
       // Post new starboard message
       try {
         const sent = await starboardChannel.send({
-          content: `⭐ **${starCount}** | <#${message.channel.id}>`,
+          content: `${targetEmoji} **${starCount}** | <#${message.channel.id}>`,
           embeds: [embed]
         });
 
