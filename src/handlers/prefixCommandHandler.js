@@ -249,8 +249,9 @@ class PrefixCommandHandler {
     const settingsService = context.settingsService || context.identityService?.settingsService;
     const guildId = message.guild.id;
 
-    // Retrieve guild configured prefix or fallback to default '+'
-    const savedPrefix = settingsService ? settingsService.getSetting(guildId, 'prefix', this.prefix) : this.prefix;
+    // Retrieve guild configured prefix or fallback to global/default
+    const globalDefaultPrefix = (typeof require !== 'undefined') ? (require('../config/botConfig').botConfig?.getConfig?.()?.identity?.defaultPrefix || this.prefix || '+') : (this.prefix || '+');
+    const savedPrefix = settingsService ? settingsService.getSetting(guildId, 'prefix', globalDefaultPrefix) : globalDefaultPrefix;
     const prefixlessSetting = settingsService ? settingsService.getSetting(guildId, 'prefixless_mode', 'false') : 'false';
 
     const isPrefixless = prefixlessSetting === 'true' || prefixlessSetting === true || ['none', 'sem', 'nenhum', ''].includes(savedPrefix);

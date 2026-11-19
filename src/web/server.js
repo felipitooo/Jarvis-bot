@@ -582,6 +582,16 @@ class WebServer {
           this.webPanelService.identityService.defaultName = updated.identity.name;
         }
 
+        // Update global prefix in prefixCommandHandler if available
+        if (updated.identity?.defaultPrefix) {
+          try {
+            const { prefixCommandHandler } = require('../handlers/prefixCommandHandler');
+            if (prefixCommandHandler) {
+              prefixCommandHandler.prefix = updated.identity.defaultPrefix;
+            }
+          } catch {}
+        }
+
         // Update live Gemini model if available
         if (this.webPanelService?.services?.llmAdapter && updated.ai?.model) {
           this.webPanelService.services.llmAdapter.model = updated.ai.model;
@@ -749,6 +759,24 @@ class WebServer {
             const result = await this.webPanelService.updateModuleConfig(session, guildId, moduleName, body, csrf);
             return this._sendJson(res, 200, result);
           }
+        }
+
+        // POST /api/guilds/:guildId/summary — Generate AI chat summary / gossip
+        if (subPath === '/summary' && method === 'POST') {
+          const body = await this._parseBody(req);
+          const channelId = body.channelId;
+          const limit = Math.min(300, Math.max(10, parseInt(body.limit, 10) || 300));
+          const type = body.type === 'gossip' ? 'gossip' : 'summary';
+          const sendToDiscord = Boolean(body.sendToDiscord);
+          const summaryResult = await this.webPanelService.generateChatSummaryForPanel(
+            session,
+            guildId,
+            channelId,
+            limit,
+            type,
+            sendToDiscord
+          );
+          return this._sendJson(res, 200, summaryResult);
         }
 
         // GET /api/guilds/:guildId/audit

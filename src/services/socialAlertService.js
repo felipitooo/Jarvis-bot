@@ -174,6 +174,11 @@ class SocialAlertService {
     return true;
   }
 
+  async testAlert(guildId, alertId, client) {
+    await this.dispatchTestAlert(client, alertId, guildId);
+    return { success: true, message: `Disparado alerta de teste #${alertId} com sucesso no canal do Discord!` };
+  }
+
   /**
    * Checks all active alerts across all guilds and dispatches notifications if new posts/videos arrive.
    * @param {object} client - Discord.js Client

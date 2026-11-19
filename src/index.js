@@ -82,6 +82,7 @@ const { AIOrchestrator } = require('./ai/orchestrator');
 
 // Commands
 const { commandRegistry } = require('./commands/commandRegistry');
+const { prefixCommandHandler } = require('./handlers/prefixCommandHandler');
 const pingCommand = require('./commands/infrastructure/ping');
 const helpCommand = require('./commands/infrastructure/help');
 const aiStatusCommand = require('./commands/ai/aiStatus');
@@ -720,6 +721,16 @@ async function bootstrap() {
   appLogger.info(`Base identity initialized: ${context.identityService.getDefaultName()} (Technical ID: ${context.identityService.getTechnicalIdentifier()})`);
   appLogger.info(`AI LLM Provider initialized: ${context.llmAdapter.getProviderName()} (${context.llmAdapter.getModelName()})`);
   appLogger.info(`Tool catalog ready: ${context.toolRegistry.getAll().length} tool(s) registered.`);
+
+  // Synchronize dynamic botConfig changes to live services
+  botConfig.onConfigChange((newCfg) => {
+    if (newCfg.identity?.name && context.identityService) {
+      context.identityService.defaultName = newCfg.identity.name;
+    }
+    if (newCfg.identity?.defaultPrefix && prefixCommandHandler) {
+      prefixCommandHandler.prefix = newCfg.identity.defaultPrefix;
+    }
+  });
 
   // Start Web Panel Server
   if (context.webServer) {

@@ -2653,6 +2653,11 @@ function renderDashboardHtml({
         <span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></span>
         <span class="nav-label">Relatórios & Briefing</span>
       </button>
+      <button class="nav-item" data-tab="tab-alerts">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span>
+        <span class="nav-label">Alertas Sociais</span>
+        <span class="nav-badge-pill" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.4);">YouTube/Twitch</span>
+      </button>
 
       <!-- HUB 5: SOCIAL & ENTRETENIMENTO -->
       <div class="menu-group-title">SOCIAL & ENTRETENIMENTO</div>
@@ -2860,6 +2865,22 @@ function renderDashboardHtml({
     <!-- TAB 2: IDENTIDADE DA IA -->
     <div id="tab-identity" class="tab-content">
       <div class="grid">
+        <div class="card" style="grid-column: 1 / -1;">
+          <h2>🤖 Nome & Identidade do Assistente (IA)</h2>
+          <p>Altere o nome e o prefixo com que o bot atende exclusivamente neste servidor.</p>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem;">
+            <div class="form-group">
+              <label>Nome de Exibição da IA no Servidor</label>
+              <input type="text" id="aiNameInput" value="${aiDisplayName}" placeholder="Ex: J.A.R.V.I.S, FRIDAY, Sexta-Feira">
+            </div>
+            <div class="form-group">
+              <label>Prefixo de Comandos no Servidor</label>
+              <input type="text" id="serverPrefixInput" value="+" placeholder="Ex: +, !, .">
+            </div>
+          </div>
+          <button class="primary-btn" id="saveAiNameBtn" style="margin-top: 0.5rem;">💾 Salvar Nome & Prefixo do Servidor</button>
+        </div>
+
         <div class="card" style="grid-column: 1 / -1;">
           <h2>💬 Canal Exclusivo de Conversa IA</h2>
           <p>Restrinja as respostas automáticas da IA a um canal específico ou deixe aberto para todo o servidor.</p>
@@ -5468,6 +5489,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
               </div>
             </div>
           </div>
+          <button type="button" class="primary-btn" id="saveBotThemeBtn" style="margin-top: 1rem; font-weight: 700;">💾 Salvar Cores & Tema do Painel</button>
         </div>
       </div>
     </div>
@@ -5666,6 +5688,57 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
             <button class="primary-btn" id="saveAntiAbuseBtn" style="padding: 0.7rem 1.4rem; font-size: 0.92rem; display: flex; align-items: center; gap: 0.5rem;">
               <span>💾</span> Salvar Proteção Anti-Spam & Anti-Flood
             </button>
+          </div>
+        </div>
+
+        <!-- SUB-CARD: PROTEÇÃO ANTI-BOT & ANTI-SCAM -->
+        <div class="card" style="grid-column: 1 / -1; border-color: rgba(239, 68, 68, 0.35); background: linear-gradient(135deg, rgba(239, 68, 68, 0.06), rgba(15, 23, 42, 0.4));">
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.75rem;">
+            <div>
+              <h2 style="display: flex; align-items: center; gap: 0.5rem; margin: 0; color: #ef4444;">
+                <span>🛡️</span> Proteção Anti-Bot & Anti-Scam (MrBeast, Phishing, Fake Nitro)
+              </h2>
+              <p style="margin: 0.25rem 0 0 0; color: var(--text-muted); font-size: 0.82rem;">
+                Intercepta bots comprometidos e usuários invadidos disseminando golpes conhecidos antes de contaminar o servidor.
+              </p>
+            </div>
+            <button class="primary-btn" id="saveAntiBotScamBtn" style="background: linear-gradient(135deg, #ef4444, #b91c1c); padding: 0.55rem 1.25rem;">
+              💾 Salvar Proteção Anti-Bot
+            </button>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin-top: 0.5rem;">
+            <div class="form-group">
+              <label>Status da Proteção Anti-Bot Scam</label>
+              <select id="antiBotScamEnabledSelect">
+                <option value="true">🟢 Ativada (Recomendado)</option>
+                <option value="false">🔴 Desativada</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Ação Imediata contra Infratores</label>
+              <select id="antiBotScamActionSelect">
+                <option value="TIMEOUT">⏱️ Castigo / Silenciar (Timeout)</option>
+                <option value="KICK">👢 Expulsar do Servidor (Kick)</option>
+                <option value="BAN">🔨 Banir Permanentemente (Ban)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Duração do Castigo / Silenciamento</label>
+              <select id="antiBotScamTimeoutSelect">
+                <option value="300">5 Minutos</option>
+                <option value="900">15 Minutos</option>
+                <option value="3600">1 Hora</option>
+                <option value="86400" selected>24 Horas</option>
+                <option value="604800">7 Dias (Máximo Discord)</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="margin-top: 0.5rem; padding: 0.75rem; background: rgba(0,0,0,0.25); border-radius: 8px; border: 1px dashed rgba(239, 68, 68, 0.25); font-size: 0.78rem; color: #949ba4;">
+            <strong style="color: #fca5a5;">Exemplos de Ameaças Detectadas:</strong> Falsos brindes do MrBeast ("MrBeast 1000$ giveaway"), falsos geradores de Discord Nitro, roubo de inventário Steam ("steamcommuniity"), phishing de airdrop cripto e mass-mention de tokens.
           </div>
         </div>
 
@@ -5970,6 +6043,62 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           <button class="primary-btn" id="saveBriefingBtn">💾 Salvar Relatório</button>
         </div>
 
+        <!-- CARD: RESUMO INTELIGENTE DO CHAT -->
+        <div class="card" style="grid-column: 1 / -1; border-color: rgba(56, 189, 248, 0.35); background: linear-gradient(135deg, rgba(56, 189, 248, 0.05), rgba(15, 23, 42, 0.4));">
+          <h2 style="display: flex; align-items: center; gap: 0.5rem; color: #38bdf8;">
+            <span>📑</span> Resumo Inteligente do Chat (IA até 300 mensagens)
+          </h2>
+          <p style="margin: 0 0 1rem 0; color: var(--text-muted); font-size: 0.82rem;">
+            Sintetiza conversas longas de qualquer canal em tópicos principais, participantes e conclusões factuais em segundos.
+          </p>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+            <div class="form-group">
+              <label>Canal de Texto para Analisar</label>
+              <select id="summaryChannelSelect" class="channel-select">
+                <option value="">Carregando canais...</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Quantidade de Mensagens Recentes</label>
+              <select id="summaryLimitSelect">
+                <option value="50">50 Mensagens (Rápido)</option>
+                <option value="100">100 Mensagens (Padrão)</option>
+                <option value="200">200 Mensagens (Aprofundado)</option>
+                <option value="300" selected>300 Mensagens (Máximo sem perda de velocidade)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Estilo do Resumo</label>
+              <select id="summaryTypeSelect">
+                <option value="summary" selected>📑 Resumo Estruturado & Factual</option>
+                <option value="gossip">📰 Boletim de Fofoca & Resenha Humorística</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-top: 0.75rem;">
+            <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--text-main); cursor: pointer;">
+              <input type="checkbox" id="summarySendToDiscordCheckbox" style="accent-color: var(--primary); width: 16px; height: 16px;">
+              <span>Publicar também o resumo no canal do Discord selecionado</span>
+            </label>
+            <button class="primary-btn" id="generateSummaryBtn" style="padding: 0.65rem 1.4rem; font-weight: 700;">
+              ⚡ Gerar Resumo com IA Agora
+            </button>
+          </div>
+
+          <!-- Container de Resultado do Resumo -->
+          <div id="summaryResultBox" style="display: none; margin-top: 1rem; padding: 1.25rem; background: rgba(0,0,0,0.35); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+              <h4 id="summaryResultTitle" style="margin: 0; color: #38bdf8; font-size: 0.95rem;">Resumo Gerado</h4>
+              <button class="secondary-btn" id="copySummaryBtn" style="padding: 0.35rem 0.75rem; font-size: 0.75rem;">📋 Copiar Texto</button>
+            </div>
+            <div id="summaryResultContent" style="white-space: pre-wrap; font-size: 0.85rem; line-height: 1.6; color: #e2e8f0; max-height: 400px; overflow-y: auto;"></div>
+          </div>
+        </div>
+
         <!-- CARD EXPLICATIVO / DICAS -->
         <div class="card" style="grid-column: 1 / -1;">
           <h2>💡 Relatórios Executivos & Automações</h2>
@@ -5986,6 +6115,92 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
               <h4 style="margin: 0 0 0.4rem 0; color: #00E5FF; font-size: 0.92rem;">📊 Métricas de Crescimento</h4>
               <p style="margin: 0; font-size: 0.82rem; color: #949ba4;">Acompanhe novos membros, economia movimentada e volume de suporte sem esforço manual.</p>
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: ALERTAS SOCIAIS (YOUTUBE, REDDIT, TWITCH) -->
+    <div id="tab-alerts" class="tab-content">
+      <div class="grid">
+        <!-- CARD 1: ADICIONAR ALERTA -->
+        <div class="card">
+          <h2>🔔 Configurar Novo Alerta Social</h2>
+          <p>O bot monitora automaticamente canais do YouTube, Twitch e Reddit e publica novos vídeos e postagens no chat.</p>
+
+          <div class="form-group">
+            <label>Plataforma Social</label>
+            <select id="newAlertPlatform">
+              <option value="YOUTUBE">▶️ YouTube (Vídeos e Shorts)</option>
+              <option value="TWITCH">🟣 Twitch (Lives e Transmissões)</option>
+              <option value="REDDIT">🔴 Reddit (Postagens em Subreddit)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Canal ou Subreddit Alvo</label>
+            <input type="text" id="newAlertSource" placeholder="Ex: @MrBeast, alanzoka ou r/brasil">
+            <small style="color: var(--text-subtle); font-size: 0.75rem;">YouTube: @NomeDoCanal ou ID. Twitch: nome de usuário. Reddit: r/nome_do_sub.</small>
+          </div>
+
+          <div class="form-group">
+            <label>Canal de Destino no Discord</label>
+            <select id="newAlertChannelSelect" class="channel-select">
+              <option value="">Carregando canais...</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Mensagem de Notificação (Opcional)</label>
+            <input type="text" id="newAlertCustomMsg" placeholder="📢 Saiu novidade de **{author}** no **{platform}**! Confiram: {url}">
+            <small style="color: var(--text-subtle); font-size: 0.75rem;">Variáveis disponíveis: <code>{title}</code>, <code>{url}</code>, <code>{author}</code>, <code>{platform}</code>.</small>
+          </div>
+
+          <button class="primary-btn" id="createSocialAlertBtn" style="margin-top: 0.5rem;">🔔 Adicionar Monitoramento Social</button>
+        </div>
+
+        <!-- CARD 2: DICAS E PLACEHOLDERS -->
+        <div class="card">
+          <h2>💡 Como Funcionam as Notificações</h2>
+          <p>Varreduras automáticas em segundo plano a cada 5 minutos sem travar o bot.</p>
+          <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.5rem;">
+            <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 0.75rem;">
+              <strong style="color: #FF0000; font-size: 0.85rem;">▶️ YouTube</strong>
+              <p style="margin: 0.2rem 0 0 0; font-size: 0.78rem; color: #949ba4;">Lê feeds oficiais RSS do YouTube em milissegundos. Detecta novos vídeos públicos assim que são publicados.</p>
+            </div>
+            <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 0.75rem;">
+              <strong style="color: #FF4500; font-size: 0.85rem;">🔴 Reddit</strong>
+              <p style="margin: 0.2rem 0 0 0; font-size: 0.78rem; color: #949ba4;">Consulta novos posts usando os endpoints públicos do Reddit com detecção de duplicatas.</p>
+            </div>
+            <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 0.75rem;">
+              <strong style="color: #9146FF; font-size: 0.85rem;">🟣 Twitch</strong>
+              <p style="margin: 0.2rem 0 0 0; font-size: 0.78rem; color: #949ba4;">Notifica o início de lives com link direto para o canal de transmissão.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- CARD 3: TABELA DE ALERTAS ATIVOS -->
+        <div class="card" style="grid-column: 1 / -1;">
+          <h2>📋 Alertas Sociais Ativos no Servidor</h2>
+          <p>Gerencie, teste ou remova os canais atualmente monitorados.</p>
+          <div style="overflow-x: auto; margin-top: 0.5rem;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+              <thead>
+                <tr style="border-bottom: 2px solid var(--border-color); text-align: left; color: var(--text-muted);">
+                  <th style="padding: 0.65rem 0.85rem;">ID</th>
+                  <th style="padding: 0.65rem 0.85rem;">Plataforma</th>
+                  <th style="padding: 0.65rem 0.85rem;">Alvo Monitorado</th>
+                  <th style="padding: 0.65rem 0.85rem;">Canal Discord</th>
+                  <th style="padding: 0.65rem 0.85rem;">Criado Em</th>
+                  <th style="padding: 0.65rem 0.85rem; text-align: right;">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="socialAlertsTableBody">
+                <tr>
+                  <td colspan="6" style="text-align: center; padding: 1.5rem; color: var(--text-muted);">Nenhum alerta cadastrado ainda.</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -6181,6 +6396,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
               <small style="color: var(--text-subtle); font-size: 0.75rem;">Separados por vírgula. Responde sem precisar de @menção.</small>
             </div>
           </div>
+          <button type="button" class="primary-btn" id="saveBotIdentityBtn" style="margin-top: 0.75rem; font-weight: 700;">💾 Salvar Identidade & Prefixo</button>
         </div>
 
         <!-- 2. PERSONALIDADE DA IA (SYSTEM PROMPT) -->
@@ -6240,6 +6456,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
             </label>
             <input type="range" id="cfgAiTemp" min="0" max="1" step="0.05" value="0.65" style="width: 100%;">
           </div>
+          <button type="button" class="primary-btn" id="saveBotPersonaBtn" style="margin-top: 0.75rem; font-weight: 700;">💾 Salvar Personalidade & Diretrizes</button>
         </div>
 
         <!-- 3. TEMA VISUAL DO PAINEL WEB (COLOR PALETTE + PRESETS) -->
@@ -6367,6 +6584,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
               </div>
             </div>
           </div>
+          <button type="button" class="primary-btn" id="saveBotThemeBtn" style="margin-top: 1rem; font-weight: 700;">💾 Salvar Cores & Tema do Painel</button>
         </div>
 
         <!-- 4. EMBLEMAS & CORES NO DISCORD -->
@@ -6517,6 +6735,43 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
             <a href="/api/backup/download" class="primary-btn" style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.65rem 1.25rem; font-weight: 700;" download>
               📥 Baixar Backup (.sqlite)
             </a>
+          </div>
+        </div>
+
+        <!-- 8. BACKUP ESTRUTURAL DO SERVIDOR DISCORD -->
+        <div class="card" style="grid-column: 1 / -1; border-color: rgba(56, 189, 248, 0.4); background: linear-gradient(180deg, rgba(56, 189, 248, 0.05) 0%, rgba(15, 23, 42, 0.4) 100%);">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
+            <div>
+              <h2 style="display: flex; align-items: center; gap: 0.5rem; color: #38bdf8;">🛡️ Backups Estruturais do Servidor Discord</h2>
+              <p style="margin: 0.25rem 0 0 0; color: var(--text-subtle); max-width: 750px;">
+                Crie snapshots estruturais do seu servidor Discord (canais, categorias, cargos, permissões e configurações). Salve com segurança para restauração rápida em caso de raids ou acidentes.
+              </p>
+            </div>
+            <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+              <input type="text" id="backupNameInput" placeholder="Nome do Snapshot (Ex: Pre-Evento)" style="padding: 0.55rem 0.85rem; border-radius: var(--radius); background: var(--bg-surface-elevated); border: 1px solid var(--border-color); color: var(--text-main); font-size: 0.85rem; min-width: 200px;">
+              <button type="button" class="primary-btn" id="createBackupBtn" style="padding: 0.55rem 1.25rem; font-weight: 700;">
+                ➕ Criar Novo Backup
+              </button>
+            </div>
+          </div>
+
+          <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+              <thead>
+                <tr style="border-bottom: 2px solid var(--border-color); text-align: left; color: var(--text-muted);">
+                  <th style="padding: 0.65rem 0.85rem;">ID</th>
+                  <th style="padding: 0.65rem 0.85rem;">Nome do Snapshot</th>
+                  <th style="padding: 0.65rem 0.85rem;">Canais</th>
+                  <th style="padding: 0.65rem 0.85rem;">Cargos</th>
+                  <th style="padding: 0.65rem 0.85rem;">Criador</th>
+                  <th style="padding: 0.65rem 0.85rem;">Data de Criação</th>
+                  <th style="padding: 0.65rem 0.85rem; text-align: right;">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="backupsTableBody">
+                <tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Nenhum backup estrutural encontrado para este servidor.</td></tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -6886,6 +7141,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       'tab-starboard': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f31f.png" class="nav-photo-icon" alt=""> Starboard (Destaques)',
       'tab-reviews': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/2b50.png" class="nav-photo-icon" alt=""> Avaliação da Equipe',
       'tab-community': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f4e2.png" class="nav-photo-icon" alt=""> Relatórios & Briefing',
+      'tab-alerts': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f514.png" class="nav-photo-icon" alt=""> Alertas Sociais (YouTube / Twitch / Reddit)',
       'tab-members': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f465.png" class="nav-photo-icon" alt=""> Membros & Usuários',
       'tab-xp': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f3c6.png" class="nav-photo-icon" alt=""> Níveis, XP & Cargos',
       'tab-moderation': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f6e1.png" class="nav-photo-icon" alt=""> Moderação & Anti-Spam',
@@ -7659,8 +7915,32 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         if (mods.starboard?.starsRequired) document.getElementById('starboardMinInput').value = mods.starboard.starsRequired;
         if (mods.briefing?.briefingChannelId) document.getElementById('briefingChannelSelect').value = mods.briefing.briefingChannelId;
 
-        // AI Channel
+        // AI Channel & Server Settings
         if (data.settings?.ai_channel_id) document.getElementById('aiChannelSelect').value = data.settings.ai_channel_id;
+        if (data.settings?.prefix && document.getElementById('serverPrefixInput')) document.getElementById('serverPrefixInput').value = data.settings.prefix;
+        if (data.settings?.aiDisplayName && document.getElementById('aiNameInput')) document.getElementById('aiNameInput').value = data.settings.aiDisplayName;
+
+        // Anti-Bot Scam (MrBeast, Nitro Falso, Phishing)
+        if (mods.moderation?.antiBotScam) {
+          const abs = mods.moderation.antiBotScam;
+          if (abs.enabled !== undefined && document.getElementById('antiBotScamEnabledSelect')) {
+            document.getElementById('antiBotScamEnabledSelect').value = String(Boolean(abs.enabled));
+          }
+          if (abs.action && document.getElementById('antiBotScamActionSelect')) {
+            document.getElementById('antiBotScamActionSelect').value = abs.action;
+          }
+          if (abs.timeoutDurationSeconds && document.getElementById('antiBotScamTimeoutSelect')) {
+            document.getElementById('antiBotScamTimeoutSelect').value = String(abs.timeoutDurationSeconds);
+          }
+        }
+
+        // Social Alerts Table & Backups Table
+        if (typeof renderSocialAlertsTable === 'function') {
+          renderSocialAlertsTable(mods.socialAlerts || []);
+        }
+        if (typeof renderBackupsTable === 'function') {
+          renderBackupsTable(mods.backups || []);
+        }
 
         // Bot Avatar Synchronization & Favicon
         if (data.botAvatarUrl) {
@@ -7778,7 +8058,9 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         'briefing': 'Briefing Diário',
         'audit': 'Canal de Auditoria',
         'xp': 'Sistema de Níveis & XP',
-        'quiz': 'Quiz & Perguntas'
+        'quiz': 'Quiz & Perguntas',
+        'social_alerts': 'Alertas Sociais',
+        'backup': 'Backups do Servidor'
       };
       const friendlyName = moduleNamesMap[moduleName] || moduleName;
 
@@ -10528,6 +10810,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
     document.getElementById('saveAiNameBtn')?.addEventListener('click', async () => {
       if (!currentGuildId) currentGuildId = document.getElementById('guildSelector')?.value || '${initialServerId || ''}';
       const newName = document.getElementById('aiNameInput')?.value?.trim();
+      const newPrefix = document.getElementById('serverPrefixInput')?.value?.trim() || '+';
       if (!newName) return showToast('Digite um nome para a IA!', 'warning');
       try {
         const activeCsrf = window.csrfToken || currentCsrfToken || csrfToken;
@@ -10539,10 +10822,10 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
             'X-Panel-Password': '1598'
           },
           credentials: 'same-origin',
-          body: JSON.stringify({ aiDisplayName: newName })
+          body: JSON.stringify({ aiDisplayName: newName, prefix: newPrefix })
         });
         if (res.ok) {
-          showToast('Nome da IA atualizado para: ' + newName, 'success');
+          showToast('Nome da IA atualizado para: ' + newName + ' (Prefixo: ' + newPrefix + ')', 'success');
           document.getElementById('headerAiName').innerText = newName;
           document.getElementById('overviewAiName').value = newName;
           const pb = document.getElementById('previewBotName');
@@ -10582,6 +10865,201 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       } catch (err) {
         showToast('Erro ao salvar canal: ' + err.message, 'error');
       }
+    });
+
+    // Anti-Bot Scam Save Handler
+    document.getElementById('saveAntiBotScamBtn')?.addEventListener('click', () => {
+      const enabled = document.getElementById('antiBotScamEnabledSelect')?.value === 'true';
+      const action = document.getElementById('antiBotScamActionSelect')?.value || 'TIMEOUT';
+      const timeoutDurationSeconds = parseInt(document.getElementById('antiBotScamTimeoutSelect')?.value, 10) || 86400;
+
+      saveModule('moderation', {
+        antiBotScam: {
+          enabled,
+          action,
+          timeoutDurationSeconds
+        }
+      });
+    });
+
+    // ==========================================
+    // SOCIAL ALERTS (YOUTUBE, TWITCH, REDDIT)
+    // ==========================================
+    function renderSocialAlertsTable(alerts) {
+      const tbody = document.getElementById('socialAlertsTableBody');
+      if (!tbody) return;
+      if (!alerts || alerts.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 1.5rem; color: var(--text-muted);">Nenhum alerta cadastrado ainda. Use o formulário acima para adicionar!</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = alerts.map(a => {
+        const platIcon = a.platform === 'YOUTUBE' ? '▶️ YouTube' : a.platform === 'TWITCH' ? '🟣 Twitch' : '🔴 Reddit';
+        const platColor = a.platform === 'YOUTUBE' ? '#FF0000' : a.platform === 'TWITCH' ? '#9146FF' : '#FF4500';
+        const channelName = '<#' + a.channel_target_id + '>';
+        const createdDate = a.created_at ? new Date(a.created_at).toLocaleDateString('pt-BR') : 'Recente';
+
+        return '<tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">' +
+          '<td style="padding: 0.65rem 0.85rem; color: var(--text-muted); font-size: 0.78rem;">#' + a.id + '</td>' +
+          '<td style="padding: 0.65rem 0.85rem;"><span style="font-weight: 700; color: ' + platColor + ';">' + platIcon + '</span></td>' +
+          '<td style="padding: 0.65rem 0.85rem; font-weight: 600; color: var(--text-main);">' + (a.source_id || 'N/A') + '</td>' +
+          '<td style="padding: 0.65rem 0.85rem; color: #38bdf8;">' + channelName + '</td>' +
+          '<td style="padding: 0.65rem 0.85rem; color: var(--text-muted); font-size: 0.8rem;">' + createdDate + '</td>' +
+          '<td style="padding: 0.65rem 0.85rem; text-align: right; display: flex; gap: 0.5rem; justify-content: flex-end;">' +
+            '<button class="secondary-btn" onclick="testSocialAlert(' + a.id + ')" style="padding: 0.25rem 0.65rem; font-size: 0.75rem;">🔔 Testar</button>' +
+            '<button class="danger-btn" onclick="deleteSocialAlert(' + a.id + ')" style="padding: 0.25rem 0.65rem; font-size: 0.75rem; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5;">🗑️ Excluir</button>' +
+          '</td>' +
+        '</tr>';
+      }).join('');
+    }
+
+    window.testSocialAlert = async function(alertId) {
+      showToast('Disparando alerta de teste no Discord...', 'info', 'Testando');
+      const res = await saveModule('social_alerts', { action: 'TEST', id: alertId });
+      if (res) {
+        showToast('Alerta de teste enviado com sucesso no canal do Discord!', 'success', 'Teste Concluído');
+      }
+    };
+
+    window.deleteSocialAlert = async function(alertId) {
+      if (!confirm('Deseja realmente remover este monitoramento social?')) return;
+      const res = await saveModule('social_alerts', { action: 'DELETE', id: alertId });
+      if (res) {
+        renderSocialAlertsTable(res.data || res.config || res.alerts || []);
+        loadGuildDetails(currentGuildId);
+      }
+    };
+
+    document.getElementById('createSocialAlertBtn')?.addEventListener('click', async () => {
+      const platform = document.getElementById('newAlertPlatform')?.value || 'YOUTUBE';
+      const sourceId = document.getElementById('newAlertSource')?.value?.trim();
+      const channelTargetId = document.getElementById('newAlertChannelSelect')?.value;
+      const customMessage = document.getElementById('newAlertCustomMsg')?.value?.trim() || null;
+
+      if (!sourceId) return showToast('Informe o canal ou subreddit a ser monitorado!', 'warning', 'Campo Obrigatório');
+      if (!channelTargetId) return showToast('Selecione um canal de texto de destino no Discord!', 'warning', 'Canal Obrigatório');
+
+      const res = await saveModule('social_alerts', {
+        action: 'CREATE',
+        platform,
+        sourceId,
+        channelTargetId,
+        customMessage
+      });
+
+      if (res) {
+        document.getElementById('newAlertSource').value = '';
+        renderSocialAlertsTable(res.data || res.config || res.alerts || []);
+        loadGuildDetails(currentGuildId);
+      }
+    });
+
+    // ==========================================
+    // BACKUPS ESTRUTURAIS DO SERVIDOR DISCORD
+    // ==========================================
+    function renderBackupsTable(backups) {
+      const tbody = document.getElementById('backupsTableBody');
+      if (!tbody) return;
+      if (!backups || backups.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Nenhum backup estrutural encontrado para este servidor.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = backups.map(b => {
+        const createdDate = b.created_at ? new Date(b.created_at).toLocaleString('pt-BR') : 'Recente';
+        return '<tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">' +
+          '<td style="padding: 0.65rem 0.85rem; color: var(--text-muted); font-size: 0.78rem;">#' + (b.backup_id || b.id || 'N/A') + '</td>' +
+          '<td style="padding: 0.65rem 0.85rem; font-weight: 700; color: #38bdf8;">' + (b.backup_name || b.name || 'Snapshot') + '</td>' +
+          '<td style="padding: 0.65rem 0.85rem; color: var(--text-muted);">' + (b.channels_count || (b.data?.channels?.length) || 0) + ' canais</td>' +
+          '<td style="padding: 0.65rem 0.85rem; color: var(--text-muted);">' + (b.roles_count || (b.data?.roles?.length) || 0) + ' cargos</td>' +
+          '<td style="padding: 0.65rem 0.85rem; color: var(--text-muted); font-size: 0.8rem;">' + (b.created_by || 'Admin') + '</td>' +
+          '<td style="padding: 0.65rem 0.85rem; color: var(--text-muted); font-size: 0.8rem;">' + createdDate + '</td>' +
+          '<td style="padding: 0.65rem 0.85rem; text-align: right;">' +
+            '<button class="danger-btn" onclick="deleteBackup(&quot;' + (b.backup_id || b.id) + '&quot;)" style="padding: 0.25rem 0.65rem; font-size: 0.75rem; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5;">🗑️ Excluir</button>' +
+          '</td>' +
+        '</tr>';
+      }).join('');
+    }
+
+    window.deleteBackup = async function(backupId) {
+      if (!confirm('Deseja excluir este backup de servidor permanentemente?')) return;
+      const res = await saveModule('backup', { action: 'DELETE', id: backupId });
+      if (res) {
+        renderBackupsTable(res.data || res.config || res.backups || []);
+        loadGuildDetails(currentGuildId);
+      }
+    };
+
+    document.getElementById('createBackupBtn')?.addEventListener('click', async () => {
+      const name = document.getElementById('backupNameInput')?.value?.trim() || ('Snapshot_' + new Date().toISOString().slice(0, 10));
+      const res = await saveModule('backup', { action: 'CREATE', name });
+      if (res) {
+        document.getElementById('backupNameInput').value = '';
+        renderBackupsTable(res.data || res.config || res.backups || []);
+        loadGuildDetails(currentGuildId);
+      }
+    });
+
+    // ==========================================
+    // RESUMO INTELIGENTE DO CHAT (IA ATÉ 300 MSG)
+    // ==========================================
+    document.getElementById('generateSummaryBtn')?.addEventListener('click', async () => {
+      if (!currentGuildId) currentGuildId = document.getElementById('guildSelector')?.value || '${initialServerId || ''}';
+      const channelId = document.getElementById('summaryChannelSelect')?.value;
+      if (!channelId) return showToast('Selecione um canal de texto para analisar!', 'warning', 'Canal Obrigatório');
+
+      const limit = parseInt(document.getElementById('summaryLimitSelect')?.value, 10) || 300;
+      const type = document.getElementById('summaryTypeSelect')?.value || 'summary';
+      const sendToDiscord = document.getElementById('summarySendToDiscordCheckbox')?.checked || false;
+
+      const genBtn = document.getElementById('generateSummaryBtn');
+      const originalText = genBtn.innerText;
+      genBtn.disabled = true;
+      genBtn.innerText = '⏳ Analisando ' + limit + ' mensagens com IA...';
+
+      const outputBox = document.getElementById('summaryOutputBox');
+      const resultCard = document.getElementById('summaryResultCard');
+      if (resultCard) resultCard.style.display = 'block';
+      if (outputBox) outputBox.innerText = 'Coletando histórico e gerando síntese analítica...';
+
+      try {
+        const activeCsrf = window.csrfToken || currentCsrfToken || csrfToken;
+        const res = await fetch('/api/guilds/' + currentGuildId + '/summary', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': activeCsrf,
+            'X-Panel-Password': '1598'
+          },
+          credentials: 'same-origin',
+          body: JSON.stringify({ channelId, limit, type, sendToDiscord })
+        });
+
+        const data = await res.json();
+        if (res.ok && data.summary) {
+          if (outputBox) outputBox.innerText = data.summary;
+          showToast('Resumo gerado com sucesso em ' + (data.durationMs || 0) + 'ms!', 'success', 'IA Concluída');
+        } else {
+          if (outputBox) outputBox.innerText = 'Falha ao processar: ' + (data.error || 'Erro desconhecido');
+          showToast(data.error || 'Falha ao gerar resumo', 'error', 'Erro');
+        }
+      } catch (err) {
+        if (outputBox) outputBox.innerText = 'Erro de conexão: ' + err.message;
+        showToast('Erro: ' + err.message, 'error', 'Falha');
+      } finally {
+        genBtn.disabled = false;
+        genBtn.innerText = originalText;
+      }
+    });
+
+    document.getElementById('copySummaryBtn')?.addEventListener('click', () => {
+      const text = document.getElementById('summaryOutputBox')?.innerText;
+      if (!text) return;
+      navigator.clipboard.writeText(text).then(() => {
+        showToast('Resumo copiado para a área de transferência!', 'success', 'Copiado');
+      }).catch(() => {
+        showToast('Não foi possível copiar automaticamente.', 'warning');
+      });
     });
 
     function applyBotAvatar(url) {
@@ -12898,6 +13376,10 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
     if (sBtn) sBtn.addEventListener('click', saveBotConfigFromForm);
     const sBtnB = document.getElementById('saveGlobalConfigBtnBottom');
     if (sBtnB) sBtnB.addEventListener('click', saveBotConfigFromForm);
+
+    document.getElementById('saveBotIdentityBtn')?.addEventListener('click', saveBotConfigFromForm);
+    document.getElementById('saveBotPersonaBtn')?.addEventListener('click', saveBotConfigFromForm);
+    document.getElementById('saveBotThemeBtn')?.addEventListener('click', saveBotConfigFromForm);
 
     const rBtn = document.getElementById('resetConfigBtn');
     if (rBtn) rBtn.addEventListener('click', resetBotConfigFromForm);

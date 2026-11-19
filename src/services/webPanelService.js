@@ -269,7 +269,9 @@ class WebPanelService {
       botPresence: botPresenceRepo ? botPresenceRepo.getPresence() : null,
       aiKeys: this.services.apiKeyRepo ? this.services.apiKeyRepo.getKeysStatus(this.services.llmAdapter) : null,
       aiMemories: this.services.memoryRepo ? this.services.memoryRepo.ensureDefaultBotMemories(guildId, botGuild?.name || 'Servidor') : [],
-      customEmojis: require('../utils/emojiHelper').getGuildAndExternalEmojis(this.botClient, guildId)
+      customEmojis: require('../utils/emojiHelper').getGuildAndExternalEmojis(this.botClient, guildId),
+      socialAlerts: this.services.socialAlertRepo ? this.services.socialAlertRepo.listAlerts(guildId) : [],
+      backups: this.services.backupSecurityService ? this.services.backupSecurityService.listBackups(guildId) : []
     };
 
     const guildIconUrl = botGuild?.iconURL
@@ -302,6 +304,11 @@ class WebPanelService {
 
     if (updates.aiChannelId !== undefined) {
       this.settingsService.setSetting(guildId, 'ai_channel_id', updates.aiChannelId || '', session.userId);
+    }
+
+    if (updates.prefix !== undefined) {
+      const cleanPrefix = String(updates.prefix).trim();
+      this.settingsService.setSetting(guildId, 'prefix', cleanPrefix || '+', session.userId);
     }
 
     if (this.auditService) {
@@ -1989,6 +1996,56 @@ class WebPanelService {
       return reviewRepo.updateReviewStatus(guildId, reviewId, 'REJECTED');
     }
     throw new Error('Ação inválida. Utilize APPROVE, REJECT ou DELETE.');
+  }
+
+  async generateChatSummaryForPanel(session, guildId, channelId, limit = 300, type = 'summary', sendToDiscord = false) {
+    this.verifyGuildAccess(session, guildId);
+    const client = this.botClient || this.services?.botClient;
+    const guild = client?.guilds?.cache?.get(guildId);
+    const channel = guild?.channels?.cache?.get(channelId);
+    if (!channel || !channel.messages) {
+      throw new ValidationError(`Canal de texto "${channelId}" não encontrado ou inacessível.`);
+    }
+
+    const { gossipService, llmAdapter } = this.services;
+    const service = gossipService || (llmAdapter ? new (require('./gossipService').GossipService)({ llmAdapter }) : null);
+    if (!service) {
+      throw new ValidationError('Serviço de IA / Resumo indisponível.');
+    }
+
+    const messages = await service.fetchChannelMessages(channel, limit);
+    const aiName = this.identityService.getDisplayName(guildId);
+
+    let text = '';
+    if (type === 'gossip') {
+      text = await service.generateGossipBulletin(messages, channel.name);
+    } else {
+      text = await service.generateChatSummary(messages, channel.name);
+    }
+
+    if (sendToDiscord && channel.send) {
+      const { EmbedBuilder } = require('discord.js');
+      const isGossip = type === 'gossip';
+      const embed = new EmbedBuilder()
+        .setTitle(isGossip ? '📰 Boletim da Fofoca & Resenha do Servidor' : `📑 Resumo Inteligente do Chat — #${channel.name}`)
+        .setDescription(text)
+        .setColor(isGossip ? 0xFF69B4 : 0x00E5FF)
+        .setFooter({
+          text: `${aiName} • ${isGossip ? 'Fofoca & Resenha' : 'Resumo Estruturado'} (${messages.length} mensagens)`,
+          iconURL: client?.user?.displayAvatarURL ? client.user.displayAvatarURL() : undefined
+        })
+        .setTimestamp();
+      await channel.send({ embeds: [embed] }).catch(() => {});
+    }
+
+    return {
+      success: true,
+      channelId,
+      channelName: channel.name,
+      messageCount: messages.length,
+      type,
+      text
+    };
   }
 }
 

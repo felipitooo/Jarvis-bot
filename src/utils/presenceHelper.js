@@ -34,7 +34,7 @@ function applyBotPresence(client, presenceConfig) {
     const isCustom = typeEnum === ActivityType.Custom;
 
     const activityObj = {
-      name: isCustom ? 'Custom Status' : activityName,
+      name: activityName,
       type: typeEnum
     };
 

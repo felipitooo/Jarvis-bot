@@ -5,6 +5,33 @@ Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [7.2.0] - 2026-11-18
+
+### Corrigido
+- **Correção Definitiva de Salvamento & Sincronização de Presença & Status no Discord:**
+  - Corrigido o envio de status `Custom` em `src/utils/presenceHelper.js`: assegurado que o nome da atividade seja mantido fielmente junto ao `state` (`activityObj.name = activityName; activityObj.state = activityName;`), garantindo que tanto versões antigas quanto o Gateway v10 do Discord reflitam a mensagem instantaneamente sem ficar preso em status residuais.
+  - Sincronização em tempo real de prefixo e nome de exibição no `updateGuildSettings` (`src/services/webPanelService.js`), persistindo o prefixo do servidor diretamente nas configurações (`settingsService.setSetting(guildId, 'prefix', cleanPrefix)`).
+  - Listener dinâmico em `botConfig.onConfigChange` no boot (`src/index.js`) e no endpoint `POST /api/bot/config` (`src/web/server.js`) para atualizar em tempo real o prefixo do `prefixCommandHandler` e o nome da IA sem requerer reinicialização do processo.
+
+### Adicionado
+- **Aba Dedicada "Alertas Sociais" no Painel Web (`tab-alerts`):**
+  - Criação de aba exclusiva e isolada no menu lateral para gerenciamento de alertas (YouTube, Twitch e Reddit).
+  - Formulário completo para adicionar monitoramento (plataforma, canal/subreddit alvo, canal de destino no Discord, mensagem personalizada com placeholders).
+  - Tabela dinâmica de alertas ativos com suporte a disparo de teste em tempo real (`🔔 Testar`) e exclusão em 1 clique (`🗑️ Excluir`).
+- **Painel de Configuração Rápida Anti-Bot Scam na Web (`tab-moderation`):**
+  - Cartão dedicado com controles simplificados para proteção contra golpes automatizados (MrBeast, Nitro falso, phishings de airdrop e Steam).
+  - Seletores para Ativação/Desativação, Ação Punitiva Imediata (`TIMEOUT`, `KICK`, `BAN`) e Duração do Silenciamento (5min a 7 dias).
+- **Ferramenta Interativa de Resumo Inteligente do Chat no Painel Web:**
+  - Gerador de resumos em tempo real direto pela interface web com suporte a até 300 mensagens recentes por canal.
+  - Modos configuráveis: Resumo Estruturado & Factual ou Boletim de Fofoca & Resenha Humorística.
+  - Opção de publicar o resumo gerado diretamente no canal do Discord com um clique e botão para cópia instantânea para a área de transferência.
+- **Botões de Salvamento Rápido em Cartões Individuais nas Configurações Gerais:**
+  - Botão `💾 Salvar Identidade & Prefixo` no cartão "Identidade do Bot no Discord".
+  - Botão `💾 Salvar Personalidade & Diretrizes` no cartão "Personalidade & Diretrizes da IA".
+  - Botão `💾 Salvar Cores & Tema do Painel` no cartão "Cores & Tema Visual".
+- **Cartão de Backups Estruturais de Servidor na Web:**
+  - Seção para criação de snapshots de servidor (canais, categorias, cargos e permissões) e visualização de snapshots anteriores com opção de exclusão.
+
 ## [7.1.0] - 2026-11-18
 
 ### Adicionado
