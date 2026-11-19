@@ -5,6 +5,21 @@ Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [7.5.0] - 2026-11-18
+
+### Corrigido
+- **Correção Crítica no Resumo Inteligente do Chat (`src/services/gossipService.js`):**
+  - **Desempacotamento de Resposta do Gemini:** Corrigida falha onde a resposta da API do Gemini retornava `{ text, toolCalls }` e a verificação estrita `typeof response === 'string'` avaliava como falsa, descartando indevidamente a resposta gerada pela IA e ativando o fallback estático de mock com mensagens genéricas. Agora `responseText` extrai fielmente `response?.text || response`.
+  - **Timestamps em Linha do Tempo Real:** Mensagens enviadas para o LLM agora incluem horários de envio `[HH:mm]` com base no fuso horário oficial (Brasília, UTC-3), permitindo ao modelo compreender perfeitamente a sequência temporal dos acontecimentos.
+  - **Ancoragem Factual & Detalhada:** Prompt atualizado com diretrizes rígidas exigindo citação direta dos tópicos reais debatidos (jogos, trabalho, piadas, programação, desabafos) e posicionamento individual dos participantes.
+
+### Adicionado
+- **Sincronização Temporal Ativa & Data/Hora Atualizada no Bot:**
+  - **Injeção de Data e Hora Real no Prompt do Sistema (`src/ai/prompts/systemPrompt.js`):** Injetadas a data de hoje por extenso, dia da semana, horário em tempo real (Brasília/DF, UTC-3) e timestamp ISO no `buildSystemPrompt`, garantindo que o Jarvis sempre saiba o momento presente do mundo real em qualquer interação.
+  - **Nova Ferramenta de IA `obter_data_hora_atual` (`src/ai/tools/fridayTools.js`):** Ferramenta analítica registrada no catálogo para consultar data, dia da semana e horário atômico atualizados.
+  - **Comandos de Prefixo de Horário Oficial (`+data`, `+hora`, `+horario`, `+tempo`, `+relogio`):** Adicionados comandos rápidos no `prefixCommandHandler.js` exibindo embed completo com data, horário oficial de Brasília e tempo de uptime do bot.
+
+
 ## [7.4.0] - 2026-11-18
 
 ### Corrigido

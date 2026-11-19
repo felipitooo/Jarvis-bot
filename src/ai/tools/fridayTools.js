@@ -551,6 +551,33 @@ const fridayTools = [
         mensagem: speechMap[cleanMode] || `Modo de humor alterado para: ${cleanMode}.`
       };
     }
+  },
+  {
+    name: 'obter_data_hora_atual',
+    description: 'Consulta a data atualizada, dia da semana, mês, ano e horário exatos em tempo real (fuso horário de Brasília / UTC-3).',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        fuso_horario: {
+          type: 'STRING',
+          description: 'Fuso horário opcional no formato IANA (padrão: "America/Sao_Paulo").'
+        }
+      }
+    },
+    riskLevel: 'LOW',
+    async execute({ fuso_horario = 'America/Sao_Paulo' }) {
+      const now = new Date();
+      const tz = fuso_horario || 'America/Sao_Paulo';
+      const dateStr = now.toLocaleDateString('pt-BR', { timeZone: tz, weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      const timeStr = now.toLocaleTimeString('pt-BR', { timeZone: tz, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+      return {
+        status: 'sucesso',
+        data: dateStr,
+        horario: timeStr,
+        fuso_horario: tz,
+        timestamp_iso: now.toISOString()
+      };
+    }
   }
 ];
 

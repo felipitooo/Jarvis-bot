@@ -72,7 +72,11 @@ class GossipService {
       if (text.length < 2) continue;
 
       const authorName = msg.member?.displayName || msg.author?.username || 'Membro';
-      filtered.push(`${authorName}: "${text}"`);
+      const timeStr = msg.createdAt
+        ? msg.createdAt.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })
+        : (msg.createdTimestamp ? new Date(msg.createdTimestamp).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' }) : '');
+      const timePrefix = timeStr ? `[${timeStr}] ` : '';
+      filtered.push(`${timePrefix}${authorName}: "${text}"`);
     }
 
     return filtered.slice(-maxItems);
@@ -96,32 +100,39 @@ class GossipService {
     }
 
     const transcript = formatted.join('\n');
+    const now = new Date();
+    const currentDateStr = now.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+    const currentTimeStr = now.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' });
 
     const systemInstruction = `
 Você é o J.A.R.V.I.S., o assistente analítico central de inteligência artificial deste servidor.
-Sua tarefa é analisar as mensagens reais trocadas pelos membros neste canal e gerar um RESUMO COERENTE, FIEL, INTELIGENTE e ESTRUTURADO da conversa.
+Sua tarefa é analisar as mensagens reais trocadas pelos membros neste canal e gerar um RESUMO COERENTE, FIEL, INTELIGENTE, PRECISO e ESTRUTURADO da conversa.
+
+DATA E HORÁRIO ATUAL DA ANÁLISE: ${currentDateStr} às ${currentTimeStr} (Horário de Brasília / UTC-3).
 
 DIRETRIZES FUNDAMENTAIS:
-1. NUNCA fale nada com nada nem invente acontecimentos que não estão no texto. Seja fiel aos fatos, debates e temas que foram realmente conversados.
-2. Identifique os assuntos de verdade (jogos, trabalho, desabafos, piadas, planos, dúvidas técnicas, eventos, etc.).
-3. Organize o resumo com a seguinte estrutura em Markdown atraente:
-   📌 **Tópicos & Assuntos Principais:** (os 2 a 4 temas centrais abordados)
-   💬 **Participantes & Linhas de Pensamento:** (quem participou e suas opiniões ou reações principais)
-   💡 **Conclusões, Desfechos & Destaques:** (se houve alguma decisão, combinados, momento marcante ou fechamento da conversa)
-4. Mantenha um tom polido, elegante e perspicaz característico do Jarvis.
+1. SEJA EXTREMAMENTE ESPECÍFICO E FIEL: NUNCA dê respostas genéricas como "os membros discutiram temas cotidianos". Diga EXATAMENTE os assuntos que eles conversaram (jogos, animes, programação, trabalho, piadas, desabafos, bot, música, etc.).
+2. CITE OS PARTICIPANTES E SEUS PONTOS: Mostre quem participou ativamente e o que defenderam, perguntaram ou brincaram.
+3. LINHA DO TEMPO: As mensagens possuem timestamps [HH:mm]. Entenda a progressão temporal dos tópicos.
+4. ESTRUTURA EM MARKDOWN ATRAENTE:
+   📌 **Tópicos & Assuntos Principais:** (os 2 a 4 temas centrais que foram de fato debatidos)
+   💬 **Participantes & Linhas de Pensamento:** (quem participou e suas opiniões, reações ou piadas principais)
+   💡 **Conclusões, Desfechos & Destaques:** (se houve combinados, momentos marcantes ou fechamento da conversa)
+5. Mantenha um tom polido, elegante e perspicaz característico do Jarvis.
 `;
 
-    const prompt = `Canal: #${channelName}\nTotal de mensagens analisadas: ${formatted.length}\n\nTranscrição cronológica das mensagens:\n${transcript}\n\nProduza agora o Resumo Fiel e Estruturado da Conversa:`;
+    const prompt = `Canal: #${channelName}\nData/Hora: ${currentDateStr} às ${currentTimeStr}\nTotal de mensagens analisadas: ${formatted.length}\n\nTranscrição cronológica das mensagens reais trocadas:\n${transcript}\n\nProduza agora o Resumo Fiel e Específico da Conversa:`;
 
     if (this.llmAdapter) {
       try {
         const response = await this.llmAdapter.generate({
           systemInstruction,
           prompt,
-          temperature: 0.5 // lower temperature for high accuracy and coherence
+          temperature: 0.4
         });
-        if (response && typeof response === 'string' && response.trim().length > 15) {
-          return response.trim();
+        const responseText = typeof response === 'string' ? response : (response?.text || '');
+        if (responseText && responseText.trim().length > 15) {
+          return responseText.trim();
         }
       } catch (err) {
         // Fallback to offline mock summary
@@ -149,10 +160,15 @@ DIRETRIZES FUNDAMENTAIS:
     }
 
     const transcript = formatted.join('\n');
+    const now = new Date();
+    const currentDateStr = now.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+    const currentTimeStr = now.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' });
 
     const systemInstruction = `
 Você é o correspondente oficial da fofoca e do resumo diário do servidor de amigos no Discord.
 Sua missão é ler as mensagens trocadas recentemente entre os amigos e produzir um "Boletim da Fofoca do Servidor" hilário, espirituoso e sarcástico.
+
+DATA E HORÁRIO ATUAL: ${currentDateStr} às ${currentTimeStr} (Horário de Brasília).
 
 DIRETRIZES:
 1. Seja engraçado, carismático e use gírias leves da internet brasileira (zoeira saudável entre amigos).
@@ -162,7 +178,7 @@ DIRETRIZES:
 5. Formate em Markdown atraente com negrito e marcadores.
 `;
 
-    const prompt = `Canal: #${channelName}\nTotal de mensagens analisadas: ${formatted.length}\n\nConversas recentes dos amigos:\n${transcript}\n\nEscreva agora o Boletim da Fofoca:`;
+    const prompt = `Canal: #${channelName}\nData/Hora: ${currentDateStr} às ${currentTimeStr}\nTotal de mensagens analisadas: ${formatted.length}\n\nConversas recentes dos amigos:\n${transcript}\n\nEscreva agora o Boletim da Fofoca:`;
 
     if (this.llmAdapter) {
       try {
@@ -171,8 +187,9 @@ DIRETRIZES:
           prompt,
           temperature: 0.85
         });
-        if (response && typeof response === 'string' && response.trim().length > 10) {
-          return response.trim();
+        const responseText = typeof response === 'string' ? response : (response?.text || '');
+        if (responseText && responseText.trim().length > 10) {
+          return responseText.trim();
         }
       } catch (err) {
         // Fallback to offline mock bulletin
@@ -184,20 +201,27 @@ DIRETRIZES:
   }
 
   _generateMockSummary(formattedMessages, channelName) {
-    const authors = Array.from(new Set(formattedMessages.map(m => m.split(':')[0]))).slice(0, 4);
+    const authors = Array.from(new Set(formattedMessages.map(m => {
+      const match = m.match(/(?:\[\d{2}:\d{2}\]\s*)?([^:]+):/);
+      return match ? match[1].trim() : null;
+    }).filter(Boolean))).slice(0, 5);
     const mainAuthor = authors[0] || 'Membro';
-    const participants = authors.join(', ');
+    const participants = authors.length > 0 ? authors.join(', ') : 'Membros da comunidade';
+    const sampleQuotes = formattedMessages.slice(-4).map(m => `> ${m}`).join('\n');
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' });
+    const dateStr = now.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric' });
 
     return (
-      `📋 **RESUMO EXECUTIVO DO CANAL #${channelName}**\n\n` +
+      `📋 **RESUMO EXECUTIVO DO CANAL #${channelName}** (${dateStr} às ${timeStr})\n\n` +
       `📌 **Tópicos & Assuntos Principais:**\n` +
-      `• Discussão geral sobre temas cotidianos e troca de mensagens entre os membros.\n` +
-      `• Análise contextual de ${formattedMessages.length} mensagens recentes registradas no canal.\n\n` +
+      `• Troca ativa de mensagens e interações recentes registradas no canal #${channelName}.\n` +
+      `• Análise contextual de ${formattedMessages.length} mensagem(ns) consecutivas registradas.\n\n` +
       `💬 **Participantes & Engajamento:**\n` +
       `• **Participantes ativos:** ${participants}.\n` +
-      `• **Foco da conversa:** Principais considerações e interações levantadas por ${mainAuthor}.\n\n` +
+      `• **Últimas mensagens registradas:**\n${sampleQuotes}\n\n` +
       `💡 **Conclusões & Destaques:**\n` +
-      `• O fluxo de conversa transcorreu normalmente com tópicos em andamento entre os membros.`
+      `• O fluxo de conversa segue ativo entre ${mainAuthor} e os demais membros.`
     );
   }
 

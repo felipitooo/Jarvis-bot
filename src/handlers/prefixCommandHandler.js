@@ -156,6 +156,8 @@ const KNOWN_COMMANDS = new Set([
   'raffle', 'sorteio',
   // Support
   'ticket',
+  // Time & Date
+  'hora', 'horario', 'data', 'tempo', 'relogio',
   // Core
   'ping',
   'ajuda', 'help', 'comandos',
@@ -4440,6 +4442,37 @@ class PrefixCommandHandler {
           } catch (err) {
             await thinkingMsg.edit(`❌ Falha ao resumir conversa: ${err.message}`);
           }
+          return true;
+        }
+
+        case 'hora':
+        case 'horario':
+        case 'data':
+        case 'relogio':
+        case 'tempo': {
+          const now = new Date();
+          const tz = 'America/Sao_Paulo';
+          const dateStr = now.toLocaleDateString('pt-BR', { timeZone: tz, weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+          const timeStr = now.toLocaleTimeString('pt-BR', { timeZone: tz, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+          const uptimeSec = Math.floor(process.uptime());
+          const h = Math.floor(uptimeSec / 3600);
+          const m = Math.floor((uptimeSec % 3600) / 60);
+          const s = uptimeSec % 60;
+          const uptimeFormatted = `${h}h ${m}m ${s}s`;
+
+          const embed = new EmbedBuilder()
+            .setTitle('⏰ Cronômetro & Horário Oficial')
+            .setColor(0x38BDF8)
+            .setDescription(`Sistemas temporais operando em sincronia atômica com o fuso horário oficial de Brasília (UTC-3).`)
+            .addFields(
+              { name: '📅 Data de Hoje', value: `**${dateStr}**`, inline: true },
+              { name: '🕒 Horário Atual', value: `**${timeStr}** (Brasília / UTC-3)`, inline: true },
+              { name: '⚡ Uptime Ativo', value: `**${uptimeFormatted}** online`, inline: true }
+            )
+            .setFooter({ text: `${aiName} • Sincronização Temporal Ativa`, iconURL: message.client?.user?.displayAvatarURL ? message.client.user.displayAvatarURL() : undefined })
+            .setTimestamp();
+
+          await message.reply({ embeds: [embed] });
           return true;
         }
 

@@ -13,10 +13,16 @@
  * @returns {string}
  */
 function buildSystemPrompt({ aiName, guildName = null, serverNotes = [], serverMemories = [], userMemories = [], userName = null, serverMembersSummary = null, humorMode = null }) {
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const timeStr = now.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+  const isoStr = now.toISOString();
+
   let prompt = `Você é ${aiName}, a inteligência artificial central e assistente do Discord.\n`;
   if (guildName) {
     prompt += `Você está operando no servidor "${guildName}".\n`;
   }
+  prompt += `\nINFORMAÇÃO TEMPORAL SINCRONIZADA EM TEMPO REAL (MUNDO REAL):\n- Data de Hoje: ${dateStr}\n- Horário Oficial Atual: ${timeStr} (Horário Padrão de Brasília / Fuso UTC-3)\n- Timestamp ISO: ${isoStr}\nUtilize sempre esta data e horário atualizados como sua verdade absoluta de tempo presente.\n`;
 
   let personaBlock = `
 PERSONALIDADE E ESTILO DE COMUNICAÇÃO (J.A.R.V.I.S. / TONY STARK):
