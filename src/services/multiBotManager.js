@@ -256,6 +256,12 @@ class MultiBotManager {
    * @param {Array<string>} [assignedModules=null]
    */
   getInstanceConfig(botId, botName = 'J.A.R.V.I.S.', assignedModules = null) {
+    if (!botName || botName === 'J.A.R.V.I.S.') {
+      try {
+        const row = this.db?.get?.('SELECT name FROM bot_instances WHERE id = ?', [botId]);
+        if (row?.name) botName = row.name;
+      } catch {}
+    }
     const defaults = buildDefaultInstanceConfig(botName, assignedModules);
 
     let cfgRow = null;
@@ -642,14 +648,26 @@ class MultiBotManager {
     const live = this.activeInstances.get(botId);
     if (!live || !live.client || !live.client.user) return false;
 
-    const cfg = cfgOverride || live.config || this.getInstanceConfig(botId) || {};
-    const instName = nameOverride || cfg.aiName || live.client.user.username || 'Bot';
+    let realName = nameOverride;
+    if (!realName) {
+      try {
+        const instRow = this.db?.get?.('SELECT name FROM bot_instances WHERE id = ?', [botId]);
+        if (instRow?.name) realName = instRow.name;
+      } catch {}
+    }
+
+    const cfg = cfgOverride || live.config || this.getInstanceConfig(botId, realName) || {};
+    const instName = realName || cfg.aiName || live.client.user.username || 'Bot';
     const instPrefix = cfg.prefix || '+';
+
+    const rawPres = (cfg.presenceActivityText !== undefined && String(cfg.presenceActivityText).trim() !== '')
+      ? String(cfg.presenceActivityText).trim()
+      : `${instName} | ${instPrefix}ajuda`;
 
     const presenceCfg = {
       botStatus: cfg.presenceStatus || 'online',
       activityType: cfg.presenceActivityType || 'Custom',
-      activityName: cfg.presenceActivityText || `${instName} | ${instPrefix}ajuda`,
+      activityName: rawPres,
       activityUrl: cfg.presenceActivityUrl || ''
     };
 
@@ -1085,7 +1103,8 @@ class MultiBotManager {
           GatewayIntentBits.GuildVoiceStates,
           GatewayIntentBits.GuildMessageReactions,
           GatewayIntentBits.DirectMessages,
-          GatewayIntentBits.GuildModeration
+          GatewayIntentBits.GuildModeration,
+          GatewayIntentBits.GuildExpressions || GatewayIntentBits.GuildEmojisAndStickers
         ],
         partials: [Partials.Channel, Partials.Message, Partials.Reaction, Partials.GuildMember, Partials.User]
       });

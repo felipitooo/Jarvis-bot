@@ -789,7 +789,8 @@ async function bootstrap() {
       GatewayIntentBits.GuildMembers,
       GatewayIntentBits.GuildVoiceStates,
       GatewayIntentBits.GuildMessageReactions,
-      GatewayIntentBits.GuildModeration
+      GatewayIntentBits.GuildModeration,
+      GatewayIntentBits.GuildExpressions || GatewayIntentBits.GuildEmojisAndStickers
     ],
     partials: [Partials.Channel, Partials.Message, Partials.Reaction, Partials.GuildMember, Partials.User]
   });

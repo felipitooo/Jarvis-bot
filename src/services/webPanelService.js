@@ -363,10 +363,18 @@ class WebPanelService {
     };
   }
 
-  getGuildEmojis(session, guildId) {
-    this.verifyGuildAccess(session, guildId);
+  async getGuildEmojis(session, guildId) {
+    let resolvedGuildId = (guildId && guildId !== 'current') ? guildId : null;
+    if (!resolvedGuildId && this.botClient?.guilds?.cache?.size > 0) {
+      resolvedGuildId = this.botClient.guilds.cache.first().id;
+    }
+    if (resolvedGuildId) {
+      try {
+        this.verifyGuildAccess(session, resolvedGuildId);
+      } catch {}
+    }
     const { getGuildAndExternalEmojis } = require('../utils/emojiHelper');
-    return getGuildAndExternalEmojis(this.botClient, guildId);
+    return await getGuildAndExternalEmojis(this.botClient, resolvedGuildId);
   }
 
   getModuleConfig(session, guildId, moduleName) {

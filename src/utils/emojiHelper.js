@@ -101,17 +101,23 @@ function resolveEmbedEmojis(embedData, client, currentGuildId = null) {
  * Catalogs all emojis available to the client, separated into Current Guild and Other Guilds.
  *
  * @param {import('discord.js').Client} client
- * @param {string} currentGuildId
+ * @param {string} [currentGuildId]
  * @returns {{ currentGuild: Array<object>, otherGuilds: Array<object> }}
  */
-function getGuildAndExternalEmojis(client, currentGuildId) {
+function getGuildAndExternalEmojis(client, currentGuildId = null) {
   if (!client?.guilds?.cache) {
     return { currentGuild: [], otherGuilds: [] };
   }
 
-  const currentGuild = client.guilds.cache.get(currentGuildId);
-  const currentList = [];
+  let currentGuild = (currentGuildId && currentGuildId !== 'current')
+    ? client.guilds.cache.get(currentGuildId)
+    : null;
 
+  if (!currentGuild && client.guilds.cache.size > 0) {
+    currentGuild = client.guilds.cache.first();
+  }
+
+  const currentList = [];
   if (currentGuild?.emojis?.cache) {
     for (const [, emoji] of currentGuild.emojis.cache) {
       currentList.push({
@@ -128,7 +134,7 @@ function getGuildAndExternalEmojis(client, currentGuildId) {
 
   const otherList = [];
   for (const [gId, g] of client.guilds.cache) {
-    if (gId === currentGuildId) continue;
+    if (currentGuild && gId === currentGuild.id) continue;
     if (!g.emojis?.cache || g.emojis.cache.size === 0) continue;
 
     const gEmojis = [];

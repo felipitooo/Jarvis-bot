@@ -3054,33 +3054,81 @@ class PrefixCommandHandler {
             }
           }
 
-          await confirmModerationAction({
-            message,
-            author,
-            target,
-            aiName,
-            action: {
-              type: 'MUTE',
-              label: 'Silenciamento (Timeout)',
-              emoji: '🔇',
-              color: 0x5865F2,
-              successColor: 0x5865F2,
-              reason,
-              extraDetails: [
-                { name: '⏳ Duração', value: `\`${minutes} minuto(s)\``, inline: true }
-              ]
-            },
-            onConfirm: async () => {
-              await moderationService.timeout(guild.members.me, member, targetMember, {
-                durationSeconds: minutes * 60,
-                reason
-              });
-              return {
-                title: '🔇 Membro Silenciado com Sucesso',
-                description: `O membro **${target.username}** foi silenciado temporariamente por **${minutes} minuto(s)**.`
-              };
-            }
+          try {
+            await moderationService.timeout(guild.members.me, member, targetMember, {
+              durationSeconds: minutes * 60,
+              reason
+            });
+          } catch (err) {
+            await message.reply(`❌ Falha ao aplicar silenciamento: ${err.message}`);
+            return true;
+          }
+
+          const undoCustomId = `undo_mute_${author.id}_${target.id}_${Date.now()}`;
+          const successEmbed = new EmbedBuilder()
+            .setColor(0x5865F2)
+            .setTitle('🔇 Membro Silenciado com Sucesso')
+            .setDescription(`O membro **${target.username}** foi silenciado temporariamente por **${minutes} minuto(s)**.`)
+            .addFields(
+              { name: '👤 Infrator', value: `<@${target.id}> \`(${target.tag || target.username})\``, inline: true },
+              { name: '🛡️ Moderador', value: `<@${author.id}> \`(${author.tag || author.username})\``, inline: true },
+              { name: '⏳ Duração', value: `\`${minutes} minuto(s)\``, inline: true },
+              { name: '📝 Motivo', value: `\`\`\`${reason}\`\`\``, inline: false }
+            )
+            .setFooter({ text: `${aiName} • Silenciamento Ativo • Use o botão abaixo para desfazer se necessário` })
+            .setTimestamp();
+
+          const undoBtn = new ButtonBuilder()
+            .setCustomId(undoCustomId)
+            .setLabel('Desfazer Silenciamento (Unmute)')
+            .setEmoji('↩️')
+            .setStyle(ButtonStyle.Secondary);
+
+          const undoRow = new ActionRowBuilder().addComponents(undoBtn);
+
+          const replyMsg = await message.reply({
+            embeds: [successEmbed],
+            components: [undoRow]
           });
+
+          if (replyMsg && typeof replyMsg.createMessageComponentCollector === 'function') {
+            const undoCollector = replyMsg.createMessageComponentCollector({
+              componentType: ComponentType.Button,
+              time: 300000
+            });
+
+            undoCollector.on('collect', async (btnInt) => {
+              if (btnInt.user.id !== author.id) {
+                return btnInt.reply({
+                  content: `❌ Apenas <@${author.id}> pode desfazer esta ação.`,
+                  ephemeral: true
+                }).catch(() => {});
+              }
+              undoCollector.stop('undone');
+              await btnInt.deferUpdate().catch(() => {});
+              try {
+                if (typeof targetMember.timeout === 'function') {
+                  await targetMember.timeout(null, `Silenciamento desfeito por ${author.username}`);
+                }
+                const revertedEmbed = new EmbedBuilder()
+                  .setColor(0x57F287)
+                  .setTitle('✅ Silenciamento Revertido')
+                  .setDescription(`O silenciamento de <@${target.id}> foi **desfeito** por <@${author.id}> com sucesso.`)
+                  .setFooter({ text: `${aiName} • Ação Revertida` })
+                  .setTimestamp();
+
+                await replyMsg.edit({ embeds: [revertedEmbed], components: [] }).catch(() => {});
+              } catch (unmuteErr) {
+                await replyMsg.edit({ content: `❌ Erro ao desfazer: ${unmuteErr.message}`, components: [] }).catch(() => {});
+              }
+            });
+
+            undoCollector.on('end', async (_, endReason) => {
+              if (endReason !== 'undone') {
+                await replyMsg.edit({ components: [] }).catch(() => {});
+              }
+            });
+          }
           return true;
         }
 

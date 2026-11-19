@@ -3172,7 +3172,10 @@ function renderDashboardHtml({
             <div style="display: grid; grid-template-columns: 1fr 140px; gap: 0.85rem;">
               <div class="form-group">
                 <label>Título da Embed</label>
-                <input type="text" id="speakEmbedTitle" placeholder="Ex: Comunicado Oficial Stark" maxlength="256">
+                <div style="display: flex; gap: 0.4rem;">
+                  <input type="text" id="speakEmbedTitle" placeholder="Ex: Comunicado Oficial Stark" maxlength="256" style="flex: 1;">
+                  <button type="button" class="emoji-input-trigger" onclick="openEmojiPicker('speakEmbedTitle')" title="Inserir Emoji">😀</button>
+                </div>
               </div>
               <div class="form-group">
                 <label>Cor da Barra</label>
@@ -3200,7 +3203,10 @@ function renderDashboardHtml({
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem;">
               <div class="form-group">
                 <label>Nome do Autor (Topo)</label>
-                <input type="text" id="speakEmbedAuthorName" placeholder="Ex: J.A.R.V.I.S Security" maxlength="256">
+                <div style="display: flex; gap: 0.4rem;">
+                  <input type="text" id="speakEmbedAuthorName" placeholder="Ex: J.A.R.V.I.S Security" maxlength="256" style="flex: 1;">
+                  <button type="button" class="emoji-input-trigger" onclick="openEmojiPicker('speakEmbedAuthorName')" title="Inserir Emoji">😀</button>
+                </div>
               </div>
               <div class="form-group">
                 <label>Ícone do Autor (URL da Imagem)</label>
@@ -3235,7 +3241,10 @@ function renderDashboardHtml({
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem; margin-top: 0.5rem;">
               <div class="form-group">
                 <label>Texto do Rodapé (Footer)</label>
-                <input type="text" id="speakEmbedFooterText" placeholder="Ex: Protocolos Stark Industries • 2026" maxlength="2048">
+                <div style="display: flex; gap: 0.4rem;">
+                  <input type="text" id="speakEmbedFooterText" placeholder="Ex: Protocolos Stark Industries • 2026" maxlength="2048" style="flex: 1;">
+                  <button type="button" class="emoji-input-trigger" onclick="openEmojiPicker('speakEmbedFooterText')" title="Inserir Emoji">😀</button>
+                </div>
               </div>
               <div class="form-group">
                 <label>Ícone do Rodapé (URL)</label>
@@ -9703,6 +9712,19 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       return '<svg class="coin-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="#f59e0b" stroke-width="2" fill="#ffd700"/><text x="12" y="16.5" font-size="13" font-weight="900" fill="#78350f" text-anchor="middle">$</text></svg>';
     }
 
+    function getFlattenedOtherEmojis() {
+      const raw = window.emojiCatalog?.otherGuilds || [];
+      const flat = [];
+      raw.forEach(function(item) {
+        if (item && Array.isArray(item.emojis)) {
+          item.emojis.forEach(function(em) { flat.push(em); });
+        } else if (item && item.name) {
+          flat.push(item);
+        }
+      });
+      return flat;
+    }
+
     function renderDiscordCustomEmojis(html) {
       if (!html) return '';
 
@@ -9714,7 +9736,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
 
       // 2. Resolve shorthand :name: only when emojiCatalog is loaded and it is NOT part of an existing Discord tag
       if (window.emojiCatalog) {
-        var list = (window.emojiCatalog.currentGuild || []).concat(window.emojiCatalog.otherGuilds || []);
+        var list = (window.emojiCatalog.currentGuild || []).concat(getFlattenedOtherEmojis());
         if (list.length > 0) {
           var map = new Map();
           list.forEach(function(e) {
@@ -9832,7 +9854,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
     function updateEmojiCounters() {
       const stdCount = window.standardEmojis?.length || 0;
       const curCount = window.emojiCatalog?.currentGuild?.length || 0;
-      const othCount = window.emojiCatalog?.otherGuilds?.length || 0;
+      const othCount = getFlattenedOtherEmojis().length;
       const elStd = document.getElementById('emojiStandardCount');
       const elCur = document.getElementById('emojiCurrentCount');
       const elOth = document.getElementById('emojiOtherCount');
@@ -9843,16 +9865,17 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
 
     async function ensureEmojiCatalogLoaded() {
       updateEmojiCounters();
-      if (!currentGuildId) return;
+      const targetGId = currentGuildId || document.getElementById('guildSelector')?.value || 'current';
       if (window.emojiCatalog && ((window.emojiCatalog.currentGuild && window.emojiCatalog.currentGuild.length > 0) || (window.emojiCatalog.otherGuilds && window.emojiCatalog.otherGuilds.length > 0))) {
         return;
       }
       try {
-        const res = await fetch('/api/guilds/' + currentGuildId + '/emojis', { credentials: 'same-origin' });
+        const res = await fetch('/api/guilds/' + encodeURIComponent(targetGId) + '/emojis', { credentials: 'same-origin' });
         if (res.ok) {
           const json = await res.json();
           window.emojiCatalog = json;
           updateEmojiCounters();
+          renderEmojiGrid();
         }
       } catch (err) {
         console.error('Failed to load emoji catalog:', err);
@@ -9906,7 +9929,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       } else if (window.emojiCurrentTab === 'current') {
         list = window.emojiCatalog?.currentGuild || [];
       } else {
-        list = window.emojiCatalog?.otherGuilds || [];
+        list = getFlattenedOtherEmojis();
       }
 
       const filtered = query

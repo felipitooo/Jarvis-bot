@@ -86,13 +86,16 @@ module.exports = {
       let presenceCfg = null;
 
       if (context?.botInstanceId) {
-        const instCfg = context.multiBotManager?.getInstanceConfig?.(context.botInstanceId) || context.botInstanceConfig || {};
-        const instName = instCfg.aiName || context.botInstanceName || client.user?.username || defaultName;
+        const instName = context.botInstanceName || client.user?.username || defaultName;
+        const instCfg = context.multiBotManager?.getInstanceConfig?.(context.botInstanceId, instName) || context.botInstanceConfig || {};
         const instPrefix = instCfg.prefix || '+';
+        const rawPres = (instCfg.presenceActivityText !== undefined && String(instCfg.presenceActivityText).trim() !== '')
+          ? String(instCfg.presenceActivityText).trim()
+          : `${instName} | ${instPrefix}ajuda`;
         presenceCfg = {
           botStatus: instCfg.presenceStatus || 'online',
           activityType: instCfg.presenceActivityType || 'Custom',
-          activityName: instCfg.presenceActivityText || `${instName} | ${instPrefix}ajuda`,
+          activityName: rawPres,
           activityUrl: instCfg.presenceActivityUrl || ''
         };
       } else {

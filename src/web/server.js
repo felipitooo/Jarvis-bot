@@ -910,7 +910,7 @@ class WebServer {
 
         // GET /api/guilds/:guildId/emojis - List current guild and external custom emojis
         if (subPath === '/emojis' && method === 'GET') {
-          const emojisData = this.webPanelService.getGuildEmojis(session, guildId);
+          const emojisData = await this.webPanelService.getGuildEmojis(session, guildId);
           return this._sendJson(res, 200, emojisData);
         }
 

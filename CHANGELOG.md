@@ -5,6 +5,28 @@ Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [9.2.0] - 2026-11-19
+
+### Adicionado
+- **Gateway Intent `GuildExpressions` para Clientes Discord:**
+  - Adicionado `GatewayIntentBits.GuildExpressions || GatewayIntentBits.GuildEmojisAndStickers` tanto no cliente principal (`src/index.js`) quanto em todas as instâncias Multi-Bot (`src/services/multiBotManager.js`). Isso garante que o cache de emojis customizados (`guild.emojis.cache`) seja preenchido e mantido atualizado pelo Discord Gateway em tempo real.
+- **Fluxo de Moderação Direto com Desfazer Imediato (`+mute`):**
+  - O comando `+mute` (e aliases `+timeout`, `+mutar`, `+silenciar`) agora aplica a punição **imediatamente** e sem atraso na chamada do comando, enviando um card informativo com Infrator, Moderador, Duração e Motivo, acompanhado do botão interativo `[ ↩️ Desfazer Silenciamento (Unmute) ]`.
+  - Elimina o risco de cancelamentos acidentais por botões de confirmação modal durante emergências no servidor, oferecendo reversão em 1 clique durante 5 minutos para o moderador responsável.
+- **Seletor de Emojis em Todos os Campos Restantes de "Falar pelo Bot":**
+  - Inserido o botão disparador de emojis (`😀`) nos campos de Título (`speakEmbedTitle`), Nome do Autor (`speakEmbedAuthorName`) e Texto de Rodapé (`speakEmbedFooterText`) da aba principal "Falar pelo Bot", permitindo personalizar com emojis todo o conteúdo de comunicados e embeds.
+
+### Corrigido
+- **Carregamento e Exibição de Emojis do Servidor no Emoji Picker ("Meu Servidor"):**
+  - Corrigida a função `ensureEmojiCatalogLoaded()` no painel web (`dashboardHtml.js`) para resolver o ID do servidor mesmo em páginas do Multi-Bot onde `currentGuildId` não estava selecionado.
+  - Corrigida a rota `/api/guilds/:guildId/emojis` em `src/web/server.js` e `src/services/webPanelService.js` para buscar emojis via API REST do Discord caso o cache local do bot esteja vazio ao inicializar.
+  - O catálogo de emojis de outros servidores agora suporta de forma transparente tanto estruturas agrupadas por servidor quanto listas planas de emojis, garantindo contagem e renderização sem erros.
+- **Presença Customizada em Tempo Real para Instâncias Multi-Bot (`Dumb`):**
+  - Corrigido o gerenciamento de presença no Discord Gateway v10: agora define o texto customizado no campo `state` do objeto de presença.
+  - Corrigido `getInstanceConfig()` e `applyInstancePresence()` no `MultiBotManager` para garantir que o nome real e frase de status de instâncias secundárias (ex: `Dumb | +ajuda`) sejam preservados sem regredir para a presença padrão do Jarvis.
+- **Restabelecimento dos Módulos no Banco de Dados:**
+  - Restaurados os módulos de `moderation` e `auto_protection` para ativos no servidor após testes manuais anteriores.
+
 ## [9.1.0] - 2026-11-19
 
 ### Adicionado
