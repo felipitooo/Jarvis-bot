@@ -1,7 +1,7 @@
 {
   "name": "jarvis-discord-bot",
-  "version": "9.4.0",
-  "description": "Unified Modular Discord Bot (Jarvis) - Production Release v9.4.0 Complete Multi-Bot Isolation: Isolated Audit Dispatching, Web Panel Bot-Targeted Overview & Module Configs, and Zero Jarvis Cross-Contamination",
+  "version": "9.5.0",
+  "description": "Unified Modular Discord Bot (Jarvis) - Production Release v9.5.0 Interaction & Web Panel Audit & Hardening: Undo Mute Interactive Revert, Dashboard Duplicate Element & Dead Code Cleanup, Prefixless Mode Toggle & Theme Save Fixes",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",

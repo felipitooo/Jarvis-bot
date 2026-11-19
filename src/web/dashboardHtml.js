@@ -2935,6 +2935,12 @@ function renderDashboardHtml({
               <label>Prefixo de Comandos no Servidor</label>
               <input type="text" id="serverPrefixInput" value="+" placeholder="Ex: +, !, .">
             </div>
+            <div class="form-group" style="display: flex; align-items: flex-end; padding-bottom: 0.65rem;">
+              <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.88rem; color: var(--text-main); user-select: none;">
+                <input type="checkbox" id="prefixlessModeCheckbox" style="accent-color: var(--primary); width: 16px; height: 16px; cursor: pointer;">
+                <span>⚡ Ativar modo sem prefixo (executar comandos direto pelo nome)</span>
+              </label>
+            </div>
           </div>
           <button class="primary-btn" id="saveAiNameBtn" style="margin-top: 0.5rem;">💾 Salvar Nome & Prefixo do Servidor</button>
         </div>
@@ -5573,7 +5579,6 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
               </div>
             </div>
           </div>
-          <button type="button" class="primary-btn" id="saveBotThemeBtn" style="margin-top: 1rem; font-weight: 700;">💾 Salvar Cores & Tema do Painel</button>
         </div>
       </div>
     </div>
@@ -6135,59 +6140,20 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           <button class="primary-btn" id="saveBriefingBtn">💾 Salvar Relatório</button>
         </div>
 
-        <!-- CARD: RESUMO INTELIGENTE DO CHAT -->
+        <!-- CARD: ACESSO RÁPIDO AO RESUMO INTELIGENTE -->
         <div class="card" style="grid-column: 1 / -1; border-color: rgba(56, 189, 248, 0.35); background: linear-gradient(135deg, rgba(56, 189, 248, 0.05), rgba(15, 23, 42, 0.4));">
-          <h2 style="display: flex; align-items: center; gap: 0.5rem; color: #38bdf8;">
-            <span>📑</span> Resumo Inteligente do Chat (IA até 300 mensagens)
-          </h2>
-          <p style="margin: 0 0 1rem 0; color: var(--text-muted); font-size: 0.82rem;">
-            Sintetiza conversas longas de qualquer canal em tópicos principais, participantes e conclusões factuais em segundos.
-          </p>
-
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
-            <div class="form-group">
-              <label>Canal de Texto para Analisar</label>
-              <select id="summaryChannelSelect" class="channel-select">
-                <option value="">Carregando canais...</option>
-              </select>
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+            <div>
+              <h2 style="display: flex; align-items: center; gap: 0.5rem; color: #38bdf8; margin: 0 0 0.4rem 0;">
+                <span>🧠</span> Resumo Analítico Inteligente de Conversas (IA)
+              </h2>
+              <p style="margin: 0; color: var(--text-muted); font-size: 0.85rem;">
+                Sintetize conversas reais de canais de texto com IA Gemini, veja participantes, tópicos e acesse o histórico completo salvo no SQLite.
+              </p>
             </div>
-
-            <div class="form-group">
-              <label>Quantidade de Mensagens Recentes</label>
-              <select id="summaryLimitSelect">
-                <option value="50">50 Mensagens (Rápido)</option>
-                <option value="100">100 Mensagens (Padrão)</option>
-                <option value="200">200 Mensagens (Aprofundado)</option>
-                <option value="300" selected>300 Mensagens (Máximo sem perda de velocidade)</option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label>Estilo do Resumo</label>
-              <select id="summaryTypeSelect">
-                <option value="summary" selected>📑 Resumo Estruturado & Factual</option>
-                <option value="gossip">📰 Boletim de Fofoca & Resenha Humorística</option>
-              </select>
-            </div>
-          </div>
-
-          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-top: 0.75rem;">
-            <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--text-main); cursor: pointer;">
-              <input type="checkbox" id="summarySendToDiscordCheckbox" style="accent-color: var(--primary); width: 16px; height: 16px;">
-              <span>Publicar também o resumo no canal do Discord selecionado</span>
-            </label>
-            <button class="primary-btn" id="generateSummaryBtn" style="padding: 0.65rem 1.4rem; font-weight: 700;">
-              ⚡ Gerar Resumo com IA Agora
+            <button type="button" class="primary-btn" onclick="document.querySelector('[data-tab=\'tab-summaries\']')?.click()" style="padding: 0.65rem 1.4rem; font-weight: 700;">
+              Ir para Central de Resumos IA ➔
             </button>
-          </div>
-
-          <!-- Container de Resultado do Resumo -->
-          <div id="summaryResultBox" style="display: none; margin-top: 1rem; padding: 1.25rem; background: rgba(0,0,0,0.35); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 10px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-              <h4 id="summaryResultTitle" style="margin: 0; color: #38bdf8; font-size: 0.95rem;">Resumo Gerado</h4>
-              <button class="secondary-btn" id="copySummaryBtn" style="padding: 0.35rem 0.75rem; font-size: 0.75rem;">📋 Copiar Texto</button>
-            </div>
-            <div id="summaryResultContent" style="white-space: pre-wrap; font-size: 0.85rem; line-height: 1.6; color: #e2e8f0; max-height: 400px; overflow-y: auto;"></div>
           </div>
         </div>
 
@@ -12246,6 +12212,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       if (!currentGuildId) currentGuildId = document.getElementById('guildSelector')?.value || '${initialServerId || ''}';
       const newName = document.getElementById('aiNameInput')?.value?.trim();
       const newPrefix = document.getElementById('serverPrefixInput')?.value?.trim() || '+';
+      const isPrefixless = Boolean(document.getElementById('prefixlessModeCheckbox')?.checked);
       if (!newName) return showToast('Digite um nome para a IA!', 'warning');
       try {
         const activeCsrf = window.csrfToken || currentCsrfToken || csrfToken;
@@ -12257,7 +12224,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
             'X-Panel-Password': '1598'
           },
           credentials: 'same-origin',
-          body: JSON.stringify({ aiDisplayName: newName, prefix: newPrefix })
+          body: JSON.stringify({ aiDisplayName: newName, prefix: newPrefix, prefixlessMode: isPrefixless })
         });
         if (res.ok) {
           showToast('Nome da IA atualizado para: ' + newName + ' (Prefixo: ' + newPrefix + ')', 'success');
@@ -14668,8 +14635,11 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           badge: document.getElementById('cfgPanelBadge')?.value?.trim() || 'TECH CORE v2.0',
           subtitle: document.getElementById('cfgPanelSubtitle')?.value?.trim() || '',
           footerCopyright: document.getElementById('cfgPanelFooter')?.value?.trim() || ''
-        },
-        modules: {
+        }
+      };
+
+      if (document.getElementById('cfgModAiChat')) {
+        payload.modules = {
           aiChat: document.getElementById('cfgModAiChat')?.checked !== false,
           music: document.getElementById('cfgModMusic')?.checked !== false,
           economy: document.getElementById('cfgModEconomy')?.checked !== false,
@@ -14677,8 +14647,8 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           moderation: document.getElementById('cfgModModeration')?.checked !== false,
           tickets: document.getElementById('cfgModTickets')?.checked !== false,
           quizArena: document.getElementById('cfgModQuiz')?.checked !== false
-        }
-      };
+        };
+      }
 
       try {
         const res = await authFetch('/api/bot/config', {

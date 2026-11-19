@@ -868,6 +868,60 @@ module.exports = {
             ephemeral: true
           }).catch(() => {});
         }
+
+        // Undo Mute / Revert Moderation button handler (+mute)
+        if (customId.startsWith('undo_mute_')) {
+          const parts = customId.split('_');
+          const modAuthorId = parts[2];
+          const targetUserId = parts[3];
+
+          if (user.id !== modAuthorId) {
+            return await interaction.reply({
+              content: `❌ Apenas <@${modAuthorId}> pode desfazer esta ação.`,
+              ephemeral: true
+            }).catch(() => {});
+          }
+
+          try {
+            const memberToUnmute = await guild.members.fetch(targetUserId).catch(() => null);
+            if (memberToUnmute && typeof memberToUnmute.timeout === 'function') {
+              await memberToUnmute.timeout(null, `Silenciamento desfeito por ${user.username}`);
+            }
+
+            const aiName = context.identityService?.getDisplayName(guild.id) || 'J.A.R.V.I.S';
+            if (context.multiBotManager?.interBotBridge) {
+              context.multiBotManager.interBotBridge.syncModeration({
+                action: 'UNTIMEOUT',
+                targetId: targetUserId,
+                targetName: memberToUnmute?.user?.username || targetUserId,
+                actorId: user.id,
+                actorName: user.username,
+                botName: aiName,
+                reason: `Silenciamento desfeito por ${user.username}`,
+                guildId: guild.id,
+                fromBotId: context.botInstanceId || 'jarvis_primary'
+              });
+            }
+
+            const { EmbedBuilder } = require('discord.js');
+            const revertedEmbed = new EmbedBuilder()
+              .setColor(0x57F287)
+              .setTitle('✅ Silenciamento Revertido')
+              .setDescription(`O silenciamento de <@${targetUserId}> foi **desfeito** por <@${user.id}> com sucesso.`)
+              .setFooter({ text: `${aiName} • Ação Revertida` })
+              .setTimestamp();
+
+            return await interaction.update({
+              embeds: [revertedEmbed],
+              components: []
+            }).catch(() => {});
+          } catch (unmuteErr) {
+            return await interaction.reply({
+              content: `❌ Erro ao desfazer silenciamento: ${unmuteErr.message}`,
+              ephemeral: true
+            }).catch(() => {});
+          }
+        }
       } catch (btnErr) {
         interactionLogger.error(`Error handling button interaction ${interaction.customId}: ${btnErr.message}`);
       }

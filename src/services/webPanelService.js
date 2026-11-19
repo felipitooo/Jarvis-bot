@@ -435,6 +435,10 @@ class WebPanelService {
       this.settingsService.setSetting(guildId, 'prefix', cleanPrefix || '+', session.userId);
     }
 
+    if (updates.prefixlessMode !== undefined) {
+      this.settingsService.setSetting(guildId, 'prefixless_mode', updates.prefixlessMode ? 'true' : 'false', session.userId);
+    }
+
     if (this.auditService) {
       this.auditService.logAction({
         guildId,

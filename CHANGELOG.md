@@ -5,6 +5,24 @@ Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [9.5.0] - 2026-11-19
+
+### Adicionado
+- **Handler Interativo de Reversão de Silenciamento (`undo_mute_`):**
+  - Implementado o suporte no `src/events/interactionCreate.js` para o botão interativo `"Desfazer Silenciamento (Unmute)"` gerado no comando `+mute`.
+  - Permite aos moderadores reverter o timeout de um membro diretamente pelo botão mesmo após reinicialização do bot ou expiração do coletor inline, sincronizando a ação com a malha inter-bot (`InterBotBridge`).
+- **Controle de Modo Sem Prefixo na Central de Identidade:**
+  - Adicionado o checkbox `prefixlessModeCheckbox` na aba de Identidade do Assistente (`#tab-identity`) do Painel Web, permitindo ativar ou desativar o acionamento direto de comandos pelo nome por servidor, com persistência na rota `/api/guilds/:guildId/settings` e no serviço de configurações.
+
+### Corrigido
+- **Correção de Botões Quebrados e IDs Duplicados no Painel Web (`dashboardHtml.js`):**
+  - Removido o card duplicado de "Resumo Inteligente do Chat (IA)" na aba de relatórios executivos (`#tab-briefings`), substituindo por um card de atalho direto para a central de resumos (`#tab-summaries`), eliminando a colisão de IDs (`summaryChannelSelect`, `summaryTypeSelect`, `generateSummaryBtn`, `copySummaryBtn`).
+  - Corrigido o bug onde o botão `generateSummaryBtn` da central de resumos não respondia ao clique do usuário por colisão de seletores.
+  - Removido o botão órfão `saveBotThemeBtn` acidentalmente colocado na área de mensagens diretas de membros (`#tab-members`), restaurando o funcionamento pleno do botão oficial de salvamento de tema na aba de personalização.
+  - Ajustado o formulário de personalização de cores para não sobrescrever nem resetar os 26 módulos dinâmicos com propriedades legadas ao salvar temas.
+- **Limpeza de Interações Duplicadas no Discord (`interactionCreate.js`):**
+  - Unificados e limpos os seletores e tratamentos redundantes de falência corporativa (`comp_bankrupt_yes_`), botões empresariais e abertura de painéis de tickets.
+
 ## [9.4.0] - 2026-11-19
 
 ### Adicionado
