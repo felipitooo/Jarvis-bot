@@ -3106,6 +3106,14 @@ function renderDashboardHtml({
           <p>Envie mensagens normais ou embeds totalmente estilizadas em qualquer canal de texto do servidor diretamente pelo painel.</p>
 
           <div class="form-group">
+            <label>🤖 Bot Transmissor (Qual Bot Enviará a Mensagem) *</label>
+            <select id="speakBotInstanceSelect">
+              <option value="MAIN">🤖 Bot Principal (${aiDisplayName})</option>
+            </select>
+            <small style="color: var(--text-muted); font-size: 0.75rem;">Escolha se a mensagem será enviada pelo bot principal ou por uma instância do Multi-Bot Manager.</small>
+          </div>
+
+          <div class="form-group">
             <label>Canal de Destino no Servidor *</label>
             <select id="speakChannelSelect" class="channel-select">
               <option value="">Carregando canais...</option>
@@ -6694,6 +6702,12 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
             <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-database" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">16. Banco de Dados</button>
             <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-logs" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">17. Logs & Erros</button>
             <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-advanced" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">18. Avançado</button>
+            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-botspeak" style="font-size: 0.78rem; padding: 0.4rem 0.75rem; border-color: rgba(56, 189, 248, 0.45); color: #38bdf8;">19. 🔊 Falar pelo Bot</button>
+            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-antibot" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">20. 🛡️ Anti-Bots & Scams</button>
+            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-welcome" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">21. 👋 Boas-Vindas & AutoRole</button>
+            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-starboard" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">22. ⭐ Starboard</button>
+            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-casino-quiz" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">23. 🎰 Cassino & Quiz</button>
+            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-summary" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">24. 🧠 Resumo Inteligente</button>
           </div>
         </div>
 
@@ -7272,6 +7286,218 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
                 </select>
               </div>
             </div>
+          </div>
+        </div>
+
+        <!-- SEÇÃO 19: FALAR PELO BOT (TRANSMISSOR EXCLUSIVO DA INSTÂNCIA) -->
+        <div id="mb-sec-botspeak" class="mb-admin-section" style="display: none;">
+          <div class="card">
+            <h3>🔊 Transmissor de Mensagens & Embeds — Falar por este Bot</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted);">Envie mensagens normais ou cards de Embed personalizados em qualquer canal de texto do servidor usando diretamente a conta Discord desta instância.</p>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem;">
+              <div class="form-group">
+                <label>Canal de Destino no Servidor *</label>
+                <select id="mbSpeakChannelSelect" class="channel-select">
+                  <option value="">Selecione um canal...</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Cor da Barra Lateral da Embed</label>
+                <input type="text" id="mbSpeakEmbedColor" value="#00E5FF" placeholder="#00E5FF">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Mensagem de Texto Normal (Suporta {server}, {members}, @everyone, @here)</label>
+              <textarea id="mbSpeakContentInput" rows="3" placeholder="Digite a mensagem que este bot enviará no canal..."></textarea>
+            </div>
+
+            <div style="background: rgba(0,0,0,0.22); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 8px; padding: 1rem; margin-top: 0.75rem;">
+              <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer; font-weight: 700; color: #38bdf8; margin-bottom: 0.85rem;">
+                <input type="checkbox" id="mbSpeakUseEmbed" style="width: 18px; height: 18px; accent-color: #38bdf8;">
+                <span>✨ Incluir Card com Embed Personalizada</span>
+              </label>
+
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.85rem;">
+                <div class="form-group">
+                  <label>Título da Embed</label>
+                  <input type="text" id="mbSpeakEmbedTitle" placeholder="Ex: Comunicado Oficial">
+                </div>
+                <div class="form-group">
+                  <label>URL do Título (Opcional)</label>
+                  <input type="text" id="mbSpeakEmbedUrl" placeholder="https://...">
+                </div>
+                <div class="form-group">
+                  <label>Imagem Grande / Banner (URL Opcional)</label>
+                  <input type="text" id="mbSpeakEmbedImage" placeholder="https://...">
+                </div>
+                <div class="form-group">
+                  <label>Miniatura / Thumbnail (URL Opcional)</label>
+                  <input type="text" id="mbSpeakEmbedThumb" placeholder="https://...">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>Descrição / Corpo da Embed (Suporta Markdown)</label>
+                <textarea id="mbSpeakEmbedDesc" rows="3" placeholder="Escreva o conteúdo formatado da embed..."></textarea>
+              </div>
+
+              <div class="form-group" style="margin-bottom: 0;">
+                <label>Rodapé da Embed (Opcional)</label>
+                <input type="text" id="mbSpeakEmbedFooter" placeholder="Ex: Transmitido pela Instância">
+              </div>
+            </div>
+
+            <div style="margin-top: 1rem; display: flex; justify-content: flex-end;">
+              <button type="button" class="primary-btn" id="mbSendSpeakBtn" style="background: linear-gradient(135deg, #0284c7, #38bdf8); font-weight: 700; padding: 0.7rem 1.5rem;">
+                🚀 Transmitir Mensagem no Canal com este Bot
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- SEÇÃO 20: PROTEÇÃO ANTI-BOTS & SCAMS DEDICADA -->
+        <div id="mb-sec-antibot" class="mb-admin-section" style="display: none;">
+          <div class="card">
+            <h3>🛡️ Central de Proteção Anti-Bots & Golpes (MrBeast, Fake Nitro, Phishing)</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted);">Configure como esta instância reage a bots comprometidos e golpes de falso sorteio/phishing.</p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+              <div class="form-group">
+                <label>Duração do Castigo / Timeout (Segundos)</label>
+                <select id="mbCfgAntiBotTimeout">
+                  <option value="300">5 Minutos (300s)</option>
+                  <option value="900">15 Minutos (900s)</option>
+                  <option value="3600">1 Hora (3600s)</option>
+                  <option value="86400" selected>24 Horas (86400s)</option>
+                  <option value="604800">7 Dias (604800s)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Canais Ignorados pela Proteção (IDs separados por vírgula)</label>
+                <input type="text" id="mbCfgAntiBotIgnored" placeholder="Ex: 112233445566778899">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SEÇÃO 21: BOAS-VINDAS, DESPEDIDAS & AUTOROLE -->
+        <div id="mb-sec-welcome" class="mb-admin-section" style="display: none;">
+          <div class="card">
+            <h3>👋 Boas-Vindas, Despedidas & AutoRole da Instância</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+              <div class="form-group">
+                <label>ID do Canal de Boas-Vindas</label>
+                <input type="text" id="mbCfgWelcomeChannel" placeholder="ID do canal de chegada">
+              </div>
+              <div class="form-group">
+                <label>ID do Canal de Despedidas</label>
+                <input type="text" id="mbCfgGoodbyeChannel" placeholder="ID do canal de saída">
+              </div>
+              <div class="form-group">
+                <label>ID do Cargo Automático (AutoRole)</label>
+                <input type="text" id="mbCfgAutoRole" placeholder="ID do cargo entregue ao entrar">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Mensagem de Boas-Vindas (Tags: {user}, {username}, {server})</label>
+              <input type="text" id="mbCfgWelcomeMsg" placeholder="Bem-vindo(a) {user} ao **{server}**! 🎉">
+            </div>
+            <div class="form-group">
+              <label>Mensagem de Despedida</label>
+              <input type="text" id="mbCfgGoodbyeMsg" placeholder="**{username}** saiu do servidor.">
+            </div>
+          </div>
+        </div>
+
+        <!-- SEÇÃO 22: STARBOARD (MURAL DE ESTRELAS) -->
+        <div id="mb-sec-starboard" class="mb-admin-section" style="display: none;">
+          <div class="card">
+            <h3>⭐ Starboard (Mural de Estrelas) da Instância</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+              <div class="form-group">
+                <label>ID do Canal do Starboard</label>
+                <input type="text" id="mbCfgStarChannel" placeholder="ID do canal de destaques">
+              </div>
+              <div class="form-group">
+                <label>Emoji Monitorado</label>
+                <input type="text" id="mbCfgStarEmoji" value="⭐">
+              </div>
+              <div class="form-group">
+                <label>Mínimo de Estrelas para Destaque</label>
+                <input type="number" id="mbCfgStarMin" min="1" max="50" value="3">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SEÇÃO 23: CASSINO & QUIZ ARENA -->
+        <div id="mb-sec-casino-quiz" class="mb-admin-section" style="display: none;">
+          <div class="card">
+            <h3>🎰 Cassino, Apostas & Quiz Arena da Instância</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+              <div class="form-group">
+                <label>Aposta Mínima no Cassino</label>
+                <input type="number" id="mbCfgCasinoMin" min="1" value="10">
+              </div>
+              <div class="form-group">
+                <label>Aposta Máxima no Cassino</label>
+                <input type="number" id="mbCfgCasinoMax" min="10" value="100000">
+              </div>
+              <div class="form-group">
+                <label>Prêmio Quiz Arena (Moedas)</label>
+                <input type="number" id="mbCfgQuizCoins" min="0" value="200">
+              </div>
+              <div class="form-group">
+                <label>Prêmio Quiz Arena (XP)</label>
+                <input type="number" id="mbCfgQuizXp" min="0" value="50">
+              </div>
+              <div class="form-group">
+                <label>Rodadas Padrão do Quiz</label>
+                <input type="number" id="mbCfgQuizRounds" min="1" max="20" value="5">
+              </div>
+              <div class="form-group">
+                <label>Tempo por Pergunta (Segundos)</label>
+                <input type="number" id="mbCfgQuizTimeout" min="10" max="60" value="25">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SEÇÃO 24: RESUMO INTELIGENTE DO CHAT -->
+        <div id="mb-sec-summary" class="mb-admin-section" style="display: none;">
+          <div class="card">
+            <h3>🧠 Resumo Inteligente do Chat (Até 300 Mensagens)</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted);">Extraia fatos, participantes e linha do tempo de qualquer canal do servidor e publique opcionalmente no Discord.</p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+              <div class="form-group">
+                <label>Canal de Texto a Resumir</label>
+                <select id="mbSummaryChannelSelect" class="channel-select">
+                  <option value="">Selecione um canal...</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Volume de Mensagens (20 a 300)</label>
+                <input type="number" id="mbSummaryCountInput" min="20" max="300" value="150">
+              </div>
+              <div class="form-group">
+                <label>Formato do Resumo</label>
+                <select id="mbSummaryTypeSelect">
+                  <option value="summary">📋 Resumo Executivo Factual</option>
+                  <option value="gossip">📰 Boletim de Fofoca & Resenha</option>
+                </select>
+              </div>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-top: 0.5rem;">
+              <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.85rem;">
+                <input type="checkbox" id="mbSummarySendDiscord" style="width: 16px; height: 16px; accent-color: #38bdf8;">
+                <span>Publicar o resumo gerado no canal do Discord</span>
+              </label>
+              <button type="button" class="primary-btn" id="mbGenerateSummaryBtn" style="font-weight: 700;">
+                ⚡ Gerar Resumo Agora
+              </button>
+            </div>
+            <div id="mbSummaryOutputBox" style="display: none; margin-top: 1rem; padding: 1rem; background: rgba(0,0,0,0.35); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 8px; white-space: pre-wrap; font-size: 0.85rem; color: #e2e8f0; max-height: 360px; overflow-y: auto;"></div>
           </div>
         </div>
       </div>
@@ -9883,7 +10109,9 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       }
 
       try {
+        const selectedBotId = document.getElementById('speakBotInstanceSelect')?.value || 'MAIN';
         await saveModule('bot_speak', {
+          botId: selectedBotId,
           channelId,
           content,
           embed
@@ -14715,6 +14943,20 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           multiBotModuleDefinitions = data.moduleDefinitions;
         }
 
+        // Populate #speakBotInstanceSelect in main "Falar pelo Bot" tab
+        const speakBotSel = document.getElementById('speakBotInstanceSelect');
+        if (speakBotSel) {
+          const prevVal = speakBotSel.value || 'MAIN';
+          let optsHtml = '<option value="MAIN">🤖 Bot Principal (${aiDisplayName})</option>';
+          for (const inst of list) {
+            optsHtml += '<option value="' + escapeHtml(inst.id) + '">🤖 ' + escapeHtml(inst.name) + ' (' + escapeHtml(inst.status) + ')</option>';
+          }
+          speakBotSel.innerHTML = optsHtml;
+          if ([...speakBotSel.options].some(o => o.value === prevVal)) {
+            speakBotSel.value = prevVal;
+          }
+        }
+
         if (list.length === 0) {
           tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 1.5rem; color: var(--text-muted);">Nenhuma instância secundária cadastrada. O bot principal continua operando normalmente.</td></tr>';
           return;
@@ -14975,6 +15217,48 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         document.getElementById('mbCfgAdvAutoRestart').value = String(cfg.advanced?.autoRestartOnCrash !== false);
         document.getElementById('mbCfgAdvDebug').value = String(Boolean(cfg.advanced?.debugMode));
 
+        // 19. Falar pelo Bot defaults
+        if (document.getElementById('mbSpeakEmbedColor')) {
+          document.getElementById('mbSpeakEmbedColor').value = cfg.embeds?.primaryColor || '#00E5FF';
+        }
+        if (document.getElementById('mbSpeakEmbedFooter')) {
+          document.getElementById('mbSpeakEmbedFooter').value = cfg.embeds?.footerText || (cfg.aiName || inst.name);
+        }
+
+        // 20. Anti-Bots & Scams dedicated section
+        if (document.getElementById('mbCfgAntiBotTimeout')) {
+          document.getElementById('mbCfgAntiBotTimeout').value = String(cfg.moderation?.antiBotScamTimeoutSeconds ?? 86400);
+        }
+        if (document.getElementById('mbCfgAntiBotIgnored')) {
+          document.getElementById('mbCfgAntiBotIgnored').value = (cfg.moderation?.antiBotIgnoredChannels || []).join(', ');
+        }
+
+        // 21. Welcome, Goodbye & AutoRole
+        if (document.getElementById('mbCfgWelcomeChannel')) {
+          document.getElementById('mbCfgWelcomeChannel').value = cfg.social?.welcomeChannelId || '';
+          document.getElementById('mbCfgGoodbyeChannel').value = cfg.social?.goodbyeChannelId || '';
+          document.getElementById('mbCfgAutoRole').value = cfg.social?.autoRoleId || '';
+          document.getElementById('mbCfgWelcomeMsg').value = cfg.social?.welcomeMessage || 'Bem-vindo(a) {user} ao **{server}**! 🎉';
+          document.getElementById('mbCfgGoodbyeMsg').value = cfg.social?.goodbyeMessage || '**{username}** saiu do servidor.';
+        }
+
+        // 22. Starboard
+        if (document.getElementById('mbCfgStarChannel')) {
+          document.getElementById('mbCfgStarChannel').value = cfg.social?.starboardChannelId || '';
+          document.getElementById('mbCfgStarEmoji').value = cfg.social?.starboardEmoji || '⭐';
+          document.getElementById('mbCfgStarMin').value = cfg.social?.starboardMinStars ?? 3;
+        }
+
+        // 23. Casino & Quiz Arena
+        if (document.getElementById('mbCfgCasinoMin')) {
+          document.getElementById('mbCfgCasinoMin').value = cfg.economyXp?.casinoMinBet ?? 10;
+          document.getElementById('mbCfgCasinoMax').value = cfg.economyXp?.casinoMaxBet ?? 100000;
+          document.getElementById('mbCfgQuizCoins').value = cfg.economyXp?.quizRewardCoins ?? 200;
+          document.getElementById('mbCfgQuizXp').value = cfg.economyXp?.quizRewardXp ?? 50;
+          document.getElementById('mbCfgQuizRounds').value = cfg.economyXp?.quizDefaultRounds ?? 5;
+          document.getElementById('mbCfgQuizTimeout').value = cfg.economyXp?.quizTimeoutSeconds ?? 25;
+        }
+
         let savedSec = 'mb-sec-overview';
         try { savedSec = localStorage.getItem('jarvis_active_multibot_sec') || 'mb-sec-overview'; } catch {}
         switchMultiBotSubtab(document.getElementById(savedSec) ? savedSec : 'mb-sec-overview');
@@ -15206,6 +15490,8 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
             maxMessagesPerInterval: parseInt(document.getElementById('mbCfgAntiSpamMax')?.value || '5', 10),
             antiBotScamEnabled: document.getElementById('mbCfgAntiBotScam')?.value === 'true',
             antiBotScamAction: document.getElementById('mbCfgAntiBotAction')?.value || 'TIMEOUT',
+            antiBotScamTimeoutSeconds: parseInt(document.getElementById('mbCfgAntiBotTimeout')?.value || '86400', 10),
+            antiBotIgnoredChannels: (document.getElementById('mbCfgAntiBotIgnored')?.value || '').split(',').map(s => s.trim()).filter(Boolean),
             tempBanWorkerEnabled: document.getElementById('mbCfgTempBanWorker')?.value === 'true'
           },
           economyXp: {
@@ -15216,7 +15502,13 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
             workMax: parseInt(document.getElementById('mbCfgEcoWorkMax')?.value || '200', 10),
             xpMin: parseInt(document.getElementById('mbCfgXpMin')?.value || '15', 10),
             xpMax: parseInt(document.getElementById('mbCfgXpMax')?.value || '25', 10),
-            voiceXpPerMinute: parseInt(document.getElementById('mbCfgVoiceXp')?.value || '10', 10)
+            voiceXpPerMinute: parseInt(document.getElementById('mbCfgVoiceXp')?.value || '10', 10),
+            casinoMinBet: parseInt(document.getElementById('mbCfgCasinoMin')?.value || '10', 10),
+            casinoMaxBet: parseInt(document.getElementById('mbCfgCasinoMax')?.value || '100000', 10),
+            quizRewardCoins: parseInt(document.getElementById('mbCfgQuizCoins')?.value || '200', 10),
+            quizRewardXp: parseInt(document.getElementById('mbCfgQuizXp')?.value || '50', 10),
+            quizDefaultRounds: parseInt(document.getElementById('mbCfgQuizRounds')?.value || '5', 10),
+            quizTimeoutSeconds: parseInt(document.getElementById('mbCfgQuizTimeout')?.value || '25', 10)
           },
           music: {
             defaultVolume: parseInt(document.getElementById('mbCfgMusicVol')?.value || '80', 10),
@@ -15236,7 +15528,15 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
             marriageEnabled: document.getElementById('mbCfgSocialMarriage')?.value === 'true',
             marriageCost: parseInt(document.getElementById('mbCfgSocialCost')?.value || '5000', 10),
             shippingEnabled: document.getElementById('mbCfgSocialShip')?.value === 'true',
-            funCommandsEnabled: document.getElementById('mbCfgSocialFun')?.value === 'true'
+            funCommandsEnabled: document.getElementById('mbCfgSocialFun')?.value === 'true',
+            welcomeChannelId: document.getElementById('mbCfgWelcomeChannel')?.value?.trim() || '',
+            goodbyeChannelId: document.getElementById('mbCfgGoodbyeChannel')?.value?.trim() || '',
+            autoRoleId: document.getElementById('mbCfgAutoRole')?.value?.trim() || '',
+            welcomeMessage: document.getElementById('mbCfgWelcomeMsg')?.value || '',
+            goodbyeMessage: document.getElementById('mbCfgGoodbyeMsg')?.value || '',
+            starboardChannelId: document.getElementById('mbCfgStarChannel')?.value?.trim() || '',
+            starboardEmoji: document.getElementById('mbCfgStarEmoji')?.value?.trim() || '⭐',
+            starboardMinStars: parseInt(document.getElementById('mbCfgStarMin')?.value || '3', 10)
           },
           automations: {
             briefingEnabled: document.getElementById('mbCfgAutoBriefing')?.value === 'true',
@@ -15282,7 +15582,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         });
         const data = await res.json();
         if (res.ok && data.success) {
-          showToast('Todas as 18 seções da instância "' + payload.name + '" foram salvas no SQLite com sucesso!', 'success', 'Instância Salva');
+          showToast('Todas as 24 seções da instância "' + payload.name + '" foram salvas no SQLite e sincronizadas no Discord em tempo real!', 'success', 'Instância Salva & Sincronizada');
           openMultiBotAdminPage(currentEditingBotId);
         } else {
           showToast(data.error || 'Erro ao salvar configurações da instância.', 'error', 'Falha ao Salvar');
@@ -15291,6 +15591,104 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         showToast(err.message, 'error', 'Erro de Conexão');
       } finally {
         if (saveBtn) { saveBtn.disabled = false; saveBtn.innerText = '💾 Salvar Configurações deste Bot'; }
+      }
+    });
+
+    // Multi-Bot Section 19: "Falar pelo Bot" directly from the instance administration page
+    document.getElementById('mbSendSpeakBtn')?.addEventListener('click', async () => {
+      if (!currentEditingBotId) return;
+      const channelId = document.getElementById('mbSpeakChannelSelect')?.value;
+      if (!channelId) {
+        return showToast('Selecione o canal de destino para enviar a mensagem!', 'warning', 'Canal Obrigatório');
+      }
+      const content = document.getElementById('mbSpeakContentInput')?.value?.trim() || '';
+      const useEmbed = document.getElementById('mbSpeakUseEmbed')?.checked || false;
+      let embed = null;
+      if (useEmbed) {
+        const title = document.getElementById('mbSpeakEmbedTitle')?.value?.trim() || '';
+        const url = document.getElementById('mbSpeakEmbedUrl')?.value?.trim() || '';
+        const description = document.getElementById('mbSpeakEmbedDesc')?.value?.trim() || '';
+        const color = document.getElementById('mbSpeakEmbedColor')?.value?.trim() || '#00E5FF';
+        const image = document.getElementById('mbSpeakEmbedImage')?.value?.trim() || '';
+        const thumbnail = document.getElementById('mbSpeakEmbedThumb')?.value?.trim() || '';
+        const footerText = document.getElementById('mbSpeakEmbedFooter')?.value?.trim() || '';
+        if (title || description || image || thumbnail) {
+          embed = {
+            title: title || undefined,
+            url: url || undefined,
+            description: description || undefined,
+            color,
+            image: image || undefined,
+            thumbnail: thumbnail || undefined,
+            footer: footerText ? { text: footerText } : undefined
+          };
+        }
+      }
+      if (!content && !embed) {
+        return showToast('Digite uma mensagem de texto ou configure o título/descrição da Embed!', 'warning');
+      }
+
+      const btn = document.getElementById('mbSendSpeakBtn');
+      if (btn) { btn.disabled = true; btn.innerText = '⏳ Transmitindo...'; }
+      try {
+        const res = await fetch('/api/multi-bot/' + currentEditingBotId + '/speak', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Panel-Password': '1598' },
+          credentials: 'include',
+          body: JSON.stringify({
+            guildId: currentGuildId,
+            channelId,
+            content,
+            embed
+          })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          showToast('Mensagem transmitida com sucesso pela instância "' + (data.botName || currentEditingBotId) + '"!', 'success', 'Transmitido');
+        } else {
+          showToast(data.error || 'Falha ao enviar mensagem pela instância.', 'error', 'Erro de Envio');
+        }
+      } catch (err) {
+        showToast(err.message, 'error', 'Erro de Conexão');
+      } finally {
+        if (btn) { btn.disabled = false; btn.innerText = '🚀 Transmitir Mensagem no Canal com este Bot'; }
+      }
+    });
+
+    // Multi-Bot Section 24: "Resumo Inteligente" directly from the instance administration page
+    document.getElementById('mbGenerateSummaryBtn')?.addEventListener('click', async () => {
+      if (!currentGuildId) return showToast('Selecione um servidor primeiro.', 'warning');
+      const channelId = document.getElementById('mbSummaryChannelSelect')?.value;
+      if (!channelId) return showToast('Selecione um canal de texto para resumir!', 'warning');
+      const messageCount = parseInt(document.getElementById('mbSummaryCountInput')?.value || '150', 10);
+      const type = document.getElementById('mbSummaryTypeSelect')?.value || 'summary';
+      const sendToDiscord = document.getElementById('mbSummarySendDiscord')?.checked || false;
+
+      const btn = document.getElementById('mbGenerateSummaryBtn');
+      const box = document.getElementById('mbSummaryOutputBox');
+      if (btn) { btn.disabled = true; btn.innerText = '⏳ Analisando Mensagens...'; }
+      if (box) { box.style.display = 'block'; box.innerText = '⏳ Extraindo e sintetizando histórico real do canal...'; }
+
+      try {
+        const res = await fetch('/api/guilds/' + currentGuildId + '/chat-summary', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Panel-Password': '1598' },
+          credentials: 'include',
+          body: JSON.stringify({ channelId, messageCount, type, sendToDiscord })
+        });
+        const data = await res.json();
+        if (res.ok && (data.summary || data.text)) {
+          if (box) box.innerText = data.summary || data.text;
+          showToast('Resumo gerado e salvo com sucesso!', 'success', 'Resumo Concluído');
+        } else {
+          if (box) box.innerText = '❌ Erro: ' + (data.error || 'Falha ao processar resumo.');
+          showToast(data.error || 'Erro ao gerar resumo', 'error');
+        }
+      } catch (err) {
+        if (box) box.innerText = '❌ Erro: ' + err.message;
+        showToast(err.message, 'error');
+      } finally {
+        if (btn) { btn.disabled = false; btn.innerText = '⚡ Gerar Resumo Agora'; }
       }
     });
 

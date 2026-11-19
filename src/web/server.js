@@ -757,6 +757,13 @@ class WebServer {
           return this._sendJson(res, 200, { success: true, logs });
         }
 
+        // POST /api/multi-bot/:id/speak -> "Falar pelo Bot" using this specific Multi-Bot instance's Client
+        if (method === 'POST' && subAction === 'speak') {
+          const body = await this._parseBody(req);
+          const speakRes = await mb.speakWithInstance(instanceId, body, this.botClient);
+          return this._sendJson(res, 200, speakRes);
+        }
+
         // POST /api/multi-bot/:id/(start|stop|restart)
         if (method === 'POST' && ['start', 'stop', 'restart'].includes(subAction)) {
           try {

@@ -19,6 +19,39 @@ module.exports = {
    * @param {import('../database/repositories/guildRepository').GuildRepository} context.guildRepo
    */
   async execute(interaction, context) {
+    // Isolated Multi-Bot Instance Guild & Channel Permission Guard
+    if (context?.botInstanceId && context?.multiBotManager) {
+      const isAllowedHere = context.multiBotManager.isGuildAndChannelAllowedForInstance(
+        context.botInstanceId,
+        interaction.guildId || interaction.guild?.id || null,
+        interaction.channelId || interaction.channel?.id || null
+      );
+      if (!isAllowedHere) return;
+    }
+
+    // Modular gating for Button / SelectMenu / Modal interactions
+    if (interaction.customId && (interaction.guildId || interaction.guild?.id)) {
+      const gId = interaction.guildId || interaction.guild.id;
+      if (context?.guildModuleService) {
+        const modCheck = context.guildModuleService.checkInteractionAllowed(gId, interaction.customId);
+        if (!modCheck.allowed) {
+          return await interaction.reply({
+            content: `⚠️ **Módulo Desativado!**\nO módulo **${modCheck.moduleName}** está atualmente desativado neste servidor.`,
+            ephemeral: true
+          }).catch(() => {});
+        }
+      }
+      if (context?.botInstanceId && context?.multiBotManager) {
+        const instModCheck = context.multiBotManager.checkInteractionAllowedForInstance(context.botInstanceId, interaction.customId);
+        if (!instModCheck.allowed) {
+          return await interaction.reply({
+            content: `⚠️ **Módulo Desativado na Instância!**\nO módulo **${instModCheck.moduleName}** está desativado para este bot.`,
+            ephemeral: true
+          }).catch(() => {});
+        }
+      }
+    }
+
     if (interaction.isButton()) {
       try {
         const { customId, guild, user, channel } = interaction;
@@ -1012,12 +1045,25 @@ module.exports = {
       });
     }
 
-    // Modular system check: is this module enabled for this guild?
+    // 1. Modular system check: is this module enabled for this guild?
     if (guildId && context.guildModuleService) {
       const check = context.guildModuleService.checkCommandAllowed(guildId, commandName);
       if (!check.allowed) {
         return interaction.reply({
           content: `⚠️ **Módulo Desativado!**\nO módulo **${check.moduleName}** está atualmente desativado pela administração deste servidor.`,
+          ephemeral: true
+        });
+      }
+    }
+
+    // 2. Multi-Bot Instance modular & command check
+    if (context.botInstanceId && context.multiBotManager) {
+      const instCheck = context.multiBotManager.checkCommandAllowedForInstance(context.botInstanceId, commandName);
+      if (!instCheck.allowed) {
+        return interaction.reply({
+          content: instCheck.reason === 'COMMAND_DISABLED'
+            ? `⚠️ **Comando Desativado!**\nO comando \`/${commandName}\` está desativado nas configurações desta instância.`
+            : `⚠️ **Módulo Desativado na Instância!**\nO módulo **${instCheck.moduleName}** está desativado para este bot.`,
           ephemeral: true
         });
       }

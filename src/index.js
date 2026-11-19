@@ -524,6 +524,8 @@ function createAppContext(customDbPath = null) {
       gossipService,
       socialAlertRepo,
       socialAlertService,
+      guildModuleService,
+      multiBotManager,
       dbManager,
       llmAdapter
     }
@@ -706,6 +708,11 @@ async function shutdown(signal = 'SIGTERM') {
       appContext.socialAlertService.stopPolling();
     }
 
+    if (appContext && appContext.multiBotManager) {
+      appLogger.info('Stopping secondary Multi-Bot instances...');
+      await appContext.multiBotManager.stopAllInstances();
+    }
+
     if (appContext && appContext.webServer) {
       appLogger.info('Stopping Web Server...');
       await appContext.webServer.stop();
@@ -824,6 +831,13 @@ async function bootstrap() {
   // Connect to Discord Gateway
   appLogger.info('Connecting to Discord Gateway...');
   await client.login(config.discordToken);
+
+  // Auto-start enabled secondary Multi-Bot instances
+  if (context.multiBotManager) {
+    context.multiBotManager.startAllEnabledInstances().catch((mbErr) => {
+      appLogger.warn('Failed to auto-start secondary Multi-Bot instances', { error: mbErr.message });
+    });
+  }
 
   return { client, context, connected: true };
 }

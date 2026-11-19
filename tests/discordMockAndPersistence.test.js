@@ -1006,20 +1006,156 @@ describe('OPERAÇÃO DE CORREÇÃO TOTAL V8.5.0 — Persistência Real, Isolamen
       assert.ok(html.includes('id="tab-modules"'));
       assert.ok(html.includes('id="tab-multibot"'));
 
-      // Verificar presença da Página Administrativa Individual com todas as 18 seções
-      const required18Sections = [
+      // Verificar presença da Página Administrativa Individual com todas as 24 seções (18 base + 6 operacionais)
+      const required24Sections = [
         'mb-sec-overview', 'mb-sec-presence', 'mb-sec-modules', 'mb-sec-ai',
         'mb-sec-memory', 'mb-sec-commands', 'mb-sec-moderation', 'mb-sec-economy',
         'mb-sec-music', 'mb-sec-tickets', 'mb-sec-social', 'mb-sec-automations',
         'mb-sec-embeds', 'mb-sec-permissions', 'mb-sec-integrations', 'mb-sec-database',
-        'mb-sec-logs', 'mb-sec-advanced'
+        'mb-sec-logs', 'mb-sec-advanced', 'mb-sec-botspeak', 'mb-sec-antibot',
+        'mb-sec-welcome', 'mb-sec-starboard', 'mb-sec-casino-quiz', 'mb-sec-summary'
       ];
-      for (const secId of required18Sections) {
+      for (const secId of required24Sections) {
         assert.ok(html.includes(`id="${secId}"`), `HTML must include individual bot admin section #${secId}`);
       }
 
       // Verificar que os checkboxes duplicados de módulos na aba Configurações Gerais foram removidos
       assert.ok(!html.includes('<input type="checkbox" id="cfgModAiChat"'), 'Duplicate module checkboxes in general settings must be removed');
+    });
+  });
+
+  // =========================================================================
+  // 5. REGRESSÃO V9.0.0: +MUTE BLOQUEADO QUANDO MODERAÇÃO DESATIVADA,
+  //    PRESENÇA ISOLADA DO BOT SECUNDÁRIO ("Dumb | +ajuda") & FALAR PELO BOT
+  // =========================================================================
+  describe('5. Regressão V9.0.0 — Bloqueio de +mute/+banir, Presença em Tempo Real de Bot Secundário e Falar pelo Bot', () => {
+    test('Desativar Moderação Manual bloqueia +mute, +mutar, +silenciar, +unmute, +banir, +expulsar, +purge e todas as variações', async () => {
+      // Desativar módulo de moderação no servidor
+      context.guildModuleService.setModuleEnabled(guildA.id, 'moderation', false, 'admin_local');
+
+      const aliasesToVerify = [
+        'mute', 'mutar', 'silenciar', 'timeout',
+        'unmute', 'desmutar', 'desilenciar', 'untimeout',
+        'ban', 'banir', 'tempban', 'unban', 'desbanir',
+        'kick', 'expulsar', 'warn', 'advertir', 'advertencia',
+        'warnlist', 'warns', 'warnings', 'advertencias',
+        'unwarn', 'clearwarn', 'clearwarns', 'limparwarns',
+        'clear', 'limpar', 'purge', 'limpar-mensagens',
+        'lock', 'lockdown', 'trancar', 'unlock', 'destrancar'
+      ];
+
+      for (const alias of aliasesToVerify) {
+        const check = context.guildModuleService.checkCommandAllowed(guildA.id, alias);
+        assert.equal(check.allowed, false, `Alias "+${alias}" MUST be blocked when moderation module is disabled`);
+        assert.equal(check.moduleKey, 'moderation');
+      }
+
+      // Testar execução real no chat simulado: "+mute @virzinho"
+      const muteMsg = discordMock.addArtificialMessage(channelGeneral, {
+        id: 'msg_test_mute_block_1',
+        authorId: 'user_admin_1',
+        username: 'Lipe',
+        content: '!mute <@user_target_1>'
+      });
+      const handled = await prefixCommandHandler.handle(muteMsg, context);
+      assert.equal(handled, true);
+      assert.equal(muteMsg._replies.length, 1);
+      const replyTxt = typeof muteMsg._replies[0] === 'string' ? muteMsg._replies[0] : muteMsg._replies[0].content;
+      assert.ok(replyTxt.includes('Módulo Desativado'), `Expected "!mute" to return Módulo Desativado, got: ${replyTxt}`);
+
+      // Reativar moderação
+      context.guildModuleService.setModuleEnabled(guildA.id, 'moderation', true, 'admin_local');
+    });
+
+    test('Bot secundário ("Dumb") aplica sua própria presença ("Dumb | +ajuda"), ignora chamadas a "Jarvis" e transmite pelo Falar pelo Bot', async () => {
+      const readyEvent = require('../src/events/ready');
+
+      // Cadastrar instância secundária "Dumb"
+      const dumbInst = context.multiBotManager.createInstance({
+        name: 'Dumb',
+        token: 'MTIzNDU2Nzg5MDEyMzQ1Njc4OTA.DumbMockToken.1234567890'
+      });
+
+      // Criar um Discord Client simulado para a instância "Dumb"
+      let lastPresenceApplied = null;
+      const dumbMockClient = {
+        user: {
+          id: 'bot_dumb_999',
+          tag: 'Dumb#0001',
+          username: 'Dumb',
+          setPresence(p) {
+            lastPresenceApplied = p;
+          },
+          setActivity(a) {
+            lastPresenceApplied = { status: 'online', activities: [a] };
+          }
+        },
+        guilds: { cache: discordMock.guilds },
+        channels: guildA.channels
+      };
+
+      const dumbChildContext = {
+        ...context,
+        botInstanceId: dumbInst.id,
+        botInstanceName: 'Dumb',
+        botInstanceConfig: dumbInst.config,
+        multiBotManager: context.multiBotManager
+      };
+
+      // Registrar "Dumb" como instância ativa no MultiBotManager
+      context.multiBotManager.activeInstances.set(dumbInst.id, {
+        client: dumbMockClient,
+        childContext: dumbChildContext,
+        status: 'ONLINE',
+        memoryMb: 42.0,
+        lastError: null,
+        startedAt: Date.now(),
+        assignedModules: dumbInst.assignedModules,
+        allowedGuilds: [],
+        config: dumbInst.config
+      });
+
+      // 1. Ao disparar ready.js para o bot secundário "Dumb", ele DEVE aplicar "Dumb | +ajuda" e NUNCA "J.A.R.V.I.S | +ajuda"
+      await readyEvent.execute(dumbMockClient, dumbChildContext);
+      assert.ok(lastPresenceApplied, 'Presence must be applied on ready');
+      assert.equal(lastPresenceApplied.activities[0].name, 'Dumb | +ajuda');
+
+      // 2. Ao alterar a presença de "Dumb" na página individual da instância via API, a presença no Discord deve atualizar em tempo real!
+      const headers = { Cookie: authCookie, 'X-CSRF-Token': csrfToken };
+      const updateDumbRes = await httpRequest(serverPort, 'POST', `/api/multi-bot/${dumbInst.id}/config`, {
+        name: 'Dumb',
+        config: {
+          aiName: 'Dumb',
+          prefix: '?',
+          presenceStatus: 'online',
+          presenceActivityType: 'Custom',
+          presenceActivityText: 'Dumb | +ajuda'
+        }
+      }, headers);
+      assert.equal(updateDumbRes.status, 200);
+      assert.equal(lastPresenceApplied.status, 'online');
+      assert.equal(lastPresenceApplied.activities[0].name, 'Dumb | +ajuda');
+      assert.equal(lastPresenceApplied.activities[0].state, 'Dumb | +ajuda');
+
+      // 3. Testar "Falar pelo Bot" exclusivo da instância "Dumb" (POST /api/multi-bot/:id/speak)
+      const beforeMsgCount = channelGeneral._sentPayloads.length;
+      const speakRes = await httpRequest(serverPort, 'POST', `/api/multi-bot/${dumbInst.id}/speak`, {
+        guildId: guildA.id,
+        channelId: channelGeneral.id,
+        content: 'Olá {server}, aqui quem fala é o bot secundário Dumb!',
+        embed: {
+          title: 'Transmissão Oficial Dumb',
+          description: 'Mensagem enviada diretamente pelo cliente isolado.',
+          color: '#00E5FF'
+        }
+      }, headers);
+      assert.equal(speakRes.status, 200);
+      assert.equal(speakRes.json.success, true);
+      assert.equal(speakRes.json.botName, 'Dumb');
+      assert.equal(channelGeneral._sentPayloads.length, beforeMsgCount + 1);
+      const lastSent = channelGeneral._sentPayloads[channelGeneral._sentPayloads.length - 1];
+      assert.ok(lastSent.content.includes('Stark Tower Alpha'));
+      assert.equal(lastSent.embeds.length, 1);
     });
   });
 });

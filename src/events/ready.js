@@ -44,8 +44,8 @@ module.exports = {
       }
     }
 
-    // Periodic Background Reconciliation Worker (every 60s) to guarantee zero dropped joins
-    if (context?.communityService && !client._reconcileInterval) {
+    // Periodic Background Reconciliation Worker (every 60s) to guarantee zero dropped joins (primary bot only)
+    if (!context?.botInstanceId && context?.communityService && !client._reconcileInterval) {
       client._reconcileInterval = setInterval(async () => {
         for (const [, guild] of client.guilds.cache) {
           try {
@@ -55,45 +55,59 @@ module.exports = {
       }, 60000);
     }
 
-    // Automatic Daily Stock Market Cycle for dynamic currencies (Bolsa Stark)
-    if (context?.economyService && !client._stockMarketCycle) {
+    // Automatic Daily Stock Market Cycle for dynamic currencies (Bolsa Stark - primary bot only)
+    if (!context?.botInstanceId && context?.economyService && !client._stockMarketCycle) {
       client._stockMarketCycle = context.economyService.startStockMarketDailyCycle(client, 24);
       readyLogger.info('Stark Stock Market automatic daily cycle worker started (every 24h).');
     }
 
-    // Company bankruptcy watchdog: warns owners of companies without stock, forces bankruptcy after the grace period
-    if (context?.economyService && !client._companyHealthWorker) {
+    // Company bankruptcy watchdog: warns owners of companies without stock, forces bankruptcy after the grace period (primary bot only)
+    if (!context?.botInstanceId && context?.economyService && !client._companyHealthWorker) {
       client._companyHealthWorker = context.economyService.startCompanyHealthWorker(client);
       readyLogger.info('Company bankruptcy health worker started (checks every 10 minutes).');
     }
 
-    // Deploy slash commands directly to guilds (INSTANT) + globally
-    if (process.env.DISCORD_TOKEN && client.user?.id) {
+    // Deploy slash commands directly to guilds (INSTANT) + globally using the correct token for this client
+    const activeToken = context?.botInstanceToken || process.env.DISCORD_TOKEN;
+    if (activeToken && client.user?.id) {
       try {
         const guildIds = Array.from(guilds.keys());
-        readyLogger.info(`Deploying application (/) slash commands to Discord (${guildIds.length} guilds + global)...`);
-        await commandRegistry.deployCommands(process.env.DISCORD_TOKEN, client.user.id, guildIds);
+        readyLogger.info(`Deploying application (/) slash commands to Discord for ${client.user.tag} (${guildIds.length} guilds + global)...`);
+        await commandRegistry.deployCommands(activeToken, client.user.id, guildIds);
         readyLogger.info('All slash commands deployed successfully to Discord!');
       } catch (deployErr) {
         readyLogger.warn(`Slash commands deployment skipped or failed: ${deployErr.message}`);
       }
     }
 
-    // Apply customizable bot presence & status restored from database
+    // Apply customizable bot presence & status restored from database (isolated per Multi-Bot instance or Main Bot)
     try {
       const { applyBotPresence } = require('../utils/presenceHelper');
-      let presenceCfg = botPresenceRepo ? botPresenceRepo.getPresence() : null;
+      let presenceCfg = null;
 
-      if (!presenceCfg || !presenceCfg.activityName) {
+      if (context?.botInstanceId) {
+        const instCfg = context.multiBotManager?.getInstanceConfig?.(context.botInstanceId) || context.botInstanceConfig || {};
+        const instName = instCfg.aiName || context.botInstanceName || client.user?.username || defaultName;
+        const instPrefix = instCfg.prefix || '+';
         presenceCfg = {
-          botStatus: 'online',
-          activityType: 'Custom',
-          activityName: `${defaultName} | +help`
+          botStatus: instCfg.presenceStatus || 'online',
+          activityType: instCfg.presenceActivityType || 'Custom',
+          activityName: instCfg.presenceActivityText || `${instName} | ${instPrefix}ajuda`,
+          activityUrl: instCfg.presenceActivityUrl || ''
         };
+      } else {
+        presenceCfg = botPresenceRepo ? botPresenceRepo.getPresence() : null;
+        if (!presenceCfg || !presenceCfg.activityName) {
+          presenceCfg = {
+            botStatus: 'online',
+            activityType: 'Custom',
+            activityName: `${defaultName} | +help`
+          };
+        }
       }
 
       applyBotPresence(client, presenceCfg);
-      readyLogger.info(`Restored bot presence: status=${presenceCfg.botStatus}, type=${presenceCfg.activityType}, name="${presenceCfg.activityName}"`);
+      readyLogger.info(`Restored bot presence for ${client.user?.tag || defaultName}: status=${presenceCfg.botStatus}, type=${presenceCfg.activityType}, name="${presenceCfg.activityName}"`);
     } catch (presenceErr) {
       readyLogger.warn(`Failed to apply bot presence: ${presenceErr.message}`);
       client.user.setActivity({

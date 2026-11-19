@@ -5,6 +5,27 @@ Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [9.0.0] - 2026-11-19
+
+### Adicionado
+- **RELEASE ESTÁVEL V9.0.0 — ISOLAMENTO TOTAL EM TEMPO REAL NO DISCORD & 24 SEÇÕES POR BOT:**
+  - **Transmissor `🔊 Falar pelo Bot` por Instância Multi-Bot (`POST /api/multi-bot/:id/speak` e Seletor Global `#speakBotInstanceSelect`):**
+    - Nova seção **19. 🔊 Falar pelo Bot** dentro da página administrativa de cada bot secundário (`mb-sec-botspeak`), permitindo enviar mensagens de texto e cards de Embed personalizados diretamente pela conta Discord daquela instância (`multiBotManager.speakWithInstance`).
+    - Seletor **"🤖 Bot Transmissor"** na aba principal `🔊 Falar pelo Bot`, permitindo escolher se a mensagem será enviada pelo bot principal (`J.A.R.V.I.S`) ou por qualquer instância cadastrada (`Dumb`, etc.).
+  - **Expansão da Página Individual de Cada Bot para 24 Seções Completas (`src/web/dashboardHtml.js`, `src/services/multiBotManager.js`):**
+    - Adicionadas as seções operacionais dedicadas dentro da página de cada bot: **19. 🔊 Falar pelo Bot**, **20. 🛡️ Anti-Bots & Scams**, **21. 👋 Boas-Vindas, Despedidas & AutoRole**, **22. ⭐ Starboard**, **23. 🎰 Cassino & Quiz Arena** e **24. 🧠 Resumo Inteligente**, além das 18 seções administrativas base.
+  - **Inicialização e Encerramento Automático de Instâncias Secundárias (`src/index.js`):**
+    - O `bootstrap()` agora inicia automaticamente todas as instâncias habilitadas do Multi-Bot Manager ao subir o servidor e o `shutdown()` encerra todas com segurança.
+
+### Corrigido
+- **Sincronização em Tempo Real de Status & Presença de Bots Secundários no Discord (`src/events/ready.js`, `src/services/multiBotManager.js`, `src/services/identityService.js`):**
+  - Corrigido o bug onde bots secundários (como `Dumb`) exibiam o status do bot principal (`J.A.R.V.I.S | +ajuda`) ao conectar: `ready.js` agora lê `botInstanceConfig` exclusivo da instância e usa o token correto da instância ao publicar comandos Slash.
+  - Ao clicar em **Salvar Configurações deste Bot** na página da instância, `multiBotManager.updateInstance()` agora invoca `_syncLiveInstance()` e `applyInstancePresence()`, aplicando o novo status/frase (ex: `Dumb | +ajuda`), nome da IA, modelo Gemini, prefixo e módulos **instantaneamente no Discord** sem precisar reiniciar o bot.
+  - Isolados os gatilhos de nome em `src/events/messageCreate.js` e `IdentityService.forcedInstanceName`: um bot secundário (`Dumb`) responde apenas ao seu próprio nome (`Dumb`) e prefixo configurado, jamais respondendo quando alguém chama `"Jarvis"`.
+- **Bloqueio Total de Todos os 224 Comandos/Aliases de Prefixo (`+mute`, `+banir`, etc.), 83 Comandos Slash, 65 Ferramentas de IA e Botões Interativos (`src/services/guildModuleService.js`, `src/handlers/prefixCommandHandler.js`, `src/events/interactionCreate.js`):**
+  - Corrigido o bug onde `+mute @usuario` ainda executava mesmo com **Moderação Manual (`moderation`)** desativado: mapeados todos os 224 comandos e aliases de prefixo (`mute`, `mutar`, `silenciar`, `unmute`, `desmutar`, `desilenciar`, `banir`, `desbanir`, `expulsar`, `purge`, `lockdown`, `trancar`, `destrancar`, `advertir`, `warnlist`, `clearwarns`, `trampo`, `bico`, `21`, `cacaniqueis`, etc.), todos os 83 comandos Slash, todas as 65 ferramentas de IA e todos os prefixos de botões/modais (`checkInteractionAllowed`).
+  - Desativar um módulo pai (ex: `moderation`) agora desativa e persiste automaticamente seus submódulos dependentes (ex: `auto_protection`) tanto no servidor quanto na instância Multi-Bot.
+
 ## [8.5.0] - 2026-11-18
 
 ### Adicionado

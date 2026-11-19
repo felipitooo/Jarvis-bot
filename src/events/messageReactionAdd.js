@@ -18,6 +18,14 @@ module.exports = {
       if (guildId && context.guildModuleService && !context.guildModuleService.isModuleEnabled(guildId, 'starboard')) {
         return;
       }
+      if (context.botInstanceId && context.multiBotManager) {
+        if (!context.multiBotManager.isGuildAndChannelAllowedForInstance(context.botInstanceId, guildId, reaction?.message?.channel?.id)) {
+          return;
+        }
+        if (!context.multiBotManager.isModuleEnabledForInstance(context.botInstanceId, 'starboard')) {
+          return;
+        }
+      }
       await context.communityService.handleStarReaction(reaction, user);
     } catch (err) {
       reactionLogger.warn(`Error handling star reaction in message ${reaction?.message?.id}`, { error: err.message });

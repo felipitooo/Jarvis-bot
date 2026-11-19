@@ -54,9 +54,21 @@ module.exports = {
     }
 
     if (!context.communityService) return;
+    if (context.botInstanceId && context.multiBotManager) {
+      if (!context.multiBotManager.isGuildAndChannelAllowedForInstance(context.botInstanceId, member?.guild?.id)) {
+        return;
+      }
+    }
 
     try {
-      await context.communityService.handleMemberJoin(member, context.guildModuleService);
+      const effectiveModService = (context.botInstanceId && context.multiBotManager)
+        ? {
+            isModuleEnabled: (gId, modKey) =>
+              (!context.guildModuleService || context.guildModuleService.isModuleEnabled(gId, modKey)) &&
+              context.multiBotManager.isModuleEnabledForInstance(context.botInstanceId, modKey)
+          }
+        : context.guildModuleService;
+      await context.communityService.handleMemberJoin(member, effectiveModService);
     } catch (err) {
       memberLogger.warn(`Error handling member join for ${member.id}`, { error: err.message });
     }

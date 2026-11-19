@@ -251,10 +251,19 @@ class PrefixCommandHandler {
     const settingsService = context.settingsService || context.identityService?.settingsService;
     const guildId = message.guild.id;
 
-    // Retrieve guild configured prefix or fallback to global/default
+    // Isolated Multi-Bot Instance Prefix & Prefixless Config vs Guild/Global Prefix
+    const isSecondaryBot = Boolean(context.botInstanceId);
+    const instCfg = isSecondaryBot
+      ? (context.multiBotManager?.getInstanceConfig?.(context.botInstanceId) || context.botInstanceConfig || {})
+      : null;
+
     const globalDefaultPrefix = (typeof require !== 'undefined') ? (require('../config/botConfig').botConfig?.getConfig?.()?.identity?.defaultPrefix || this.prefix || '+') : (this.prefix || '+');
-    const savedPrefix = settingsService ? settingsService.getSetting(guildId, 'prefix', globalDefaultPrefix) : globalDefaultPrefix;
-    const prefixlessSetting = settingsService ? settingsService.getSetting(guildId, 'prefixless_mode', 'false') : 'false';
+    const savedPrefix = isSecondaryBot
+      ? (instCfg?.prefix || instCfg?.commands?.prefix || '+')
+      : (settingsService ? settingsService.getSetting(guildId, 'prefix', globalDefaultPrefix) : globalDefaultPrefix);
+    const prefixlessSetting = isSecondaryBot
+      ? Boolean(instCfg?.commands?.prefixlessMode)
+      : (settingsService ? settingsService.getSetting(guildId, 'prefixless_mode', 'false') : 'false');
 
     const isPrefixless = prefixlessSetting === 'true' || prefixlessSetting === true || ['none', 'sem', 'nenhum', ''].includes(savedPrefix);
     const activePrefix = (!['none', 'sem', 'nenhum', ''].includes(savedPrefix)) ? savedPrefix : '';
@@ -330,8 +339,8 @@ class PrefixCommandHandler {
       usedPrefixTag = activePrefix;
     }
 
-    // 3. Fallback: starts with default '+' if different from activePrefix but typed
-    if (contentToParse === null && this.prefix && activePrefix !== this.prefix && rawContent.startsWith(this.prefix)) {
+    // 3. Fallback: starts with default '+' if different from activePrefix but typed (Main Bot only so secondary bots with custom prefix don't collide!)
+    if (!context.botInstanceId && contentToParse === null && this.prefix && activePrefix !== this.prefix && rawContent.startsWith(this.prefix)) {
       contentToParse = rawContent.slice(this.prefix.length).trim();
       usedPrefixTag = this.prefix;
     }
@@ -348,21 +357,25 @@ class PrefixCommandHandler {
 
     // 5. Per-command triggers: custom prefix, prefixless, or "so de falar na mensagem" (contains / starts_with)
     if (contentToParse === null && context.customCommandService) {
-      const match = context.customCommandService.findMatchingCommand(guildId, rawContent, activePrefix || this.prefix);
-      if (match) {
-        const cmdStartTime = Date.now();
-        const handled = await context.customCommandService.executeCommand(guildId, match.cmd.name, match.args, message);
-        if (handled) {
-          const elapsedMs = Date.now() - cmdStartTime;
-          log.logResponseTime({
-            type: `Comando Personalizado (${match.usedPrefix}${match.cmd.name})`,
-            durationMs: elapsedMs,
-            user: message.author?.username,
-            channel: message.channel?.name || 'chat',
-            guild: message.guild?.name || 'Servidor'
-          });
+      const isAutoEnabled = (!context.guildModuleService || context.guildModuleService.isModuleEnabled(guildId, 'automations')) &&
+        (!context.botInstanceId || !context.multiBotManager || context.multiBotManager.isModuleEnabledForInstance(context.botInstanceId, 'automations'));
+      if (isAutoEnabled) {
+        const match = context.customCommandService.findMatchingCommand(guildId, rawContent, activePrefix || this.prefix);
+        if (match) {
+          const cmdStartTime = Date.now();
+          const handled = await context.customCommandService.executeCommand(guildId, match.cmd.name, match.args, message);
+          if (handled) {
+            const elapsedMs = Date.now() - cmdStartTime;
+            log.logResponseTime({
+              type: `Comando Personalizado (${match.usedPrefix}${match.cmd.name})`,
+              durationMs: elapsedMs,
+              user: message.author?.username,
+              channel: message.channel?.name || 'chat',
+              guild: message.guild?.name || 'Servidor'
+            });
+          }
+          return handled;
         }
-        return handled;
       }
     }
 
@@ -370,8 +383,17 @@ class PrefixCommandHandler {
     if (contentToParse === null || !contentToParse) return false;
 
     const parts = contentToParse.split(/\s+/);
-    const cmdName = parts[0].toLowerCase();
+    let cmdName = parts[0].toLowerCase();
     const args = parts.slice(1);
+
+    // Resolve custom command alias if configured on a Multi-Bot instance
+    if (context.botInstanceId) {
+      const instCfg = context.multiBotManager?.getInstanceConfig?.(context.botInstanceId) || context.botInstanceConfig || {};
+      const customAliases = instCfg?.commands?.customAliases;
+      if (customAliases && typeof customAliases === 'object' && customAliases[cmdName]) {
+        cmdName = String(customAliases[cmdName]).toLowerCase().replace(/^[+!/?]/, '').trim();
+      }
+    }
 
     const cmdStartTime = Date.now();
     const handled = await this._executeCommand(cmdName, args, message, context, activePrefix || this.prefix);
@@ -430,11 +452,24 @@ class PrefixCommandHandler {
     const member = message.member;
     const aiName = identityService?.getDisplayName(guild.id) || 'Jarvis';
 
-    // Check modular system gating (26 switchable modules per guild)
+    // 1. Check Guild-level modular system gating (26 switchable modules per guild)
     if (context.guildModuleService) {
       const check = context.guildModuleService.checkCommandAllowed(guild.id, cmdName);
       if (!check.allowed) {
         await message.reply(`⚠️ **Módulo Desativado!**\nO módulo **${check.moduleName}** está atualmente desativado pela administração deste servidor.`);
+        return true;
+      }
+    }
+
+    // 2. Check Multi-Bot Instance-level modular gating & disabled commands
+    if (context.botInstanceId && context.multiBotManager) {
+      const instCheck = context.multiBotManager.checkCommandAllowedForInstance(context.botInstanceId, cmdName);
+      if (!instCheck.allowed) {
+        if (instCheck.reason === 'COMMAND_DISABLED') {
+          await message.reply(`⚠️ **Comando Desativado!**\nO comando \`${activePrefix}${cmdName}\` está desativado nas configurações desta instância (**${aiName}**).`);
+        } else {
+          await message.reply(`⚠️ **Módulo Desativado na Instância!**\nO módulo **${instCheck.moduleName}** está desativado para o bot **${aiName}**.`);
+        }
         return true;
       }
     }

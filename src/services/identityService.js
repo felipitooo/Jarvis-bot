@@ -11,15 +11,22 @@ class IdentityService {
     this.settingsService = settingsService;
     this.auditService = auditService;
     this.defaultName = defaultName;
+    /** @type {string|null} Dedicated override name for isolated Multi-Bot instances */
+    this.forcedInstanceName = null;
   }
 
   /**
    * Returns the dynamic display name of the AI for a specific guild,
    * falling back to the configured global default.
+   * If this IdentityService belongs to an isolated Multi-Bot instance, returns its dedicated instance name.
    * @param {string} [guildId]
    * @returns {string}
    */
   getDisplayName(guildId = null) {
+    if (this.forcedInstanceName && typeof this.forcedInstanceName === 'string' && this.forcedInstanceName.trim().length > 0) {
+      return this.forcedInstanceName.trim();
+    }
+
     if (!guildId) {
       return this.defaultName;
     }

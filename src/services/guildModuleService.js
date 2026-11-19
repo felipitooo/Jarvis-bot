@@ -28,7 +28,10 @@ const MODULE_DEFINITIONS = [
     dependencies: [],
     configTab: 'tab-identity',
     requiredPermissions: ['SendMessages', 'ReadMessageHistory', 'EmbedLinks'],
-    commands: ['resumir', 'fofoca', 'modo', 'data', 'hora', 'tempo', 'relogio', 'ai-nome'],
+    commands: [
+      'ai-nome', 'ai-status', 'resumo', 'resumir', 'resumodia', 'fofoca', 'gossip',
+      'modo', 'humor', 'hora', 'horario', 'data', 'tempo', 'relogio'
+    ],
     events: ['messageCreate'],
     automations: []
   },
@@ -54,7 +57,7 @@ const MODULE_DEFINITIONS = [
     dependencies: ['ai_chat'],
     configTab: 'tab-identity',
     requiredPermissions: ['SendMessages', 'EmbedLinks'],
-    commands: [],
+    commands: ['utilitario'],
     events: ['messageCreate'],
     automations: []
   },
@@ -67,7 +70,13 @@ const MODULE_DEFINITIONS = [
     dependencies: [],
     configTab: 'tab-music',
     requiredPermissions: ['Connect', 'Speak', 'SendMessages'],
-    commands: ['musica', 'play', 'tocar', 'skip', 'pular', 'stop', 'parar', 'pause', 'pausar', 'resume', 'queue', 'fila', 'volume', 'loop', 'tts'],
+    commands: [
+      'musica', 'config-musica', 'play', 'tocar', 'p', 'skip', 'pular', 's',
+      'stop', 'parar', 'pause', 'pausar', 'resume', 'despausar', 'continuar',
+      'queue', 'fila', 'q', 'nowplaying', 'np', 'tocando', 'volume', 'vol', 'v',
+      'loop', 'repetir', 'shuffle', 'misturar', 'embaralhar', 'tts', 'falar', 'say',
+      'conectar', 'desconectar'
+    ],
     events: ['voiceStateUpdate', 'interactionCreate'],
     automations: ['music_inactivity_disconnect']
   },
@@ -93,7 +102,16 @@ const MODULE_DEFINITIONS = [
     dependencies: [],
     configTab: 'tab-economy',
     requiredPermissions: ['SendMessages', 'EmbedLinks'],
-    commands: ['economia', 'daily', 'work', 'trabalhar', 'crime', 'slut', 'rob', 'roubar', 'banco', 'dep', 'depositar', 'sacar', 'saldo', 'bal', 'pagar', 'pay', 'investir', 'cambio', 'bolsa', 'empresa', 'emprestimo'],
+    commands: [
+      'economia', 'eco-admin', 'daily', 'diario', 'weekly', 'semanal',
+      'work', 'trabalhar', 'trampo', 'crime', 'criminoso', 'slut', 'bico',
+      'rob', 'roubar', 'bank', 'banco', 'dep', 'deposit', 'depositar',
+      'sac', 'sacar', 'withdraw', 'saldo', 'balance', 'bal', 'money', 'carteira',
+      'pagar', 'pay', 'transfer', 'transferir', 'pix', 'shop', 'loja',
+      'inv', 'inventario', 'inventory', 'rich', 'ricos', 'topmoney', 'toprico',
+      'investir', 'cambio', 'exchange', 'cota', 'grafico', 'bolsa', 'chart',
+      'empresa', 'empresas', 'company', 'emprestimo', 'loan', 'emprestar'
+    ],
     events: ['interactionCreate'],
     automations: ['stock_market_cycle', 'company_production_cycle']
   },
@@ -106,7 +124,13 @@ const MODULE_DEFINITIONS = [
     dependencies: ['economy'],
     configTab: 'tab-casino',
     requiredPermissions: ['SendMessages', 'EmbedLinks'],
-    commands: ['cassino', 'apostar', 'roleta', 'blackjack', 'bj', 'coinflip', 'caraoucoroa', 'crash', 'slots', 'dados', 'bolao'],
+    commands: [
+      'cassino', 'casino', 'apostar', 'aposta', 'bet', 'gamble',
+      'roleta', 'roulette', 'blackjack', 'bj', '21',
+      'coinflip', 'cf', 'moeda', 'caraoucoroa', 'crash',
+      'slots', 'slot', 'cacaniqueis', 'dados', 'bolao',
+      'duelo', 'x1', 'pvp'
+    ],
     events: ['interactionCreate'],
     automations: []
   },
@@ -119,7 +143,11 @@ const MODULE_DEFINITIONS = [
     dependencies: [],
     configTab: 'tab-xp',
     requiredPermissions: ['SendMessages', 'ManageRoles', 'AttachFiles'],
-    commands: ['xp', 'rank', 'nivel', 'level', 'placar', 'leaderboard', 'perfil'],
+    commands: [
+      'xp', 'xp-admin', 'config-xp', 'rank', 'nivel', 'level',
+      'placar', 'leaderboard', 'topxp', 'perfil', 'profile',
+      'conquistas', 'badges', 'insignias', 'bio', 'sobre', 'cor'
+    ],
     events: ['messageCreate'],
     automations: []
   },
@@ -141,11 +169,21 @@ const MODULE_DEFINITIONS = [
     name: 'Moderação Manual',
     category: 'Atendimento & Moderação',
     icon: '🛡️',
-    description: 'Comandos de ban, tempban, kick, warn, timeout, limpeza de chat, lock e desbanimento automático.',
+    description: 'Comandos de ban, tempban, kick, warn, timeout, mute, limpeza de chat, lock e desbanimento automático.',
     dependencies: [],
     configTab: 'tab-moderation',
     requiredPermissions: ['BanMembers', 'KickMembers', 'ModerateMembers', 'ManageMessages'],
-    commands: ['punir', 'ban', 'tempban', 'kick', 'warn', 'timeout', 'unban', 'untimeout', 'limpar', 'clear', 'slowmode', 'lock', 'unlock'],
+    commands: [
+      'punir', 'ban', 'banir', 'tempban', 'unban', 'desbanir',
+      'kick', 'expulsar', 'warn', 'advertir', 'advertencia',
+      'warnlist', 'warns', 'warnings', 'advertencias',
+      'unwarn', 'clearwarn', 'clearwarns', 'limparwarns',
+      'mute', 'timeout', 'mutar', 'silenciar',
+      'unmute', 'untimeout', 'desmutar', 'desilenciar',
+      'limpar', 'clear', 'purge', 'limpar-mensagens',
+      'slowmode', 'lock', 'lockdown', 'trancar', 'unlock', 'destrancar',
+      'config-mod', 'historico-membro', 'auditar'
+    ],
     events: ['interactionCreate'],
     automations: ['tempban_expiration_worker']
   },
@@ -171,7 +209,12 @@ const MODULE_DEFINITIONS = [
     dependencies: [],
     configTab: 'tab-social',
     requiredPermissions: ['SendMessages', 'EmbedLinks'],
-    commands: ['ship', 'shippar', 'abracar', 'hug', 'beijar', 'kiss', 'tapa', 'slap', 'cafune', 'pat'],
+    commands: [
+      'ship', 'shippar', 'abracar', 'abraçar', 'hug', 'beijar', 'kiss',
+      'tapa', 'slap', 'cafune', 'pat', 'interact', 'interagir', 'interacao',
+      'socar', 'chutar', 'zoar', 'flertar', 'dancar', 'cumprimentar',
+      'genero', 'sexo'
+    ],
     events: ['interactionCreate'],
     automations: []
   },
@@ -184,7 +227,10 @@ const MODULE_DEFINITIONS = [
     dependencies: ['social'],
     configTab: 'tab-social',
     requiredPermissions: ['SendMessages', 'EmbedLinks'],
-    commands: ['casar', 'casamento', 'divorcio', 'divorciar'],
+    commands: [
+      'marry', 'casar', 'casamento', 'divorce', 'divorciar', 'divorcio',
+      'separar', 'casal', 'love', 'relacionamento'
+    ],
     events: ['interactionCreate'],
     automations: []
   },
@@ -210,7 +256,10 @@ const MODULE_DEFINITIONS = [
     dependencies: [],
     configTab: 'tab-reviews',
     requiredPermissions: ['SendMessages', 'EmbedLinks'],
-    commands: ['avaliar', 'avaliacao', 'feedback'],
+    commands: [
+      'avaliar', 'review', 'avaliacao', 'avaliacoes', 'reviewstats',
+      'responder-avaliacao', 'feedback'
+    ],
     events: ['interactionCreate'],
     automations: []
   },
@@ -236,7 +285,7 @@ const MODULE_DEFINITIONS = [
     dependencies: [],
     configTab: 'tab-community',
     requiredPermissions: ['SendMessages', 'EmbedLinks'],
-    commands: ['sorteio'],
+    commands: ['sorteio', 'raffle'],
     events: ['interactionCreate'],
     automations: ['giveaway_ending_worker']
   },
@@ -249,7 +298,7 @@ const MODULE_DEFINITIONS = [
     dependencies: [],
     configTab: 'tab-community',
     requiredPermissions: ['SendMessages', 'EmbedLinks'],
-    commands: ['enquete', 'poll'],
+    commands: ['enquete', 'poll', 'sugestao'],
     events: ['interactionCreate'],
     automations: ['poll_closing_worker']
   },
@@ -262,7 +311,7 @@ const MODULE_DEFINITIONS = [
     dependencies: [],
     configTab: 'tab-welcome',
     requiredPermissions: ['SendMessages', 'AttachFiles'],
-    commands: [],
+    commands: ['config-boas-vindas'],
     events: ['guildMemberAdd'],
     automations: []
   },
@@ -288,7 +337,7 @@ const MODULE_DEFINITIONS = [
     dependencies: [],
     configTab: 'tab-welcome',
     requiredPermissions: ['ManageRoles'],
-    commands: [],
+    commands: ['autorole'],
     events: ['guildMemberAdd'],
     automations: []
   },
@@ -301,7 +350,7 @@ const MODULE_DEFINITIONS = [
     dependencies: [],
     configTab: 'tab-starboard',
     requiredPermissions: ['SendMessages', 'EmbedLinks', 'ReadMessageHistory'],
-    commands: [],
+    commands: ['starboard'],
     events: ['messageReactionAdd'],
     automations: []
   },
@@ -310,11 +359,18 @@ const MODULE_DEFINITIONS = [
     name: 'Automações & Briefings',
     category: 'IA & Automação',
     icon: '⏱️',
-    description: 'Tarefas agendadas, relatórios diários executivos, alertas sociais e rotinas periódicas.',
+    description: 'Tarefas agendadas, relatórios diários executivos, alertas sociais, comandos personalizados e rotinas periódicas.',
     dependencies: [],
     configTab: 'tab-community',
     requiredPermissions: ['SendMessages', 'EmbedLinks'],
-    commands: ['briefing'],
+    commands: [
+      'briefing', 'tarefa', 'alerta', 'alertas',
+      'customcmd', 'addcmd', 'criarcomando', 'addcomando',
+      'delcmd', 'deletarcomando', 'removercomando', 'delcomando',
+      'editcmd', 'editarcomando', 'cmdinfo', 'cmdlist',
+      'customcommands', 'comandospersonalizados', 'meuscomandos',
+      'tags', 'placeholders', 'variaveis'
+    ],
     events: [],
     automations: ['daily_briefing_worker', 'social_alerts_worker']
   },
@@ -340,7 +396,7 @@ const MODULE_DEFINITIONS = [
     dependencies: [],
     configTab: 'tab-social',
     requiredPermissions: ['SendMessages'],
-    commands: ['piada', '8ball', 'escolher', 'dado', 'meme'],
+    commands: ['piada', '8ball', 'bola8', 'escolher', 'dado', 'dice', 'roll', 'meme'],
     events: ['messageCreate'],
     automations: []
   },
@@ -380,48 +436,142 @@ for (const def of MODULE_DEFINITIONS) {
  */
 const TOOL_TO_MODULE_MAP = {
   // Moderation tools
+  'aplicar_punicao_membro': 'moderation',
+  'consultar_historico_disciplinar': 'moderation',
+  'limpar_advertencias_membro': 'moderation',
+  'configurar_regra_escalonamento': 'moderation',
+  'purgar_mensagens_canal': 'moderation',
+  'trancar_ou_destrancar_canal': 'moderation',
+  'gerenciar_modo_lento_canal': 'moderation',
   'banir_membro': 'moderation',
   'expulsar_membro': 'moderation',
+  'mutar_membro': 'moderation',
+  'desmutar_membro': 'moderation',
   'aplicar_timeout': 'moderation',
   'remover_timeout': 'moderation',
   'aplicar_aviso': 'moderation',
   'limpar_mensagens': 'moderation',
   'aplicar_tempban': 'moderation',
 
+  // Auto protection tools
+  'analisar_seguranca_url': 'auto_protection',
+
   // Economy tools
+  'consultar_saldo_membro': 'economy',
   'consultar_saldo': 'economy',
   'transferir_moedas': 'economy',
+  'gerenciar_economia_admin': 'economy',
   'conceder_moedas': 'economy',
   'remover_moedas': 'economy',
+  'consultar_loja_itens': 'economy',
+  'comprar_item_loja': 'economy',
+  'consultar_ranking_economia': 'economy',
   'ver_cotacoes_bolsa': 'economy',
 
   // XP tools
+  'consultar_nivel_membro': 'xp',
   'consultar_xp_membro': 'xp',
+  'consultar_ranking_servidor': 'xp',
+  'gerenciar_xp_membro': 'xp',
   'adicionar_xp_membro': 'xp',
   'remover_xp_membro': 'xp',
+  'configurar_bloqueio_xp_canal': 'xp',
+  'resetar_xp_servidor': 'xp',
+  'consultar_conquistas_membro': 'xp',
 
   // Memory tools
+  'salvar_memoria': 'ai_memory',
   'gravar_memoria': 'ai_memory',
   'consultar_memoria': 'ai_memory',
   'esquecer_memoria': 'ai_memory',
+  'salvar_memoria_servidor': 'ai_memory',
+  'gerenciar_notas_servidor': 'ai_memory',
+  'salvar_nota': 'ai_memory',
 
-  // Music tools
+  // AI Chat & Summary tools
+  'obter_contexto_canal': 'ai_chat',
+  'resumir_conversa': 'ai_chat',
+  'obter_fofoca_chat': 'ai_chat',
+  'alterar_modo_humor_ia': 'ai_chat',
+
+  // Music & Voice tools
   'tocar_musica': 'music',
+  'adicionar_musica_fila': 'music',
+  'tocar_em_seguida': 'music',
+  'controlar_musica': 'music',
+  'consultar_fila_musica': 'music',
+  'conectar_canal_voz': 'music',
+  'desconectar_canal_voz': 'music',
+  'falar_canal_voz': 'music',
   'pular_musica': 'music',
   'parar_musica': 'music',
   'alterar_volume': 'music',
 
+  // Tickets & Reviews tools
+  'consultar_tickets_servidor': 'tickets',
+  'gerenciar_ticket': 'tickets',
+  'consultar_estatisticas_avaliacoes': 'reviews',
+
   // Social & Community tools
+  'executar_interacao_social': 'social',
   'consultar_casamento': 'marriages',
   'verificar_reputacao': 'reputation',
   'criar_enquete': 'polls',
+  'moderar_sugestao': 'polls',
   'criar_sorteio': 'giveaways',
-  'agendar_lembrete': 'reminders',
+  'configurar_boas_vindas': 'welcome',
 
-  // Web & AI tools
+  // Automations & Reminders tools
+  'agendar_lembrete': 'reminders',
+  'criar_tarefa_servidor': 'automations',
+  'consultar_tarefas_pendentes': 'automations',
+  'concluir_tarefa': 'automations',
+  'gerar_briefing_servidor': 'automations',
+
+  // Web & Admin AI tools
   'pesquisar_web': 'ai_tools',
-  'obter_data_hora_atual': 'ai_tools'
+  'obter_data_hora_atual': 'ai_tools',
+  'traduzir_texto': 'ai_tools',
+  'calcular_expressao': 'ai_tools',
+  'formatar_e_validar_json': 'ai_tools',
+  'gerar_arquivo_anexo': 'ai_tools',
+  'utilitario_calculo_conversao': 'ai_tools',
+  'gerenciar_cargo_membro': 'ai_tools',
+  'alterar_apelido_membro': 'ai_tools',
+  'criar_cargo_servidor': 'ai_tools',
+  'editar_cargo_servidor': 'ai_tools',
+  'excluir_cargo_servidor': 'ai_tools',
+  'criar_canal_servidor': 'ai_tools',
+  'editar_canal_servidor': 'ai_tools',
+  'excluir_canal_servidor': 'ai_tools',
+  'analisar_servidor': 'ai_tools',
+  'auditar_permissoes_servidor': 'ai_tools',
+  'enviar_mensagem_canal': 'ai_tools'
 };
+
+/**
+ * Mapping of Discord button/modal/select customId prefixes to required module keys.
+ */
+const INTERACTION_PREFIX_TO_MODULE_MAP = [
+  { prefix: 'quiz_', moduleKey: 'quiz' },
+  { prefix: 'marry_', moduleKey: 'marriages' },
+  { prefix: 'loan_', moduleKey: 'economy' },
+  { prefix: 'company_', moduleKey: 'economy' },
+  { prefix: 'duel_', moduleKey: 'casino' },
+  { prefix: 'bj_', moduleKey: 'casino' },
+  { prefix: 'bolao_', moduleKey: 'casino' },
+  { prefix: 'ticket_', moduleKey: 'tickets' },
+  { prefix: 'close_ticket', moduleKey: 'tickets' },
+  { prefix: 'claim_ticket', moduleKey: 'tickets' },
+  { prefix: 'transcript_ticket', moduleKey: 'tickets' },
+  { prefix: 'poll_', moduleKey: 'polls' },
+  { prefix: 'giveaway_', moduleKey: 'giveaways' },
+  { prefix: 'raffle_', moduleKey: 'giveaways' },
+  { prefix: 'review_', moduleKey: 'reviews' },
+  { prefix: 'kiss_', moduleKey: 'social' },
+  { prefix: 'hug_', moduleKey: 'social' },
+  { prefix: 'interact_', moduleKey: 'social' }
+];
 
 class GuildModuleService {
   /**
@@ -451,15 +601,19 @@ class GuildModuleService {
     if (MODULE_BY_ID.has(cleanId) || this.customDefinitions.has(cleanId)) {
       throw new ValidationError(`Módulo duplicado: o identificador "${cleanId}" já está registrado no sistema.`);
     }
+    const normalizedCommands = Array.isArray(moduleDef.commands) ? moduleDef.commands : [];
     this.customDefinitions.set(cleanId, {
       ...moduleDef,
       id: cleanId,
       dependencies: Array.isArray(moduleDef.dependencies) ? moduleDef.dependencies : [],
       requiredPermissions: Array.isArray(moduleDef.requiredPermissions) ? moduleDef.requiredPermissions : [],
-      commands: Array.isArray(moduleDef.commands) ? moduleDef.commands : [],
+      commands: normalizedCommands,
       events: Array.isArray(moduleDef.events) ? moduleDef.events : [],
       automations: Array.isArray(moduleDef.automations) ? moduleDef.automations : []
     });
+    for (const cmd of normalizedCommands) {
+      COMMAND_TO_MODULE_MAP[String(cmd).toLowerCase().trim()] = cleanId;
+    }
     return true;
   }
 
@@ -539,6 +693,17 @@ class GuildModuleService {
   }
 
   /**
+   * Resolves which module ID owns a specific command or alias.
+   * @param {string} commandName
+   * @returns {string|null}
+   */
+  getModuleForCommand(commandName) {
+    if (!commandName) return null;
+    const cleanName = String(commandName).toLowerCase().replace(/^[+!/?]/, '').trim();
+    return COMMAND_TO_MODULE_MAP[cleanName] || null;
+  }
+
+  /**
    * Validates dependencies for a proposed module state map.
    * @param {Record<string, boolean>} proposedStates
    * @returns {{ valid: boolean, inconsistencies: Array<{ moduleId: string, moduleName: string, missingDependencyId: string, missingDependencyName: string, message: string }> }}
@@ -573,6 +738,7 @@ class GuildModuleService {
   /**
    * Retrieves all module states for a specific guild.
    * If a module hasn't been explicitly configured, it defaults to TRUE (enabled).
+   * Also reflects disabled state if a required parent dependency is disabled.
    * @param {string} guildId
    * @returns {Record<string, boolean>}
    */
@@ -598,6 +764,16 @@ class GuildModuleService {
     }
     for (const [customId] of this.customDefinitions) {
       result[customId] = guildMap.has(customId) ? guildMap.get(customId) : true;
+    }
+    // Cascade parent disabled state to child dependent modules
+    for (const mod of MODULE_DEFINITIONS) {
+      if (result[mod.id] && Array.isArray(mod.dependencies)) {
+        for (const depId of mod.dependencies) {
+          if (result[depId] === false) {
+            result[mod.id] = false;
+          }
+        }
+      }
     }
     return result;
   }
@@ -638,6 +814,7 @@ class GuildModuleService {
    * Sets the enabled state of a specific module for a guild.
    * Preserves all module data when disabled.
    * When enabling a module, automatically enables its dependencies unless strictDependencies is true.
+   * When disabling a parent module, automatically disables dependent child modules unless strictDependencies is true.
    * @param {string} guildId
    * @param {string} moduleKey
    * @param {boolean} isEnabled
@@ -664,7 +841,6 @@ class GuildModuleService {
               `Dependência obrigatória: Não é possível ativar "${def.name}" porque "${depDef ? depDef.name : depId}" está desativado.`
             );
           } else if (options.autoResolveDependencies !== false) {
-            // Automatically initialize/enable required parent dependency
             this._persistSingleModule(guildId, depId, true, actorId);
           }
         }
@@ -672,13 +848,17 @@ class GuildModuleService {
     }
 
     // If disabling a parent module while a child module depends on it
-    if (!boolVal && options.strictDependencies) {
+    if (!boolVal) {
       for (const otherDef of MODULE_DEFINITIONS) {
         if (Array.isArray(otherDef.dependencies) && otherDef.dependencies.includes(cleanKey)) {
           if (currentStates[otherDef.id] !== false) {
-            throw new ValidationError(
-              `Conflito de dependência: O módulo "${otherDef.name}" depende de "${def ? def.name : cleanKey}". Desative "${otherDef.name}" primeiro.`
-            );
+            if (options.strictDependencies) {
+              throw new ValidationError(
+                `Conflito de dependência: O módulo "${otherDef.name}" depende de "${def ? def.name : cleanKey}". Desative "${otherDef.name}" primeiro.`
+              );
+            } else if (options.autoResolveDependencies !== false) {
+              this._persistSingleModule(guildId, otherDef.id, false, actorId);
+            }
           }
         }
       }
@@ -742,8 +922,6 @@ class GuildModuleService {
       if (options.strictDependencies) {
         throw new ValidationError(depCheck.inconsistencies[0].message);
       }
-      // If a parent is explicitly being disabled in modulesObject, disable its dependent children
-      // Otherwise if a child is explicitly being enabled, enable its parent dependency
       for (const inc of depCheck.inconsistencies) {
         const parentExplicitlyFalse = modulesObject[inc.missingDependencyId] === false;
         const childExplicitlyTrue = modulesObject[inc.moduleId] === true;
@@ -774,7 +952,7 @@ class GuildModuleService {
    */
   checkCommandAllowed(guildId, commandName) {
     if (!guildId || !commandName) return { allowed: true, moduleKey: null, moduleName: null };
-    const cleanName = String(commandName).toLowerCase().replace(/^[+!/]/, '').trim();
+    const cleanName = String(commandName).toLowerCase().replace(/^[+!/?]/, '').trim();
 
     const moduleKey = COMMAND_TO_MODULE_MAP[cleanName];
     if (!moduleKey) {
@@ -789,6 +967,30 @@ class GuildModuleService {
       moduleKey,
       moduleName: modDef ? modDef.name : moduleKey
     };
+  }
+
+  /**
+   * Checks whether a Discord button, select menu, or modal customId is authorized under current module settings.
+   * @param {string} guildId
+   * @param {string} customId
+   * @returns {{ allowed: boolean, moduleKey: string|null, moduleName: string|null }}
+   */
+  checkInteractionAllowed(guildId, customId) {
+    if (!guildId || !customId) return { allowed: true, moduleKey: null, moduleName: null };
+    const cleanId = String(customId).toLowerCase().trim();
+
+    for (const entry of INTERACTION_PREFIX_TO_MODULE_MAP) {
+      if (cleanId.startsWith(entry.prefix)) {
+        const isEnabled = this.isModuleEnabled(guildId, entry.moduleKey);
+        const modDef = this.getModuleDefinition(entry.moduleKey);
+        return {
+          allowed: isEnabled,
+          moduleKey: entry.moduleKey,
+          moduleName: modDef ? modDef.name : entry.moduleKey
+        };
+      }
+    }
+    return { allowed: true, moduleKey: null, moduleName: null };
   }
 
   /**
@@ -852,5 +1054,6 @@ module.exports = {
   GuildModuleService,
   MODULE_DEFINITIONS,
   COMMAND_TO_MODULE_MAP,
-  TOOL_TO_MODULE_MAP
+  TOOL_TO_MODULE_MAP,
+  INTERACTION_PREFIX_TO_MODULE_MAP
 };

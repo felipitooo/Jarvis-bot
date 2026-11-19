@@ -94,13 +94,21 @@ class ToolRegistry {
     // 1. Validate parameters
     this.validateArgs(tool, args);
 
-    // 1.5 Modular system check (is module active for this guild?)
+    // 1.5 Modular system check (is module active for this guild and bot instance?)
     const guildId = context.guildId || context.guild?.id;
     if (guildId && context.guildModuleService) {
       const toolCheck = context.guildModuleService.checkToolAllowed(guildId, name);
       if (!toolCheck.allowed) {
         throw new PermissionDeniedError(
           `A ferramenta "${name}" não pôde ser executada porque o módulo correspondente (${toolCheck.moduleKey}) está desativado neste servidor.`
+        );
+      }
+    }
+    if (context.botInstanceId && context.multiBotManager) {
+      const instToolCheck = context.multiBotManager.checkToolAllowedForInstance(context.botInstanceId, name);
+      if (!instToolCheck.allowed) {
+        throw new PermissionDeniedError(
+          `A ferramenta "${name}" não pôde ser executada porque o módulo correspondente (${instToolCheck.moduleKey}) está desativado nesta instância de bot.`
         );
       }
     }

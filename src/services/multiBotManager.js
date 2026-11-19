@@ -1,12 +1,18 @@
-const { Client, GatewayIntentBits, Partials } = require('discord.js');
+const { Client, GatewayIntentBits, Partials, EmbedBuilder } = require('discord.js');
 const { logger } = require('../utils/logger');
 const { ValidationError } = require('../utils/errorHandler');
-const { MODULE_DEFINITIONS } = require('./guildModuleService');
+const {
+  MODULE_DEFINITIONS,
+  COMMAND_TO_MODULE_MAP,
+  TOOL_TO_MODULE_MAP,
+  INTERACTION_PREFIX_TO_MODULE_MAP
+} = require('./guildModuleService');
+const { applyBotPresence } = require('../utils/presenceHelper');
 
 const mbLogger = logger.forContext('MultiBotManager');
 
 /**
- * Default isolated configuration template for each Bot Instance (covering all 18 admin sections).
+ * Default isolated configuration template for each Bot Instance (covering all 25 admin & operational sections).
  */
 function buildDefaultInstanceConfig(name = 'J.A.R.V.I.S.', assignedModules = null) {
   const defaultModulesMap = {};
@@ -34,7 +40,8 @@ function buildDefaultInstanceConfig(name = 'J.A.R.V.I.S.', assignedModules = nul
     commands: {
       prefix: '+',
       prefixlessMode: false,
-      disabledCommands: []
+      disabledCommands: [],
+      customAliases: {}
     },
     moderation: {
       logChannelId: '',
@@ -43,6 +50,7 @@ function buildDefaultInstanceConfig(name = 'J.A.R.V.I.S.', assignedModules = nul
       antiBotScamEnabled: true,
       antiBotScamAction: 'TIMEOUT',
       antiBotScamTimeoutSeconds: 86400,
+      antiBotIgnoredChannels: [],
       tempBanWorkerEnabled: true
     },
     economyXp: {
@@ -55,7 +63,13 @@ function buildDefaultInstanceConfig(name = 'J.A.R.V.I.S.', assignedModules = nul
       xpMin: 15,
       xpMax: 25,
       xpCooldownSeconds: 60,
-      voiceXpPerMinute: 10
+      voiceXpPerMinute: 10,
+      casinoMinBet: 10,
+      casinoMaxBet: 100000,
+      quizRewardCoins: 200,
+      quizRewardXp: 50,
+      quizDefaultRounds: 5,
+      quizTimeoutSeconds: 25
     },
     music: {
       defaultVolume: 80,
@@ -78,7 +92,15 @@ function buildDefaultInstanceConfig(name = 'J.A.R.V.I.S.', assignedModules = nul
       marriageCost: 5000,
       shippingEnabled: true,
       funCommandsEnabled: true,
-      gifsEnabled: true
+      gifsEnabled: true,
+      welcomeChannelId: '',
+      welcomeMessage: 'Bem-vindo(a) {user} ao **{server}**! 🎉',
+      goodbyeChannelId: '',
+      goodbyeMessage: '**{username}** saiu do servidor.',
+      autoRoleId: '',
+      starboardChannelId: '',
+      starboardEmoji: '⭐',
+      starboardMinStars: 3
     },
     automations: {
       briefingEnabled: false,
@@ -96,6 +118,7 @@ function buildDefaultInstanceConfig(name = 'J.A.R.V.I.S.', assignedModules = nul
     },
     permissions: {
       allowedGuilds: [],
+      blockedChannels: [],
       adminRoleIds: [],
       modRoleIds: [],
       restrictToAllowedGuilds: false
@@ -556,26 +579,338 @@ class MultiBotManager {
     this._persistInstanceConfig(id, newConfig);
     this.addInstanceLog(id, 'INFO', 'CONFIG', `Configurações administrativas da instância "${name}" salvas com sucesso.`);
 
-    // Update live running instance if active
-    const live = this.activeInstances.get(id);
-    if (live) {
-      live.config = newConfig;
-      live.assignedModules = activeModuleList;
-    }
+    // Update live running instance immediately (presence, AI name, model, modules, prefix, permissions)
+    this._syncLiveInstance(id, newConfig, name);
 
     return this.getInstance(id);
   }
 
   /**
+   * Synchronizes all live runtime state and Discord presence for an active instance.
+   * @param {string} botId
+   * @param {object} [cfgOverride]
+   * @param {string} [nameOverride]
+   */
+  _syncLiveInstance(botId, cfgOverride = null, nameOverride = null) {
+    const live = this.activeInstances.get(botId);
+    if (!live) return false;
+
+    const inst = (!cfgOverride || !nameOverride) ? this.getInstance(botId) : null;
+    const cfg = cfgOverride || inst?.config || live.config || {};
+    const instName = nameOverride || inst?.name || cfg.aiName || 'Bot';
+
+    const activeModuleList = Object.entries(cfg.modules || {})
+      .filter(([, val]) => val === true)
+      .map(([key]) => key);
+
+    live.config = cfg;
+    live.assignedModules = activeModuleList;
+    live.allowedGuilds = cfg.permissions?.allowedGuilds || [];
+
+    if (live.childContext) {
+      live.childContext.botInstanceConfig = cfg;
+      live.childContext.botInstanceName = instName;
+      if (live.childContext.identityService) {
+        live.childContext.identityService.forcedInstanceName = cfg.aiName || instName;
+        live.childContext.identityService.defaultName = cfg.aiName || instName;
+      }
+      if (live.childContext.llmAdapter && cfg.aiModel) {
+        live.childContext.llmAdapter.model = cfg.aiModel;
+      }
+    }
+
+    this.applyInstancePresence(botId, cfg, instName);
+    return true;
+  }
+
+  /**
+   * Immediately applies the instance's configured Discord status and activity to its live Discord Client.
+   * @param {string} botId
+   * @param {object} [cfgOverride]
+   * @param {string} [nameOverride]
+   */
+  applyInstancePresence(botId, cfgOverride = null, nameOverride = null) {
+    const live = this.activeInstances.get(botId);
+    if (!live || !live.client || !live.client.user) return false;
+
+    const cfg = cfgOverride || live.config || this.getInstanceConfig(botId) || {};
+    const instName = nameOverride || cfg.aiName || live.client.user.username || 'Bot';
+    const instPrefix = cfg.prefix || '+';
+
+    const presenceCfg = {
+      botStatus: cfg.presenceStatus || 'online',
+      activityType: cfg.presenceActivityType || 'Custom',
+      activityName: cfg.presenceActivityText || `${instName} | ${instPrefix}ajuda`,
+      activityUrl: cfg.presenceActivityUrl || ''
+    };
+
+    const applied = applyBotPresence(live.client, presenceCfg);
+    if (applied) {
+      this.addInstanceLog(
+        botId,
+        'INFO',
+        'PRESENCE',
+        `Presença atualizada no Discord: [${presenceCfg.botStatus.toUpperCase()}] ${presenceCfg.activityType}: "${presenceCfg.activityName}"`
+      );
+    }
+    return applied;
+  }
+
+  /**
    * Checks whether a specific module is enabled for a specific bot instance.
+   * Also verifies parent module dependencies.
    * @param {string} botId
    * @param {string} moduleKey
    * @returns {boolean}
    */
   isModuleEnabledForInstance(botId, moduleKey) {
+    if (!botId || !moduleKey) return true;
+    const live = this.activeInstances.get(botId);
+    const cfg = live?.config || this.getInstance(botId)?.config;
+    if (!cfg || !cfg.modules) return false;
+
+    const cleanKey = String(moduleKey).toLowerCase().trim();
+    if (cfg.modules[cleanKey] === false) return false;
+
+    const def = MODULE_DEFINITIONS.find(d => d.id === cleanKey);
+    if (def && Array.isArray(def.dependencies)) {
+      for (const depId of def.dependencies) {
+        if (cfg.modules[depId] === false) return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Checks whether a command is allowed to run on a specific bot instance.
+   * Enforces both disabledCommands and the 26-module toggles of that instance.
+   * @param {string} botId
+   * @param {string} commandName
+   * @returns {{ allowed: boolean, moduleKey: string|null, moduleName: string|null, reason?: string }}
+   */
+  checkCommandAllowedForInstance(botId, commandName) {
+    if (!botId || !commandName) return { allowed: true, moduleKey: null, moduleName: null };
+    const cleanName = String(commandName).toLowerCase().replace(/^[+!/?]/, '').trim();
+
+    const live = this.activeInstances.get(botId);
+    const cfg = live?.config || this.getInstance(botId)?.config;
+    if (!cfg) return { allowed: true, moduleKey: null, moduleName: null };
+
+    const disabledList = Array.isArray(cfg.commands?.disabledCommands)
+      ? cfg.commands.disabledCommands.map(c => String(c).toLowerCase().replace(/^[+!/?]/, '').trim())
+      : [];
+    if (disabledList.includes(cleanName)) {
+      return {
+        allowed: false,
+        moduleKey: 'commands',
+        moduleName: 'Comandos Desativados na Instância',
+        reason: 'COMMAND_DISABLED'
+      };
+    }
+
+    const moduleKey = COMMAND_TO_MODULE_MAP[cleanName];
+    if (!moduleKey) {
+      return { allowed: true, moduleKey: null, moduleName: null };
+    }
+
+    const isEnabled = this.isModuleEnabledForInstance(botId, moduleKey);
+    const modDef = MODULE_DEFINITIONS.find(d => d.id === moduleKey);
+
+    return {
+      allowed: isEnabled,
+      moduleKey,
+      moduleName: modDef ? modDef.name : moduleKey
+    };
+  }
+
+  /**
+   * Checks whether a button/modal/select interaction is allowed on a specific bot instance.
+   * @param {string} botId
+   * @param {string} customId
+   */
+  checkInteractionAllowedForInstance(botId, customId) {
+    if (!botId || !customId) return { allowed: true, moduleKey: null, moduleName: null };
+    const cleanId = String(customId).toLowerCase().trim();
+
+    for (const entry of INTERACTION_PREFIX_TO_MODULE_MAP) {
+      if (cleanId.startsWith(entry.prefix)) {
+        const isEnabled = this.isModuleEnabledForInstance(botId, entry.moduleKey);
+        const modDef = MODULE_DEFINITIONS.find(d => d.id === entry.moduleKey);
+        return {
+          allowed: isEnabled,
+          moduleKey: entry.moduleKey,
+          moduleName: modDef ? modDef.name : entry.moduleKey
+        };
+      }
+    }
+    return { allowed: true, moduleKey: null, moduleName: null };
+  }
+
+  /**
+   * Checks whether an AI tool is allowed on a specific bot instance.
+   * @param {string} botId
+   * @param {string} toolName
+   */
+  checkToolAllowedForInstance(botId, toolName) {
+    if (!botId || !toolName) return { allowed: true, moduleKey: null };
+    if (!this.isModuleEnabledForInstance(botId, 'ai_tools')) {
+      return { allowed: false, moduleKey: 'ai_tools' };
+    }
+    const moduleKey = TOOL_TO_MODULE_MAP[toolName];
+    if (moduleKey && !this.isModuleEnabledForInstance(botId, moduleKey)) {
+      return { allowed: false, moduleKey };
+    }
+    return { allowed: true, moduleKey: null };
+  }
+
+  /**
+   * Checks whether a guild and channel are permitted for a specific bot instance.
+   * @param {string} botId
+   * @param {string} [guildId]
+   * @param {string} [channelId]
+   */
+  isGuildAndChannelAllowedForInstance(botId, guildId = null, channelId = null) {
+    if (!botId) return true;
+    const live = this.activeInstances.get(botId);
+    const cfg = live?.config || this.getInstance(botId)?.config;
+    if (!cfg || !cfg.permissions) return true;
+
+    const allowedGuilds = Array.isArray(cfg.permissions.allowedGuilds) ? cfg.permissions.allowedGuilds.filter(Boolean) : [];
+    if (guildId && cfg.permissions.restrictToAllowedGuilds && allowedGuilds.length > 0) {
+      if (!allowedGuilds.includes(guildId)) return false;
+    }
+
+    const blockedChannels = Array.isArray(cfg.permissions.blockedChannels) ? cfg.permissions.blockedChannels.filter(Boolean) : [];
+    if (channelId && blockedChannels.length > 0 && blockedChannels.includes(channelId)) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Sends a message or rich embed to a Discord channel using this specific bot instance's live Client ("Falar pelo Bot").
+   * @param {string} botId
+   * @param {object} params
+   * @param {string} [params.guildId]
+   * @param {string} params.channelId
+   * @param {string} [params.content]
+   * @param {object} [params.embed]
+   * @param {import('discord.js').Client} [fallbackClient]
+   */
+  async speakWithInstance(botId, { guildId = null, channelId, content = '', embed = null }, fallbackClient = null) {
+    if (!channelId) throw new ValidationError('Selecione um canal de texto para enviar a mensagem.');
+
     const inst = this.getInstance(botId);
-    if (!inst || !inst.config || !inst.config.modules) return false;
-    return inst.config.modules[moduleKey] !== false;
+    if (!inst) throw new ValidationError('Instância de bot não encontrada.');
+
+    const live = this.activeInstances.get(botId);
+    const activeClient = live?.client || fallbackClient;
+    if (!activeClient || (!live && !fallbackClient)) {
+      throw new ValidationError(`A instância "${inst.name}" está atualmente OFFLINE. Inicie a instância antes de enviar mensagens por ela.`);
+    }
+
+    let channel = null;
+    if (guildId && activeClient.guilds?.cache?.has(guildId)) {
+      const g = activeClient.guilds.cache.get(guildId);
+      channel = g.channels?.cache?.get(channelId) || null;
+    }
+    if (!channel && activeClient.channels?.cache?.has(channelId)) {
+      channel = activeClient.channels.cache.get(channelId);
+    }
+    if (!channel && activeClient.channels?.fetch) {
+      try {
+        channel = await activeClient.channels.fetch(channelId);
+      } catch {}
+    }
+
+    if (!channel || (typeof channel.isTextBased === 'function' && !channel.isTextBased())) {
+      throw new ValidationError(`Canal de texto (${channelId}) não encontrado ou sem acesso pela instância "${inst.name}".`);
+    }
+
+    const rawContent = content ? String(content).trim() : '';
+    const hasEmbed = embed && (embed.title || embed.description || embed.fields?.length || embed.image || embed.thumbnail);
+
+    if (!rawContent && !hasEmbed) {
+      throw new ValidationError('Digite uma mensagem de texto ou preencha o título/descrição da Embed.');
+    }
+
+    const guildObj = channel.guild || (guildId ? activeClient.guilds?.cache?.get(guildId) : null);
+    let processedContent = rawContent;
+    if (guildObj && processedContent) {
+      processedContent = processedContent
+        .replace(/\{server\}/gi, guildObj.name || 'Servidor')
+        .replace(/\{members\}/gi, String(guildObj.memberCount || 0));
+    }
+
+    const payload = {};
+    if (processedContent) payload.content = processedContent;
+
+    if (hasEmbed) {
+      const eb = new EmbedBuilder();
+      if (embed.title) eb.setTitle(String(embed.title).slice(0, 256));
+      if (embed.url) {
+        try { new URL(embed.url); eb.setURL(embed.url); } catch {}
+      }
+      if (embed.description) {
+        let desc = String(embed.description).slice(0, 4096);
+        if (guildObj) {
+          desc = desc
+            .replace(/\{server\}/gi, guildObj.name || 'Servidor')
+            .replace(/\{members\}/gi, String(guildObj.memberCount || 0));
+        }
+        eb.setDescription(desc);
+      }
+      const hexColor = String(embed.color || inst.config?.embeds?.primaryColor || '#00E5FF').replace('#', '');
+      const colorInt = parseInt(hexColor, 16);
+      eb.setColor(!isNaN(colorInt) ? colorInt : 0x00E5FF);
+
+      if (embed.author?.name) {
+        eb.setAuthor({
+          name: String(embed.author.name).slice(0, 256),
+          iconURL: embed.author.icon || undefined
+        });
+      }
+      const footerTxt = embed.footer?.text || inst.config?.embeds?.footerText || `${inst.config?.aiName || inst.name}`;
+      if (footerTxt) {
+        eb.setFooter({
+          text: String(footerTxt).slice(0, 2048),
+          iconURL: embed.footer?.icon || undefined
+        });
+      }
+      if (embed.image) eb.setImage(embed.image);
+      if (embed.thumbnail) eb.setThumbnail(embed.thumbnail);
+      if (Array.isArray(embed.fields)) {
+        for (const f of embed.fields) {
+          if (f.name && f.value) {
+            eb.addFields({
+              name: String(f.name).slice(0, 256),
+              value: String(f.value).slice(0, 1024),
+              inline: Boolean(f.inline)
+            });
+          }
+        }
+      }
+      eb.setTimestamp();
+      payload.embeds = [eb];
+    }
+
+    const sent = await channel.send(payload);
+    this.addInstanceLog(
+      botId,
+      'INFO',
+      'BOT_SPEAK',
+      `Mensagem transmitida em #${channel.name || channelId} (ID: ${sent?.id || 'ok'}).`
+    );
+
+    return {
+      success: true,
+      botId,
+      botName: inst.name,
+      channelId,
+      channelName: channel.name || channelId,
+      messageId: sent?.id || null
+    };
   }
 
   // ==========================================
@@ -748,6 +1083,7 @@ class MultiBotManager {
 
       const liveMeta = {
         client,
+        childContext: null,
         status: 'STARTING',
         memoryMb: 45.0,
         lastError: null,
@@ -762,7 +1098,27 @@ class MultiBotManager {
       if (typeof this.createContextFn === 'function' && typeof this.loadEventsFn === 'function') {
         const childContext = this.createContextFn();
         childContext.botInstanceId = id;
+        childContext.botInstanceName = inst.name;
+        childContext.botInstanceToken = inst.token;
         childContext.botInstanceConfig = inst.config;
+        childContext.multiBotManager = this;
+
+        if (childContext.identityService) {
+          childContext.identityService.forcedInstanceName = inst.config.aiName || inst.name;
+          childContext.identityService.defaultName = inst.config.aiName || inst.name;
+        }
+        if (childContext.llmAdapter && inst.config.aiModel) {
+          childContext.llmAdapter.model = inst.config.aiModel;
+        }
+        if (childContext.aiOrchestrator) {
+          childContext.aiOrchestrator.botInstanceId = id;
+          childContext.aiOrchestrator.multiBotManager = this;
+        }
+        if (childContext.musicService) {
+          childContext.musicService.setClient(client);
+        }
+
+        liveMeta.childContext = childContext;
         this.loadEventsFn(client, childContext);
       }
 
@@ -778,6 +1134,7 @@ class MultiBotManager {
         liveMeta.status = 'ONLINE';
         liveMeta.memoryMb = Number((process.memoryUsage().heapUsed / (1024 * 1024) * 0.4).toFixed(1));
         this._updateStatusInDb(id, 'ONLINE', null, liveMeta.memoryMb);
+        this.applyInstancePresence(id, inst.config, inst.name);
         this.addInstanceLog(id, 'INFO', 'LIFECYCLE', `Instância conectada ao Discord como ${client.user?.tag || inst.name}.`);
         mbLogger.info(`Multi-Bot Instance "${inst.name}" (${client.user.tag}) is ONLINE.`);
       });

@@ -33,9 +33,21 @@ module.exports = {
     }
 
     if (!context.communityService) return;
+    if (context.botInstanceId && context.multiBotManager) {
+      if (!context.multiBotManager.isGuildAndChannelAllowedForInstance(context.botInstanceId, member?.guild?.id)) {
+        return;
+      }
+    }
 
     try {
-      await context.communityService.handleMemberLeave(member, context.guildModuleService);
+      const effectiveModService = (context.botInstanceId && context.multiBotManager)
+        ? {
+            isModuleEnabled: (gId, modKey) =>
+              (!context.guildModuleService || context.guildModuleService.isModuleEnabled(gId, modKey)) &&
+              context.multiBotManager.isModuleEnabledForInstance(context.botInstanceId, modKey)
+          }
+        : context.guildModuleService;
+      await context.communityService.handleMemberLeave(member, effectiveModService);
     } catch (err) {
       memberLogger.warn(`Error handling member leave for ${member.id}`, { error: err.message });
     }

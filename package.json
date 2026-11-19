@@ -1,7 +1,7 @@
 {
   "name": "jarvis-discord-bot",
-  "version": "8.5.0",
-  "description": "Unified Modular Discord Bot (Jarvis) - Production Release v8.5.0 Total Audit & Persistence Fix",
+  "version": "9.0.0",
+  "description": "Unified Modular Discord Bot (Jarvis) - Production Release v9.0.0 Stable Multi-Bot & Full Module Enforcement",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",

@@ -1003,6 +1003,22 @@ class WebPanelService {
       case 'bot_speak':
       case 'botspeak':
       case 'send_message': {
+        // Support sending via a specific Multi-Bot instance when botId is selected
+        if (updates.botId && updates.botId !== 'MAIN' && this.services?.multiBotManager) {
+          const speakRes = await this.services.multiBotManager.speakWithInstance(
+            updates.botId,
+            {
+              guildId,
+              channelId: updates.channelId,
+              content: updates.content,
+              embed: updates.embed
+            },
+            this.botClient
+          );
+          savedResult = speakRes;
+          break;
+        }
+
         const botGuild = this.botClient?.guilds?.cache?.get(guildId);
         if (!botGuild) throw new Error('Bot não está conectado ou indisponível neste servidor.');
         const channelId = updates.channelId;

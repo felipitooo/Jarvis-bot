@@ -138,18 +138,35 @@ class AIOrchestrator {
       }
       const sanitizedPrompt = wrapUntrustedContent(fullMessageInput);
 
-      // 5. Gather Context: Server Notes and Server Memories
+      // 5. Gather Context: Server Notes and Server Memories (Gated by ai_memory module)
+      const guildModuleService = this.services?.guildModuleService || null;
+      const multiBotManager = this.multiBotManager || this.services?.multiBotManager || null;
+      const isAiMemoryAllowed =
+        (!resolvedGuildId || !guildModuleService || guildModuleService.isModuleEnabled(resolvedGuildId, 'ai_memory')) &&
+        (!this.botInstanceId || !multiBotManager || multiBotManager.isModuleEnabledForInstance(this.botInstanceId, 'ai_memory'));
+
       let serverNotes = [];
       let serverMemories = [];
-      if (resolvedGuildId && this.notesRepo) {
-        serverNotes = this.notesRepo.listNotes(resolvedGuildId);
-      }
-      if (resolvedGuildId && this.memoryRepo) {
-        serverMemories = this.memoryRepo.listGuildMemories(resolvedGuildId);
+      if (isAiMemoryAllowed) {
+        if (resolvedGuildId && this.notesRepo) {
+          serverNotes = this.notesRepo.listNotes(resolvedGuildId);
+        }
+        if (resolvedGuildId && this.memoryRepo) {
+          serverMemories = [...this.memoryRepo.listGuildMemories(resolvedGuildId)];
+        }
+        if (this.botInstanceId && multiBotManager) {
+          const instMems = multiBotManager.listInstanceMemories(this.botInstanceId, 'GLOBAL') || [];
+          for (const im of instMems) {
+            serverMemories.push({
+              key: im.memory_key,
+              value: im.memory_value
+            });
+          }
+        }
       }
 
       let userMemories = [];
-      if (user?.id && this.memoryRepo) {
+      if (isAiMemoryAllowed && user?.id && this.memoryRepo) {
         userMemories = this.memoryRepo.listUserMemories(resolvedGuildId, user.id);
       }
 
@@ -163,7 +180,7 @@ class AIOrchestrator {
       const serverMembersSummary = this._buildServerMembersSummary(resolvedGuildId, resolvedGuild);
 
       // 7. Build System Prompt
-      const systemInstruction = buildSystemPrompt({
+      let systemInstruction = buildSystemPrompt({
         aiName,
         guildName: resolvedGuildName,
         serverNotes,
@@ -173,8 +190,18 @@ class AIOrchestrator {
         serverMembersSummary
       });
 
-      // 8. Call LLM
-      const toolsSchema = this.tools.getToolsSchema();
+      if (this.botInstanceId && multiBotManager) {
+        const instCfg = multiBotManager.getInstanceConfig?.(this.botInstanceId);
+        if (instCfg && (instCfg.aiPersonaRole || instCfg.aiPersonaTone)) {
+          systemInstruction += `\n\n[DIRETRIZ DE PERSONALIDADE DA INSTÂNCIA "${aiName}"]:\n- Papel/Função: ${instCfg.aiPersonaRole || 'Assistente'}\n- Tom de Voz: ${instCfg.aiPersonaTone || 'Prestativo'}`;
+        }
+      }
+
+      // 8. Call LLM (Tools gated by ai_tools module)
+      const isAiToolsAllowed =
+        (!resolvedGuildId || !guildModuleService || guildModuleService.isModuleEnabled(resolvedGuildId, 'ai_tools')) &&
+        (!this.botInstanceId || !multiBotManager || multiBotManager.isModuleEnabledForInstance(this.botInstanceId, 'ai_tools'));
+      const toolsSchema = isAiToolsAllowed ? this.tools.getToolsSchema() : [];
       const llmStartTime = Date.now();
       let llmResult = await this.llm.generate({
         systemInstruction,
@@ -231,7 +258,9 @@ class AIOrchestrator {
           notesRepo: this.notesRepo,
           permissionService: this.permissionService,
           auditService: this.auditService,
-          identityService: this.identityService
+          identityService: this.identityService,
+          botInstanceId: this.botInstanceId || null,
+          multiBotManager
         };
 
         const toolResponses = [];

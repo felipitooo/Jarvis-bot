@@ -20,12 +20,14 @@ if (cleanupInterval.unref) cleanupInterval.unref();
 let cachedTriggersKey = '';
 let cachedRegexes = null;
 
-function getNameRegexes(aiName, configName, configTriggers) {
-  const key = `${aiName}|${configName}|${configTriggers.join(',')}`;
+function getNameRegexes(aiName, configName, configTriggers, isSecondaryBot = false) {
+  const key = `${isSecondaryBot ? 'SEC' : 'MAIN'}|${aiName}|${configName}|${(configTriggers || []).join(',')}`;
   if (cachedRegexes && cachedTriggersKey === key) {
     return cachedRegexes;
   }
-  const namesToCheck = Array.from(new Set([aiName, configName, ...configTriggers, 'Jarvis', 'J.A.R.V.I.S', 'Cell'])).filter(Boolean);
+  const namesToCheck = isSecondaryBot
+    ? Array.from(new Set([aiName, configName])).filter(Boolean)
+    : Array.from(new Set([aiName, configName, ...(configTriggers || []), 'Jarvis', 'J.A.R.V.I.S', 'Cell'])).filter(Boolean);
   const escapedNames = namesToCheck.map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
   cachedRegexes = {
     nameWordRegex: new RegExp(`(^|\\s|[.,!?;:])(${escapedNames})($|\\s|[.,!?;:])`, 'i'),
@@ -54,6 +56,16 @@ module.exports = {
       return;
     }
 
+    // Isolated Multi-Bot Instance Guild & Channel Permission Guard
+    if (context.botInstanceId && context.multiBotManager) {
+      const isAllowedHere = context.multiBotManager.isGuildAndChannelAllowedForInstance(
+        context.botInstanceId,
+        message.guild?.id || null,
+        message.channel?.id || null
+      );
+      if (!isAllowedHere) return;
+    }
+
     // Cache message in memory ring buffer for instant audit prints upon delete/edit
     try {
       messageCache.set(message);
@@ -61,8 +73,9 @@ module.exports = {
 
     // 0. Real-time Anti-Spam, Anti-Flood & Anti-Bot/Scam Protection Inspection (e.g. MrBeast fake giveaways)
     // Run BEFORE filtering other bots to catch malicious bot spam, webhooks and token grabbers!
-    const isAutoProtEnabled = !message.guild || !context.guildModuleService || context.guildModuleService.isModuleEnabled(message.guild.id, 'auto_protection');
-    if (context.protectionService && isAutoProtEnabled) {
+    const isGuildAutoProt = !message.guild || !context.guildModuleService || context.guildModuleService.isModuleEnabled(message.guild.id, 'auto_protection');
+    const isInstanceAutoProt = !context.botInstanceId || !context.multiBotManager || context.multiBotManager.isModuleEnabledForInstance(context.botInstanceId, 'auto_protection');
+    if (context.protectionService && isGuildAutoProt && isInstanceAutoProt) {
       try {
         const check = await context.protectionService.inspectMessage(message);
         if (check && check.isViolating) {
@@ -107,8 +120,9 @@ module.exports = {
     }
 
     // Active Quiz Channel Answer Interception (direct chat response like LordBot)
-    const isQuizModEnabled = !message.guild || !context.guildModuleService || context.guildModuleService.isModuleEnabled(message.guild.id, 'quiz');
-    if (message.guild && context.quizService && isQuizModEnabled && context.quizService.hasActiveQuiz(message.channel.id)) {
+    const isGuildQuizEnabled = !message.guild || !context.guildModuleService || context.guildModuleService.isModuleEnabled(message.guild.id, 'quiz');
+    const isInstanceQuizEnabled = !context.botInstanceId || !context.multiBotManager || context.multiBotManager.isModuleEnabledForInstance(context.botInstanceId, 'quiz');
+    if (message.guild && context.quizService && isGuildQuizEnabled && isInstanceQuizEnabled && context.quizService.hasActiveQuiz(message.channel.id)) {
       try {
         const isQuizAnswer = await context.quizService.handleMessageAnswer(message, context);
         if (isQuizAnswer) return;
@@ -120,8 +134,9 @@ module.exports = {
     const client = message.client;
 
     // Process Message Experience & Leveling (if in guild and not bot)
-    const isXpModEnabled = !message.guild || !context.guildModuleService || context.guildModuleService.isModuleEnabled(message.guild.id, 'xp');
-    if (message.guild && context.experienceService && isXpModEnabled) {
+    const isGuildXpEnabled = !message.guild || !context.guildModuleService || context.guildModuleService.isModuleEnabled(message.guild.id, 'xp');
+    const isInstanceXpEnabled = !context.botInstanceId || !context.multiBotManager || context.multiBotManager.isModuleEnabledForInstance(context.botInstanceId, 'xp');
+    if (message.guild && context.experienceService && isGuildXpEnabled && isInstanceXpEnabled) {
       context.experienceService.processMessage(message).catch((xpErr) => {
         msgLogger.error(`Error processing message XP: ${xpErr.message}`);
       });
@@ -170,12 +185,21 @@ module.exports = {
       }
     }
 
-    // Check if addressed by name (dynamically resolved per guild + central config + default fallback)
+    // Check if addressed by name (dynamically resolved per guild or isolated Multi-Bot instance)
+    const isSecondaryBot = Boolean(context.botInstanceId);
+    const instCfg = isSecondaryBot
+      ? (context.multiBotManager?.getInstanceConfig?.(context.botInstanceId) || context.botInstanceConfig || {})
+      : null;
+
     const globalConfig = botConfig?.getConfig();
-    const configTriggers = globalConfig?.identity?.triggerNames || [];
-    const configName = globalConfig?.identity?.name;
-    const aiName = context.identityService?.getDisplayName(message.guild?.id) || configName || 'Jarvis';
-    const { nameWordRegex, leadingNameRegex, trailingNameRegex } = getNameRegexes(aiName, configName, configTriggers);
+    const configTriggers = isSecondaryBot ? [] : (globalConfig?.identity?.triggerNames || []);
+    const configName = isSecondaryBot
+      ? (instCfg?.aiName || context.botInstanceName || client.user?.username || 'Bot')
+      : globalConfig?.identity?.name;
+    const aiName = isSecondaryBot
+      ? (instCfg?.aiName || context.botInstanceName || client.user?.username || 'Bot')
+      : (context.identityService?.getDisplayName(message.guild?.id) || configName || 'Jarvis');
+    const { nameWordRegex, leadingNameRegex, trailingNameRegex } = getNameRegexes(aiName, configName, configTriggers, isSecondaryBot);
     const isNamed = nameWordRegex.test(message.content || '');
 
     // Only respond if in DM, mentioned, directly replying to the bot, or called by name
@@ -183,8 +207,11 @@ module.exports = {
       return;
     }
 
-    // Check if AI Chat module is enabled for this guild
+    // Check if AI Chat module is enabled for this guild and bot instance
     if (message.guild && context.guildModuleService && !context.guildModuleService.isModuleEnabled(message.guild.id, 'ai_chat')) {
+      return;
+    }
+    if (context.botInstanceId && context.multiBotManager && !context.multiBotManager.isModuleEnabledForInstance(context.botInstanceId, 'ai_chat')) {
       return;
     }
 
