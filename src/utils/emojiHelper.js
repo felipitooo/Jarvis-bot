@@ -99,27 +99,54 @@ function resolveEmbedEmojis(embedData, client, currentGuildId = null) {
 
 /**
  * Catalogs all emojis available to the client, separated into Current Guild and Other Guilds.
+ * Checks primary client and multi-bot instances.
  *
  * @param {import('discord.js').Client} client
  * @param {string} [currentGuildId]
+ * @param {object} [multiBotManager]
  * @returns {{ currentGuild: Array<object>, otherGuilds: Array<object> }}
  */
-function getGuildAndExternalEmojis(client, currentGuildId = null) {
-  if (!client?.guilds?.cache) {
+function getGuildAndExternalEmojis(client, currentGuildId = null, multiBotManager = null) {
+  if (!client && !multiBotManager) {
     return { currentGuild: [], otherGuilds: [] };
   }
 
-  let currentGuild = (currentGuildId && currentGuildId !== 'current')
-    ? client.guilds.cache.get(currentGuildId)
-    : null;
+  let resolvedGuildId = (currentGuildId && currentGuildId !== 'current') ? currentGuildId : null;
 
-  if (!currentGuild && client.guilds.cache.size > 0) {
-    currentGuild = client.guilds.cache.first();
+  // 1. Resolve current guild from client or multi-bot instances
+  let currentGuild = null;
+  if (client?.guilds?.cache) {
+    if (resolvedGuildId) {
+      currentGuild = client.guilds.cache.get(resolvedGuildId) || null;
+    }
+    if (!currentGuild && client.guilds.cache.size > 0) {
+      currentGuild = client.guilds.cache.first();
+    }
+  }
+
+  // Fallback: check secondary bot instances if primary client did not find guild
+  if (!currentGuild && multiBotManager?.activeInstances) {
+    for (const [, inst] of multiBotManager.activeInstances) {
+      const instClient = inst.client;
+      if (instClient?.guilds?.cache) {
+        if (resolvedGuildId) {
+          currentGuild = instClient.guilds.cache.get(resolvedGuildId) || null;
+        }
+        if (!currentGuild && instClient.guilds.cache.size > 0) {
+          currentGuild = instClient.guilds.cache.first();
+        }
+        if (currentGuild) break;
+      }
+    }
   }
 
   const currentList = [];
+  const seenIds = new Set();
+
   if (currentGuild?.emojis?.cache) {
     for (const [, emoji] of currentGuild.emojis.cache) {
+      if (seenIds.has(emoji.id)) continue;
+      seenIds.add(emoji.id);
       currentList.push({
         id: emoji.id,
         name: emoji.name,
@@ -132,13 +159,37 @@ function getGuildAndExternalEmojis(client, currentGuildId = null) {
     }
   }
 
+  // 3. Collect from other guilds across primary client and multi-bot instances
   const otherList = [];
-  for (const [gId, g] of client.guilds.cache) {
-    if (currentGuild && gId === currentGuild.id) continue;
+  const allClients = [];
+  if (client) allClients.push(client);
+  if (multiBotManager?.activeInstances) {
+    for (const [, inst] of multiBotManager.activeInstances) {
+      if (inst.client && !allClients.includes(inst.client)) {
+        allClients.push(inst.client);
+      }
+    }
+  }
+
+  const otherGuildsMap = new Map();
+
+  for (const c of allClients) {
+    if (!c.guilds?.cache) continue;
+    for (const [gId, g] of c.guilds.cache) {
+      if (currentGuild && gId === currentGuild.id) continue;
+      if (!otherGuildsMap.has(gId)) {
+        otherGuildsMap.set(gId, g);
+      }
+    }
+  }
+
+  for (const [gId, g] of otherGuildsMap) {
     if (!g.emojis?.cache || g.emojis.cache.size === 0) continue;
 
     const gEmojis = [];
     for (const [, emoji] of g.emojis.cache) {
+      if (seenIds.has(emoji.id)) continue;
+      seenIds.add(emoji.id);
       gEmojis.push({
         id: emoji.id,
         name: emoji.name,

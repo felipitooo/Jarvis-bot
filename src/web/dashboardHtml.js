@@ -2781,6 +2781,17 @@ function renderDashboardHtml({
         </div>
       </div>
 
+      <!-- SELECTOR GLOBAL DE BOT (PRINCIPAL VS MULTI-BOT INSTÂNCIAS) -->
+      <div class="meli-guild-card" style="border-color: rgba(168, 85, 247, 0.45); background: rgba(168, 85, 247, 0.08);" title="Alterne entre o Bot Principal e instâncias Multi-Bot para configurar qualquer módulo com isolamento total">
+        <span style="font-size: 1.25rem; margin-right: 2px;">🤖</span>
+        <div class="meli-guild-meta">
+          <span class="meli-guild-label" style="color: #c084fc;">Bot Ativo</span>
+          <select id="globalBotSelector" class="meli-guild-select" style="color: #c084fc; font-weight: 700;">
+            <option value="PRIMARY">🤖 J.A.R.V.I.S. (Principal)</option>
+          </select>
+        </div>
+      </div>
+
       <div class="meli-status-badge">
         <span class="meli-status-dot"></span>
         <span class="meli-status-text">Online</span>
@@ -6604,12 +6615,27 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
               <span>🧩</span> Central de Gerenciamento Modular (Fonte Única — 26 Módulos)
             </h2>
             <p style="margin: 0; color: var(--text-muted); font-size: 0.88rem;">
-              Ative ou desative cada funcionalidade individualmente para este servidor. Desativar um módulo bloqueia comandos, eventos, ferramentas de IA e tarefas automáticas em tempo real, preservando todos os seus dados salvos.
+              Ative ou desative cada funcionalidade individualmente. Escolha se está configurando o Bot Principal ou uma Instância Secundária do Multi-Bot (isolamento total entre bots).
             </p>
           </div>
           <button class="primary-btn" id="saveModulesBtn" style="background: linear-gradient(135deg, #10b981, #059669); font-weight: 700;">
             💾 Salvar Todos os Módulos
           </button>
+        </div>
+      </div>
+
+      <!-- SELETOR DE BOT PARA CONFIGURAÇÃO MODULAR -->
+      <div class="card" style="margin-bottom: 1rem; background: rgba(0,0,0,0.3); border: 1px solid rgba(0, 229, 255, 0.25);">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+          <div style="display: flex; align-items: center; gap: 0.75rem; flex: 1; min-width: 290px;">
+            <label style="font-weight: 700; color: #00e5ff; margin: 0; white-space: nowrap;">🤖 Bot em Edição:</label>
+            <select id="moduleTargetBotSelect" style="flex: 1; padding: 0.5rem 0.85rem; border-radius: 6px; background: #131722; border: 1px solid rgba(0, 229, 255, 0.4); color: #fff; font-weight: 600;">
+              <option value="PRIMARY">🤖 Bot Principal (${aiDisplayName}) — Servidor</option>
+            </select>
+          </div>
+          <div id="moduleTargetBotBadge" style="padding: 0.35rem 0.75rem; border-radius: 6px; font-size: 0.82rem; font-weight: 600; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.4); color: #34d399;">
+            🛡️ Configurações Exclusivas deste Bot
+          </div>
         </div>
       </div>
 
@@ -9337,12 +9363,14 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
 
       try {
         const activeCsrf = window.csrfToken || currentCsrfToken || csrfToken;
-        const res = await fetch('/api/guilds/' + currentGuildId + '/modules/' + moduleName, {
+        const targetBot = window.currentActiveBotId || document.getElementById('globalBotSelector')?.value || 'PRIMARY';
+        const res = await fetch('/api/guilds/' + currentGuildId + '/modules/' + moduleName + (targetBot && targetBot !== 'PRIMARY' ? '?botId=' + encodeURIComponent(targetBot) : ''), {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
             'X-CSRF-Token': activeCsrf,
-            'X-Panel-Password': '1598'
+            'X-Panel-Password': '1598',
+            'X-Bot-Id': targetBot
           },
           credentials: 'same-origin',
           body: JSON.stringify(payload)
@@ -14984,15 +15012,33 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       }
 
       try {
-        const res = await fetch('/api/guilds/' + currentGuildId + '/modules/guild_modules', {
-          headers: { 'X-Panel-Password': '1598' },
+        const targetBot = window.currentActiveBotId || document.getElementById('globalBotSelector')?.value || 'PRIMARY';
+        const url = '/api/guilds/' + currentGuildId + '/modules/guild_modules' + (targetBot && targetBot !== 'PRIMARY' ? '?botId=' + encodeURIComponent(targetBot) : '');
+        const res = await fetch(url, {
+          headers: { 'X-Panel-Password': '1598', 'X-Bot-Id': targetBot },
           credentials: 'include'
         });
         if (!res.ok) throw new Error('Falha ao obter módulos');
         const data = await res.json();
         const payload = data.config || data;
-        allModuleDefinitions = payload.definitions || [];
-        currentGuildModulesState = payload.settings || {};
+        if (payload.definitions && Array.isArray(payload.definitions)) {
+          allModuleDefinitions = payload.definitions;
+        }
+        currentGuildModulesState = payload.settings || (payload.definitions ? {} : payload) || {};
+
+        const badge = document.getElementById('moduleTargetBotBadge');
+        if (badge) {
+          if (targetBot === 'PRIMARY') {
+            badge.innerText = '🛡️ Bot Principal (${aiDisplayName}) — Configuração do Servidor';
+            badge.style.color = '#34d399';
+            badge.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+          } else {
+            const bName = window.botNamesMap?.[targetBot] || targetBot;
+            badge.innerText = '⚡ Instância: ' + bName + ' (Isolamento 100% Total)';
+            badge.style.color = '#c084fc';
+            badge.style.borderColor = 'rgba(168, 85, 247, 0.45)';
+          }
+        }
 
         renderModulesGrid(document.getElementById('moduleSearchInput')?.value || '');
       } catch (err) {
@@ -15131,6 +15177,31 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       if (sBtn) { sBtn.disabled = false; sBtn.innerText = '💾 Salvar Todos os Módulos'; }
     });
 
+    function handleActiveBotSwitch(botId) {
+      window.currentActiveBotId = botId;
+      const gSel = document.getElementById('globalBotSelector');
+      const mSel = document.getElementById('moduleTargetBotSelect');
+      if (gSel && gSel.value !== botId) gSel.value = botId;
+      if (mSel && mSel.value !== botId) mSel.value = botId;
+
+      const botName = window.botNamesMap?.[botId] || (botId === 'PRIMARY' ? 'J.A.R.V.I.S.' : botId);
+      if (botId === 'PRIMARY') {
+        showToast('Alternado para Bot Principal (${aiDisplayName}). As alterações afetam a configuração base do servidor.', 'info', 'Bot Principal Selecionado');
+      } else {
+        showToast('Alternado para a instância "' + botName + '". Módulos e configurações agora são 100% isolados para este bot!', 'info', 'Instância Ativa');
+      }
+
+      loadGuildModules();
+    }
+
+    document.getElementById('globalBotSelector')?.addEventListener('change', (e) => {
+      handleActiveBotSwitch(e.target.value);
+    });
+
+    document.getElementById('moduleTargetBotSelect')?.addEventListener('change', (e) => {
+      handleActiveBotSwitch(e.target.value);
+    });
+
     // ==========================================
     // 5. MULTI-BOT MANAGER & PÁGINA ADMINISTRATIVA INDIVIDUAL (18 SEÇÕES)
     // ==========================================
@@ -15153,6 +15224,34 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         const list = data.instances || [];
         if (Array.isArray(data.moduleDefinitions) && data.moduleDefinitions.length > 0) {
           multiBotModuleDefinitions = data.moduleDefinitions;
+        }
+
+        window.botNamesMap = { 'PRIMARY': 'J.A.R.V.I.S. (Principal)' };
+        for (const inst of list) {
+          window.botNamesMap[inst.id] = inst.name;
+        }
+
+        // Populate #globalBotSelector and #moduleTargetBotSelect
+        const globalBotSel = document.getElementById('globalBotSelector');
+        const modTargetSel = document.getElementById('moduleTargetBotSelect');
+        const prevTargetVal = window.currentActiveBotId || globalBotSel?.value || 'PRIMARY';
+
+        let botOptionsHtml = '<option value="PRIMARY">🤖 J.A.R.V.I.S. (Principal — Servidor)</option>';
+        for (const inst of list) {
+          botOptionsHtml += '<option value="' + escapeHtml(inst.id) + '">🤖 ' + escapeHtml(inst.name) + ' (' + escapeHtml(inst.status) + ')</option>';
+        }
+
+        if (globalBotSel) {
+          globalBotSel.innerHTML = botOptionsHtml;
+          if ([...globalBotSel.options].some(o => o.value === prevTargetVal)) {
+            globalBotSel.value = prevTargetVal;
+          }
+        }
+        if (modTargetSel) {
+          modTargetSel.innerHTML = botOptionsHtml;
+          if ([...modTargetSel.options].some(o => o.value === prevTargetVal)) {
+            modTargetSel.value = prevTargetVal;
+          }
         }
 
         // Populate #speakBotInstanceSelect in main "Falar pelo Bot" tab

@@ -73,9 +73,10 @@ module.exports = {
 
     // 0. Real-time Anti-Spam, Anti-Flood & Anti-Bot/Scam Protection Inspection (e.g. MrBeast fake giveaways)
     // Run BEFORE filtering other bots to catch malicious bot spam, webhooks and token grabbers!
-    const isGuildAutoProt = !message.guild || !context.guildModuleService || context.guildModuleService.isModuleEnabled(message.guild.id, 'auto_protection');
-    const isInstanceAutoProt = !context.botInstanceId || !context.multiBotManager || context.multiBotManager.isModuleEnabledForInstance(context.botInstanceId, 'auto_protection');
-    if (context.protectionService && isGuildAutoProt && isInstanceAutoProt) {
+    const isAutoProtEnabled = context.botInstanceId
+      ? (!context.multiBotManager || context.multiBotManager.isModuleEnabledForInstance(context.botInstanceId, 'auto_protection'))
+      : (!message.guild || !context.guildModuleService || context.guildModuleService.isModuleEnabled(message.guild.id, 'auto_protection'));
+    if (context.protectionService && isAutoProtEnabled) {
       try {
         const check = await context.protectionService.inspectMessage(message);
         if (check && check.isViolating) {
@@ -120,9 +121,10 @@ module.exports = {
     }
 
     // Active Quiz Channel Answer Interception (direct chat response like LordBot)
-    const isGuildQuizEnabled = !message.guild || !context.guildModuleService || context.guildModuleService.isModuleEnabled(message.guild.id, 'quiz');
-    const isInstanceQuizEnabled = !context.botInstanceId || !context.multiBotManager || context.multiBotManager.isModuleEnabledForInstance(context.botInstanceId, 'quiz');
-    if (message.guild && context.quizService && isGuildQuizEnabled && isInstanceQuizEnabled && context.quizService.hasActiveQuiz(message.channel.id)) {
+    const isQuizEnabled = context.botInstanceId
+      ? (!context.multiBotManager || context.multiBotManager.isModuleEnabledForInstance(context.botInstanceId, 'quiz'))
+      : (!message.guild || !context.guildModuleService || context.guildModuleService.isModuleEnabled(message.guild.id, 'quiz'));
+    if (message.guild && context.quizService && isQuizEnabled && context.quizService.hasActiveQuiz(message.channel.id)) {
       try {
         const isQuizAnswer = await context.quizService.handleMessageAnswer(message, context);
         if (isQuizAnswer) return;
@@ -134,9 +136,10 @@ module.exports = {
     const client = message.client;
 
     // Process Message Experience & Leveling (if in guild and not bot)
-    const isGuildXpEnabled = !message.guild || !context.guildModuleService || context.guildModuleService.isModuleEnabled(message.guild.id, 'xp');
-    const isInstanceXpEnabled = !context.botInstanceId || !context.multiBotManager || context.multiBotManager.isModuleEnabledForInstance(context.botInstanceId, 'xp');
-    if (message.guild && context.experienceService && isGuildXpEnabled && isInstanceXpEnabled) {
+    const isXpEnabled = context.botInstanceId
+      ? (!context.multiBotManager || context.multiBotManager.isModuleEnabledForInstance(context.botInstanceId, 'xp'))
+      : (!message.guild || !context.guildModuleService || context.guildModuleService.isModuleEnabled(message.guild.id, 'xp'));
+    if (message.guild && context.experienceService && isXpEnabled) {
       context.experienceService.processMessage(message).catch((xpErr) => {
         msgLogger.error(`Error processing message XP: ${xpErr.message}`);
       });
@@ -207,12 +210,15 @@ module.exports = {
       return;
     }
 
-    // Check if AI Chat module is enabled for this guild and bot instance
-    if (message.guild && context.guildModuleService && !context.guildModuleService.isModuleEnabled(message.guild.id, 'ai_chat')) {
-      return;
-    }
-    if (context.botInstanceId && context.multiBotManager && !context.multiBotManager.isModuleEnabledForInstance(context.botInstanceId, 'ai_chat')) {
-      return;
+    // Check if AI Chat module is enabled for this bot (isolated per Multi-Bot instance or primary bot)
+    if (context.botInstanceId && context.multiBotManager) {
+      if (!context.multiBotManager.isModuleEnabledForInstance(context.botInstanceId, 'ai_chat')) {
+        return;
+      }
+    } else if (message.guild && context.guildModuleService) {
+      if (!context.guildModuleService.isModuleEnabled(message.guild.id, 'ai_chat')) {
+        return;
+      }
     }
 
     // Check if guild configured a dedicated AI channel

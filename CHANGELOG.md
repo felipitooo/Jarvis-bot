@@ -5,6 +5,30 @@ Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [9.3.0] - 2026-11-19
+
+### Adicionado
+- **Malha de Comunicação Inter-Bot (InterBotBridge Mesh Event Bus):**
+  - Implementada a arquitetura descentralizada de comunicação inter-bot em `src/services/interBotBridge.js` conectada à migração `036_inter_bot_communication_mesh.sql`.
+  - Permite aos bots (`J.A.R.V.I.S.` e instâncias secundárias como `Dumb`) transmitirem pacotes de sincronização de moderação, sinais de presença, batimentos de rede e mensagens diretas sem concorrência ou loops infinitos de recursão.
+  - Comandos `+bots`, `+rede` e `+mesh` no chat exibindo nós online, pacotes trocados, telemetria de rede e status da malha em tempo real.
+  - Nova ferramenta de IA `consultar_ou_enviar_mensagem_outros_bots` em `src/ai/tools/fridayTools.js` permitindo ao orquestrador consultar o estado de outros bots ou transmitir notas e alertas.
+  - Rotas de API `/api/multi-bot/mesh` e `/api/multi-bot/mesh/send` para monitoramento e envio de pulsos de teste pelo painel web.
+- **Seletor Global de Bot no Cabeçalho do Painel Web (`globalBotSelector`):**
+  - Adicionado dropdown `🤖 Bot Ativo` no topo do painel, permitindo alternar instantaneamente entre o Bot Principal e qualquer instância secundária cadastrada.
+  - Toda aba do painel (`Módulos & Plugins`, `Moderação`, `Boas-Vindas`, `Tickets`, `Starboard`, `Falar pelo Bot`, etc.) agora opera e salva exclusivamente sobre o bot selecionado, resolvendo o problema de impossibilidade de configurar módulos em bots secundários.
+- **Exibição do Status Disciplinar e Mute Ativo no Perfil (`+perfil` / `/perfil`):**
+  - O gerador de perfil (`src/utils/profileBuilder.js`) agora detecta ativamente timeouts no Discord (`member.isCommunicationDisabled()`) e no SQLite (`moderation_punishments`), exibindo aviso `🔇 SILENCIADO (Timeout Ativo)` com contagem regressiva Discord e motivo em ambas as abas (Geral e Social).
+
+### Corrigido
+- **Isolamento Total de Execução Modular entre Bot Principal e Secundários:**
+  - Corrigido o bug onde desativar um módulo no bot principal bloqueava a execução em instâncias secundárias (ex: `auto_protection`, `quiz`, `xp`, `ai_chat`, `starboard`, `welcome`).
+  - O sistema de verificação em `messageCreate.js`, `messageReactionAdd.js`, `guildMemberAdd.js` e `orchestrator.js` agora avalia exclusivamente a configuração da instância em execução quando `context.botInstanceId` estiver presente.
+- **Silêncio de Módulos Desativados no Chat (Regra "Não Falar"):**
+  - Garantido que quando qualquer comando ou módulo estiver desativado para um bot específico, ele permaneça 100% silencioso (`return false;`), nunca enviando mensagens de "Módulo Desativado!" no chat público.
+- **Catálogo de Emojis do Servidor e Compatibilidade Síncrona:**
+  - `getGuildAndExternalEmojis` em `src/utils/emojiHelper.js` atualizado para catalogar emojis de forma síncrona com busca prioritária em instâncias Multi-Bot e suporte a fetch prévio assíncrono na rota da API REST do painel.
+
 ## [9.2.0] - 2026-11-19
 
 ### Adicionado

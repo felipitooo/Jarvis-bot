@@ -833,6 +833,17 @@ async function bootstrap() {
   appLogger.info('Connecting to Discord Gateway...');
   await client.login(config.discordToken);
 
+  // Register Primary Bot node in the Inter-Bot Mesh
+  if (context.multiBotManager && context.multiBotManager.interBotBridge) {
+    context.multiBotManager.interBotBridge.registerBot({
+      id: 'jarvis_primary',
+      name: botConfig.name || 'J.A.R.V.I.S.',
+      client,
+      context,
+      isPrimary: true
+    });
+  }
+
   // Auto-start enabled secondary Multi-Bot instances
   if (context.multiBotManager) {
     context.multiBotManager.startAllEnabledInstances().catch((mbErr) => {

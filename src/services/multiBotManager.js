@@ -164,6 +164,9 @@ class MultiBotManager {
     this.loadEventsFn = options.loadEventsFn;
     this.auditService = options.auditService;
 
+    const { InterBotBridge } = require('./interBotBridge');
+    this.interBotBridge = options.interBotBridge || new InterBotBridge(dbManager);
+
     /** @type {Map<string, { client: import('discord.js').Client, status: string, memoryMb: number, lastError: string|null, startedAt: number|null, assignedModules: Array<string>, allowedGuilds: Array<string>, config: object }>} */
     this.activeInstances = new Map();
 
@@ -1163,6 +1166,17 @@ class MultiBotManager {
         liveMeta.memoryMb = Number((process.memoryUsage().heapUsed / (1024 * 1024) * 0.4).toFixed(1));
         this._updateStatusInDb(id, 'ONLINE', null, liveMeta.memoryMb);
         this.applyInstancePresence(id, inst.config, inst.name);
+
+        if (this.interBotBridge) {
+          this.interBotBridge.registerBot({
+            id,
+            name: inst.name,
+            client,
+            context: liveMeta.childContext,
+            isPrimary: false
+          });
+        }
+
         this.addInstanceLog(id, 'INFO', 'LIFECYCLE', `Instância conectada ao Discord como ${client.user?.tag || inst.name}.`);
         mbLogger.info(`Multi-Bot Instance "${inst.name}" (${client.user.tag}) is ONLINE.`);
       });
@@ -1185,6 +1199,9 @@ class MultiBotManager {
   async stopInstance(id) {
     const live = this.activeInstances.get(id);
     if (live && live.client) {
+      if (this.interBotBridge) {
+        this.interBotBridge.unregisterBot(id);
+      }
       try {
         await live.client.destroy();
       } catch (err) {

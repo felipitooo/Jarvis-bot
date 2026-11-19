@@ -141,9 +141,9 @@ class AIOrchestrator {
       // 5. Gather Context: Server Notes and Server Memories (Gated by ai_memory module)
       const guildModuleService = this.services?.guildModuleService || null;
       const multiBotManager = this.multiBotManager || this.services?.multiBotManager || null;
-      const isAiMemoryAllowed =
-        (!resolvedGuildId || !guildModuleService || guildModuleService.isModuleEnabled(resolvedGuildId, 'ai_memory')) &&
-        (!this.botInstanceId || !multiBotManager || multiBotManager.isModuleEnabledForInstance(this.botInstanceId, 'ai_memory'));
+      const isAiMemoryAllowed = this.botInstanceId
+        ? (!multiBotManager || multiBotManager.isModuleEnabledForInstance(this.botInstanceId, 'ai_memory'))
+        : (!resolvedGuildId || !guildModuleService || guildModuleService.isModuleEnabled(resolvedGuildId, 'ai_memory'));
 
       let serverNotes = [];
       let serverMemories = [];
@@ -198,9 +198,9 @@ class AIOrchestrator {
       }
 
       // 8. Call LLM (Tools gated by ai_tools module)
-      const isAiToolsAllowed =
-        (!resolvedGuildId || !guildModuleService || guildModuleService.isModuleEnabled(resolvedGuildId, 'ai_tools')) &&
-        (!this.botInstanceId || !multiBotManager || multiBotManager.isModuleEnabledForInstance(this.botInstanceId, 'ai_tools'));
+      const isAiToolsAllowed = this.botInstanceId
+        ? (!multiBotManager || multiBotManager.isModuleEnabledForInstance(this.botInstanceId, 'ai_tools'))
+        : (!resolvedGuildId || !guildModuleService || guildModuleService.isModuleEnabled(resolvedGuildId, 'ai_tools'));
       const toolsSchema = isAiToolsAllowed ? this.tools.getToolsSchema() : [];
       const llmStartTime = Date.now();
       let llmResult = await this.llm.generate({

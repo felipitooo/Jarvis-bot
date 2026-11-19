@@ -374,13 +374,82 @@ class WebPanelService {
       } catch {}
     }
     const { getGuildAndExternalEmojis } = require('../utils/emojiHelper');
-    return await getGuildAndExternalEmojis(this.botClient, resolvedGuildId);
+    return await getGuildAndExternalEmojis(this.botClient, resolvedGuildId, this.services?.multiBotManager);
   }
 
-  getModuleConfig(session, guildId, moduleName) {
+  getModuleConfig(session, guildId, moduleName, botId = null) {
     this.verifyGuildAccess(session, guildId);
 
     const mod = moduleName.toLowerCase().trim();
+    const mb = this.services.multiBotManager;
+    const isSecondaryBot = Boolean(botId && botId !== 'PRIMARY' && botId !== 'MAIN');
+
+    if (isSecondaryBot && mb) {
+      const inst = mb.getInstance(botId);
+      if (inst) {
+        const cfg = inst.config || {};
+        switch (mod) {
+          case 'guild_modules':
+          case 'modular_configs':
+          case 'modules':
+            return cfg.modules || {};
+          case 'moderation':
+          case 'warns':
+            return {
+              logChannelId: cfg.moderation?.logChannelId || null,
+              warnRules: cfg.moderation?.warnRules || [],
+              escalations: cfg.moderation?.escalations || [],
+              antiAbuse: {
+                antiSpamEnabled: cfg.moderation?.antiSpamEnabled ?? true,
+                maxMessagesPerInterval: cfg.moderation?.maxMessagesPerInterval ?? 5,
+                antiBotScamEnabled: cfg.moderation?.antiBotScamEnabled ?? true,
+                antiBotScamAction: cfg.moderation?.antiBotScamAction || 'TIMEOUT'
+              }
+            };
+          case 'welcome':
+            return {
+              channelId: cfg.social?.welcomeChannelId || null,
+              message: cfg.social?.welcomeMessage || 'Bem-vindo(a) {user} ao **{server}**! 🎉',
+              embedEnabled: true,
+              dmWelcomeEnabled: false
+            };
+          case 'autorole':
+            return {
+              roles: cfg.social?.autoRoleId ? [cfg.social.autoRoleId] : [],
+              roleId: cfg.social?.autoRoleId || ''
+            };
+          case 'tickets':
+            return {
+              panelTitle: cfg.tickets?.panelTitle || `🎫 Central de Atendimento — ${inst.name}`,
+              panelDescription: cfg.tickets?.panelDescription || 'Clique no botão abaixo para abrir um ticket privado com a equipe.',
+              transcriptChannelId: cfg.tickets?.transcriptChannelId || null,
+              defaultSupportRoleId: cfg.tickets?.defaultSupportRoleId || null,
+              maxOpenTicketsPerUser: cfg.tickets?.maxOpenTicketsPerUser || 1
+            };
+          case 'starboard':
+            return {
+              channelId: cfg.social?.starboardChannelId || null,
+              emoji: cfg.social?.starboardEmoji || '⭐',
+              minStars: cfg.social?.starboardMinStars || 3
+            };
+          case 'economy':
+            return {
+              currencyName: cfg.economyXp?.currencyName || 'StarkCoins',
+              currencySymbol: cfg.economyXp?.currencySymbol || '🪙',
+              initialBalance: cfg.economyXp?.initialBalance || 100,
+              dailyAmount: cfg.economyXp?.dailyAmount || 500
+            };
+          case 'identity':
+            return {
+              aiName: cfg.aiName || inst.name,
+              aiModel: cfg.aiModel || 'gemini-3.5-flash-lite',
+              aiTemperature: cfg.aiTemperature ?? 0.65,
+              prefix: cfg.prefix || cfg.commands?.prefix || '+',
+              prefixless: Boolean(cfg.commands?.prefixlessMode)
+            };
+        }
+      }
+    }
     const {
       modRepo,
       ticketRepo,
@@ -520,11 +589,82 @@ class WebPanelService {
     }
   }
 
-  async updateModuleConfig(session, guildId, moduleName, updates, csrfToken) {
+  async updateModuleConfig(session, guildId, moduleName, updates, csrfToken, botId = null) {
     this.verifyGuildAccess(session, guildId);
     this.verifyCsrf(session.token, csrfToken, session);
 
     const mod = moduleName.toLowerCase().trim();
+    const mb = this.services.multiBotManager;
+    const isSecondaryBot = Boolean(botId && botId !== 'PRIMARY' && botId !== 'MAIN');
+
+    if (isSecondaryBot && mb) {
+      const inst = mb.getInstance(botId);
+      if (inst) {
+        const cfg = { ...(inst.config || {}) };
+        switch (mod) {
+          case 'guild_modules':
+          case 'modular_configs':
+          case 'modules': {
+            const modulesToSet = updates.modules || updates;
+            cfg.modules = { ...(cfg.modules || {}), ...modulesToSet };
+            mb.updateInstance(botId, { config: cfg });
+            return { module: 'guild_modules', config: cfg.modules };
+          }
+          case 'moderation':
+          case 'warns': {
+            cfg.moderation = { ...(cfg.moderation || {}), ...updates };
+            if (updates.logChannelId !== undefined) cfg.moderation.logChannelId = updates.logChannelId;
+            mb.updateInstance(botId, { config: cfg });
+            return { module: 'moderation', config: cfg.moderation };
+          }
+          case 'welcome': {
+            cfg.social = { ...(cfg.social || {}) };
+            if (updates.channelId !== undefined) cfg.social.welcomeChannelId = updates.channelId;
+            if (updates.message !== undefined) cfg.social.welcomeMessage = updates.message;
+            mb.updateInstance(botId, { config: cfg });
+            return { module: 'welcome', config: cfg.social };
+          }
+          case 'autorole': {
+            cfg.social = { ...(cfg.social || {}) };
+            if (updates.roleId !== undefined) cfg.social.autoRoleId = updates.roleId;
+            mb.updateInstance(botId, { config: cfg });
+            return { module: 'autorole', config: cfg.social };
+          }
+          case 'tickets': {
+            cfg.tickets = { ...(cfg.tickets || {}), ...updates };
+            if (updates.channelId !== undefined) cfg.tickets.transcriptChannelId = updates.channelId;
+            if (updates.transcriptChannelId !== undefined) cfg.tickets.transcriptChannelId = updates.transcriptChannelId;
+            if (updates.supportRoleId !== undefined) cfg.tickets.defaultSupportRoleId = updates.supportRoleId;
+            if (updates.defaultSupportRoleId !== undefined) cfg.tickets.defaultSupportRoleId = updates.defaultSupportRoleId;
+            mb.updateInstance(botId, { config: cfg });
+            return { module: 'tickets', config: cfg.tickets };
+          }
+          case 'starboard': {
+            cfg.social = { ...(cfg.social || {}) };
+            if (updates.channelId !== undefined) cfg.social.starboardChannelId = updates.channelId;
+            if (updates.emoji !== undefined) cfg.social.starboardEmoji = updates.emoji;
+            if (updates.minStars !== undefined) cfg.social.starboardMinStars = updates.minStars;
+            mb.updateInstance(botId, { config: cfg });
+            return { module: 'starboard', config: cfg.social };
+          }
+          case 'economy': {
+            cfg.economyXp = { ...(cfg.economyXp || {}), ...updates };
+            mb.updateInstance(botId, { config: cfg });
+            return { module: 'economy', config: cfg.economyXp };
+          }
+          case 'identity': {
+            if (updates.aiName) cfg.aiName = updates.aiName;
+            if (updates.aiModel) cfg.aiModel = updates.aiModel;
+            if (updates.prefix) {
+              cfg.prefix = updates.prefix;
+              cfg.commands = { ...(cfg.commands || {}), prefix: updates.prefix };
+            }
+            mb.updateInstance(botId, { config: cfg });
+            return { module: 'identity', config: cfg };
+          }
+        }
+      }
+    }
     const {
       modRepo,
       ticketRepo,

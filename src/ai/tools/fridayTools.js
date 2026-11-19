@@ -683,6 +683,106 @@ const fridayTools = [
         };
       }
     }
+  },
+  {
+    name: 'consultar_ou_enviar_mensagem_outros_bots',
+    description: 'Permite consultar o status da malha de comunicação entre bots (Inter-Bot Mesh) ou transmitir notas, alertas e sinais de sincronização para outros bots cadastrados (ex: Dumb, FRIDAY, etc.).',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        acao: {
+          type: 'STRING',
+          description: 'Ação desejada: "consultar" para ver bots online e pacotes recentes, ou "enviar" para transmitir uma mensagem.'
+        },
+        destinatario: {
+          type: 'STRING',
+          description: 'ID ou nome do bot destinatário (ex: "Dumb", "bot_xxx"), ou "todos" para transmissão broadcast. Obrigatório quando acao="enviar".'
+        },
+        tipo_evento: {
+          type: 'STRING',
+          description: 'Tipo do evento ou sinal (ex: "NOTA_COMPARTILHADA", "ALERTA_MODERACAO", "STATUS_SYNC").'
+        },
+        conteudo: {
+          type: 'STRING',
+          description: 'Conteúdo textual da nota, mensagem ou dado a ser compartilhado com os outros bots.'
+        }
+      },
+      required: ['acao']
+    },
+    execute: async (args, context) => {
+      const bridge = context.multiBotManager?.interBotBridge;
+      if (!bridge) {
+        return {
+          status: 'erro',
+          mensagem: 'A malha de comunicação Inter-Bot (InterBotBridge) não está inicializada no momento.'
+        };
+      }
+
+      const acao = String(args.acao || 'consultar').toLowerCase().trim();
+      if (acao === 'consultar') {
+        const status = bridge.getMeshStatus();
+        return {
+          status: 'sucesso',
+          acao: 'consultar',
+          total_nos_conectados: status.connectedNodes,
+          bots_conectados: status.nodes.map(n => ({
+            id: n.id,
+            nome: n.name,
+            primario: n.isPrimary,
+            online_desde: n.registeredAt
+          })),
+          total_pacotes_processados: status.totalPacketsProcessed,
+          mensagens_recentes: status.recentPackets.slice(-5).map(p => ({
+            de: p.fromBotName,
+            para: p.toBotId || 'TODOS',
+            evento: p.eventType,
+            dados: p.payload
+          }))
+        };
+      }
+
+      if (acao === 'enviar') {
+        const dest = String(args.destinatario || 'todos').trim();
+        const eventType = String(args.tipo_evento || 'NOTA_COMPARTILHADA').toUpperCase();
+        const content = String(args.conteudo || '').trim();
+        const fromBotId = context.botInstanceId || 'jarvis_primary';
+
+        if (!content) {
+          return { status: 'erro', mensagem: 'O campo "conteudo" é obrigatório ao enviar mensagem inter-bot.' };
+        }
+
+        let packet;
+        if (dest === 'todos' || dest === 'all' || !dest) {
+          packet = bridge.broadcast(fromBotId, eventType, {
+            autor: fromBotId === 'jarvis_primary' ? 'J.A.R.V.I.S.' : fromBotId,
+            nota: content,
+            data: new Date().toISOString()
+          });
+        } else {
+          // Resolve destination bot ID if given as a bot name
+          const connected = bridge.getConnectedBots();
+          const targetNode = connected.find(n => n.id === dest || n.name.toLowerCase() === dest.toLowerCase());
+          const targetId = targetNode ? targetNode.id : dest;
+
+          packet = bridge.send(fromBotId, targetId, eventType, {
+            autor: fromBotId === 'jarvis_primary' ? 'J.A.R.V.I.S.' : fromBotId,
+            nota: content,
+            data: new Date().toISOString()
+          });
+        }
+
+        return {
+          status: 'sucesso',
+          acao: 'enviar',
+          packet_id: packet?.id,
+          tipo_evento: eventType,
+          destinatario: dest,
+          mensagem: `Mensagem inter-bot transmitida com sucesso através da malha de sincronização.`
+        };
+      }
+
+      return { status: 'erro', mensagem: `Ação "${args.acao}" não reconhecida. Use "consultar" ou "enviar".` };
+    }
   }
 ];
 

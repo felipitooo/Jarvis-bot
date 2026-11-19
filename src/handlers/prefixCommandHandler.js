@@ -3059,6 +3059,23 @@ class PrefixCommandHandler {
               durationSeconds: minutes * 60,
               reason
             });
+
+            // Synchronize disciplinary action across all bots in the mesh
+            if (context.multiBotManager?.interBotBridge) {
+              context.multiBotManager.interBotBridge.syncModeration({
+                action: 'TIMEOUT',
+                targetId: target.id,
+                targetName: target.username,
+                actorId: author.id,
+                actorName: author.username,
+                botName: aiName,
+                reason,
+                durationSeconds: minutes * 60,
+                expiresAt: new Date(Date.now() + minutes * 60 * 1000).toISOString(),
+                guildId: guild.id,
+                fromBotId: context.botInstanceId || 'jarvis_primary'
+              });
+            }
           } catch (err) {
             await message.reply(`❌ Falha ao aplicar silenciamento: ${err.message}`);
             return true;
@@ -3110,6 +3127,20 @@ class PrefixCommandHandler {
                 if (typeof targetMember.timeout === 'function') {
                   await targetMember.timeout(null, `Silenciamento desfeito por ${author.username}`);
                 }
+
+                if (context.multiBotManager?.interBotBridge) {
+                  context.multiBotManager.interBotBridge.syncModeration({
+                    action: 'UNTIMEOUT',
+                    targetId: target.id,
+                    targetName: target.username,
+                    actorId: author.id,
+                    actorName: author.username,
+                    botName: aiName,
+                    reason: `Silenciamento desfeito por ${author.username}`,
+                    guildId: guild.id,
+                    fromBotId: context.botInstanceId || 'jarvis_primary'
+                  });
+                }
                 const revertedEmbed = new EmbedBuilder()
                   .setColor(0x57F287)
                   .setTitle('✅ Silenciamento Revertido')
@@ -3152,6 +3183,19 @@ class PrefixCommandHandler {
           }
           try {
             await moderationService.untimeout(guild.members.me, member, targetMember, { reason: 'Removido via +unmute' });
+            if (context.multiBotManager?.interBotBridge) {
+              context.multiBotManager.interBotBridge.syncModeration({
+                action: 'UNTIMEOUT',
+                targetId: target.id,
+                targetName: target.username,
+                actorId: author.id,
+                actorName: author.username,
+                botName: aiName,
+                reason: 'Removido via +unmute',
+                guildId: guild.id,
+                fromBotId: context.botInstanceId || 'jarvis_primary'
+              });
+            }
             await message.reply(`🔊 O silenciamento de **${target.username}** foi removido.`);
           } catch (err) {
             await message.reply(`❌ Falha ao remover timeout: ${err.message}`);
@@ -3252,6 +3296,53 @@ class PrefixCommandHandler {
           const pingTime = sent.createdTimestamp - message.createdTimestamp;
           const wsPing = Math.round(message.client.ws.ping);
           await sent.edit(`🏓 **Pong!** Latência: \`${pingTime}ms\` | WebSocket API: \`${wsPing}ms\``);
+          return true;
+        }
+
+        case 'bots':
+        case 'rede':
+        case 'interbot':
+        case 'mesh': {
+          const bridge = context.multiBotManager?.interBotBridge;
+          const status = bridge ? bridge.getMeshStatus() : { connectedBots: [], counters: {}, recentPackets: [] };
+          const connected = status.connectedBots || [];
+
+          const nodesText = connected.length > 0
+            ? connected.map(b => `• **${b.name}** \`(${b.id})\` — ${b.isPrimary ? '🌟 Primário' : '🤖 Secundário'} | ${b.online ? '🟢 Conectado' : '⚪ Offline'}`).join('\n')
+            : `• **${aiName}** \`(jarvis_primary)\` — 🌟 Primário | 🟢 Conectado`;
+
+          const packets = (status.recentPackets || []).slice(0, 3);
+          const packetsText = packets.length > 0
+            ? packets.map(p => `• \`${p.eventType}\`: **${p.fromBotName}** ➔ **${p.toBotId}** (${p.payload?.action || 'Sinal'})`).join('\n')
+            : '*Nenhum sinal recente transmitido.*';
+
+          const embed = new EmbedBuilder()
+            .setColor(0x00E5FF)
+            .setTitle('📡 Rede Neural Inter-Bot (Mesh de Comunicação)')
+            .setDescription(
+              `Rede de sincronização ativa entre o **J.A.R.V.I.S.** e instâncias secundárias (**Dumb**, etc.).\n` +
+              `Informações disciplinares (como silenciamentos, advertências e perfis) e dados de inteligência são sincronizados instantaneamente.`
+            )
+            .addFields(
+              { name: '🤖 Instâncias Conectadas na Rede', value: nodesText, inline: false },
+              {
+                name: '📊 Estatísticas do Mesh',
+                value: `**Total de Sinais Enviados:** \`${status.counters?.totalSent || 0}\`\n` +
+                       `**Total Recebido pelos Nós:** \`${status.counters?.totalReceived || 0}\`\n` +
+                       `**Sincronizações Disciplinares:** \`${status.counters?.moderationSyncCount || 0}\``,
+                inline: true
+              },
+              {
+                name: '🛡️ Canais de Sincronização Ativos',
+                value: `• 🔇 **Moderação & Silenciamentos**\n• 👤 **Perfis & Histórico Disciplinar**\n• 🧠 **Memória & Inteligência Coletiva**`,
+                inline: true
+              },
+              { name: '📨 Últimos Sinais Transmitidos', value: packetsText, inline: false }
+            )
+            .setFooter({ text: `${aiName} • Protocolo Inter-Bot v9.3.0` })
+            .setTimestamp();
+
+          await message.reply({ embeds: [embed] });
           return true;
         }
 

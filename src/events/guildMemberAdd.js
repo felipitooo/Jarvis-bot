@@ -63,8 +63,7 @@ module.exports = {
     try {
       const effectiveModService = (context.botInstanceId && context.multiBotManager)
         ? {
-            isModuleEnabled: (gId, modKey) =>
-              (!context.guildModuleService || context.guildModuleService.isModuleEnabled(gId, modKey)) &&
+            isModuleEnabled: (_gId, modKey) =>
               context.multiBotManager.isModuleEnabledForInstance(context.botInstanceId, modKey)
           }
         : context.guildModuleService;

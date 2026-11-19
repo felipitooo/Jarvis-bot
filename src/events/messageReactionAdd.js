@@ -15,14 +15,15 @@ module.exports = {
         await reaction.fetch().catch(() => {});
       }
       const guildId = reaction?.message?.guild?.id;
-      if (guildId && context.guildModuleService && !context.guildModuleService.isModuleEnabled(guildId, 'starboard')) {
-        return;
-      }
       if (context.botInstanceId && context.multiBotManager) {
         if (!context.multiBotManager.isGuildAndChannelAllowedForInstance(context.botInstanceId, guildId, reaction?.message?.channel?.id)) {
           return;
         }
         if (!context.multiBotManager.isModuleEnabledForInstance(context.botInstanceId, 'starboard')) {
+          return;
+        }
+      } else if (guildId && context.guildModuleService) {
+        if (!context.guildModuleService.isModuleEnabled(guildId, 'starboard')) {
           return;
         }
       }

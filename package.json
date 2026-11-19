@@ -1,7 +1,7 @@
 {
   "name": "jarvis-discord-bot",
-  "version": "9.2.0",
-  "description": "Unified Modular Discord Bot (Jarvis) - Production Release v9.2.0 Live Multi-Bot Presence, Gateway Expressions, Server Emoji Catalog & Direct Moderation Flow",
+  "version": "9.3.0",
+  "description": "Unified Modular Discord Bot (Jarvis) - Production Release v9.3.0 Inter-Bot Communication Mesh, Global Bot Configuration Selector, Modular Isolation & Emoji Catalog Fixes",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",

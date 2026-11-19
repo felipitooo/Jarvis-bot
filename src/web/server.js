@@ -692,6 +692,54 @@ class WebServer {
         }
       }
 
+      // GET /api/multi-bot/mesh - Inter-Bot Communication Mesh Status
+      if (pathname === '/api/multi-bot/mesh' && method === 'GET') {
+        if (!this._isPanelUnlocked(req, session)) {
+          return this._sendError(res, 401, 'Painel bloqueado.');
+        }
+        const mb = this.webPanelService?.services?.multiBotManager;
+        const mesh = mb?.interBotBridge;
+        if (!mesh) {
+          return this._sendJson(res, 200, {
+            totalRegistered: 0,
+            connectedNodes: 0,
+            nodes: [],
+            totalPacketsProcessed: 0,
+            recentPackets: []
+          });
+        }
+        return this._sendJson(res, 200, mesh.getMeshStatus());
+      }
+
+      // POST /api/multi-bot/mesh/send - Transmit test signal or inter-bot event
+      if (pathname === '/api/multi-bot/mesh/send' && method === 'POST') {
+        if (!this._isPanelUnlocked(req, session)) {
+          return this._sendError(res, 401, 'Painel bloqueado.');
+        }
+        const mb = this.webPanelService?.services?.multiBotManager;
+        const mesh = mb?.interBotBridge;
+        if (!mesh) return this._sendError(res, 503, 'InterBotBridge mesh indisponível.');
+
+        const body = await this._parseBody(req);
+        const fromBotId = body.fromBotId || 'jarvis_primary';
+        const toBotId = body.toBotId || null;
+        const eventType = body.eventType || 'TEST_PING';
+        const payload = body.payload || { message: 'Sinal de verificação da rede Inter-Bot via Dashboard Web', timestamp: Date.now() };
+
+        let packet;
+        if (toBotId && toBotId !== 'all') {
+          packet = mesh.send(fromBotId, toBotId, eventType, payload);
+        } else {
+          packet = mesh.broadcast(fromBotId, eventType, payload);
+        }
+
+        return this._sendJson(res, 200, {
+          success: true,
+          packet,
+          meshStatus: mesh.getMeshStatus()
+        });
+      }
+
       const mbActionMatch = pathname.match(/^\/api\/multi-bot\/([^/]+)(?:\/([a-zA-Z0-9_-]+))?$/);
       if (mbActionMatch) {
         if (!this._isPanelUnlocked(req, session)) {
@@ -868,18 +916,20 @@ class WebServer {
           }
         }
 
-        // GET/PATCH /api/guilds/:guildId/modules/:module
+        // GET/PATCH /api/guilds/:guildId/modules/:module (with isolated multi-bot instance targeting)
         const moduleMatch = subPath.match(/^\/modules\/([a-zA-Z0-9_-]+)$/);
         if (moduleMatch) {
           const moduleName = moduleMatch[1];
+          const botId = req.headers['x-bot-id'] || parsedUrl.searchParams.get('botId') || null;
           if (method === 'GET') {
-            const config = this.webPanelService.getModuleConfig(session, guildId, moduleName);
-            return this._sendJson(res, 200, { module: moduleName, config });
+            const config = this.webPanelService.getModuleConfig(session, guildId, moduleName, botId);
+            return this._sendJson(res, 200, { module: moduleName, config, botId: botId || 'PRIMARY' });
           }
           if (method === 'PATCH' || method === 'POST') {
             const body = await this._parseBody(req);
+            const targetBotId = req.headers['x-bot-id'] || body.botId || parsedUrl.searchParams.get('botId') || null;
             const csrf = req.headers['x-csrf-token'] || body.csrfToken;
-            const result = await this.webPanelService.updateModuleConfig(session, guildId, moduleName, body, csrf);
+            const result = await this.webPanelService.updateModuleConfig(session, guildId, moduleName, body, csrf, targetBotId);
             return this._sendJson(res, 200, result);
           }
         }

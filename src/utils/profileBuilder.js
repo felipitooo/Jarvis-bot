@@ -122,7 +122,38 @@ async function buildProfilePayload(guild, targetUser, member, context, activeTab
     } catch {}
   }
 
-  // 6. Moderation Warnings
+  // 6. Moderation Status & Timeouts (Mutes)
+  let isMuted = false;
+  let muteDetails = null;
+
+  if (member) {
+    if (typeof member.isCommunicationDisabled === 'function') {
+      isMuted = member.isCommunicationDisabled();
+    } else if (member.communicationDisabledUntilTimestamp) {
+      isMuted = member.communicationDisabledUntilTimestamp > Date.now();
+    }
+  }
+
+  // Check persistent database records for active timeout / punishments
+  const db = context.dbManager?.db || moderationService?.modRepo?.db || null;
+  if (db && typeof db.get === 'function') {
+    try {
+      const activeTimeout = db.get(
+        `SELECT * FROM moderation_punishments 
+         WHERE guild_id = ? AND target_id = ? AND type = 'TIMEOUT' AND is_active = 1 
+         ORDER BY id DESC LIMIT 1`,
+        [guild.id, targetUser.id]
+      );
+      if (activeTimeout) {
+        const expiresAtMs = activeTimeout.expires_at ? new Date(activeTimeout.expires_at).getTime() : 0;
+        if (!expiresAtMs || expiresAtMs > Date.now()) {
+          isMuted = true;
+          muteDetails = activeTimeout;
+        }
+      }
+    } catch {}
+  }
+
   let warnStatus = '🛡️ Ficha Limpa (0 advertências)';
   if (moderationService && moderationService.getMemberWarns) {
     try {
@@ -132,6 +163,31 @@ async function buildProfilePayload(guild, targetUser, member, context, activeTab
         warnStatus = `⚠️ **${activeWarns.length}** advertência(s) ativa(s)`;
       }
     } catch {}
+  }
+
+  let disciplineGeneralText = warnStatus;
+  let disciplineSocialText = `${warnStatus}\n*Histórico de advertências emitidas pela moderação e sensores automáticos de segurança.*`;
+
+  if (isMuted) {
+    let untilUnix = null;
+    if (member?.communicationDisabledUntilTimestamp) {
+      untilUnix = Math.floor(member.communicationDisabledUntilTimestamp / 1000);
+    } else if (muteDetails?.expires_at) {
+      untilUnix = Math.floor(new Date(muteDetails.expires_at).getTime() / 1000);
+    }
+
+    const muteExpiresStr = untilUnix ? `<t:${untilUnix}:R>` : 'temporário';
+    const muteReasonStr = muteDetails?.reason || 'Silenciado por moderador';
+    const actorStr = muteDetails?.actor_id ? `<@${muteDetails.actor_id}>` : 'Moderação';
+
+    disciplineGeneralText = `🔇 **Silenciado (${muteExpiresStr})**\n${warnStatus}`;
+    disciplineSocialText =
+      `🔇 **SILENCIADO (Timeout Ativo)**\n` +
+      `⏳ **Expira em:** ${muteExpiresStr}\n` +
+      `📝 **Motivo:** \`${muteReasonStr}\`\n` +
+      `👮 **Aplicado por:** ${actorStr}\n\n` +
+      `⚠️ **Advertências Registradas:** ${warnStatus}\n` +
+      `*Histórico de advertências emitidas pela moderação e sensores automáticos de segurança.*`;
   }
 
   // 7. Dates & Roles
@@ -333,9 +389,7 @@ async function buildProfilePayload(guild, targetUser, member, context, activeTab
         },
         {
           name: '🛡️ Ficha Disciplinar & Moderação',
-          value:
-            `${warnStatus}\n` +
-            `*Histórico de advertências emitidas pela moderação e sensores automáticos de segurança.*`,
+          value: disciplineSocialText,
           inline: false
         },
         {
@@ -384,7 +438,7 @@ async function buildProfilePayload(guild, targetUser, member, context, activeTab
         },
         {
           name: '🛡️ Moderação',
-          value: warnStatus,
+          value: disciplineGeneralText,
           inline: true
         },
         {
