@@ -458,6 +458,29 @@ class WebPanelService {
       case 'backup':
       case 'backups':
         return this.services.backupSecurityService ? this.services.backupSecurityService.listBackups(guildId) : [];
+      case 'guild_modules':
+      case 'modular_configs':
+      case 'modules': {
+        const gms = this.services.guildModuleService;
+        return {
+          definitions: gms ? gms.getAllModuleDefinitions() : [],
+          settings: gms ? gms.getGuildModules(guildId) : {}
+        };
+      }
+      case 'tempbans':
+      case 'temp_bans':
+        return {
+          tempbans: modRepo ? modRepo.getActiveTempBans(guildId) : []
+        };
+      case 'anti_bot_scam':
+      case 'antibotscam': {
+        const ab = modRepo ? (modRepo.getAntiAbuseConfig(guildId) || {}) : {};
+        return {
+          enabled: ab.anti_bot_scam_enabled === 1 || ab.anti_bot_scam_enabled === true,
+          action: ab.anti_bot_scam_action || 'TIMEOUT',
+          timeoutDurationSeconds: ab.anti_bot_scam_timeout_seconds || 86400
+        };
+      }
       default:
         throw new ValidationError(`Módulo desconhecido: "${moduleName}".`);
     }
@@ -1071,6 +1094,48 @@ class WebPanelService {
           }
         }
         updated = backupSecurityService.listBackups(guildId);
+        break;
+      }
+      case 'guild_modules':
+      case 'modular_configs':
+      case 'modules': {
+        const gms = this.services.guildModuleService;
+        if (!gms) throw new Error('Serviço de controle modular indisponível.');
+        const modulesToSet = updates.modules || updates;
+        updated = gms.setGuildModules(guildId, modulesToSet, session.userId);
+        break;
+      }
+      case 'tempbans':
+      case 'temp_bans': {
+        const { moderationService } = this.services;
+        if (updates.action === 'CANCEL' || updates.cancel) {
+          const targetUserId = updates.userId || updates.id;
+          if (!targetUserId) throw new ValidationError('ID do usuário é obrigatório para cancelar o banimento.');
+          const botGuild = this.botClient?.guilds?.cache?.get(guildId) || { id: guildId, bans: { remove: async () => {} } };
+          if (moderationService && typeof moderationService.cancelTempban === 'function') {
+            await moderationService.cancelTempban(botGuild, { id: session.userId }, targetUserId, { reason: updates.reason || 'Cancelado via painel web' });
+          }
+        }
+        updated = modRepo ? modRepo.getActiveTempBans(guildId) : [];
+        break;
+      }
+      case 'anti_bot_scam':
+      case 'antibotscam': {
+        if (!modRepo) throw new Error('Serviço de moderação indisponível.');
+        const currentAb = modRepo.getAntiAbuseConfig(guildId) || {};
+        const abs = updates;
+        modRepo.saveAntiAbuseConfig(guildId, {
+          ...currentAb,
+          antiBotScamEnabled: abs.enabled !== undefined ? Boolean(abs.enabled) : true,
+          antiBotScamAction: String(abs.action || 'TIMEOUT').toUpperCase(),
+          antiBotScamTimeoutSeconds: Number(abs.timeoutDurationSeconds) || 86400
+        });
+        const saved = modRepo.getAntiAbuseConfig(guildId) || {};
+        updated = {
+          enabled: saved.anti_bot_scam_enabled === 1 || saved.anti_bot_scam_enabled === true,
+          action: saved.anti_bot_scam_action || 'TIMEOUT',
+          timeoutDurationSeconds: saved.anti_bot_scam_timeout_seconds || 86400
+        };
         break;
       }
       default:

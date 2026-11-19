@@ -10,7 +10,7 @@ const {
 
 describe('AttachmentProcessor: In-Memory Multi-Modal & Zero-Disk Anti-Virus Defense', () => {
   test('Strictly blocks dangerous and executable extensions (.exe, .bat, .dll, etc.)', async () => {
-    const dangerousFiles = ['trojan.exe', 'script.bat', 'hack.ps1', 'payload.dll', 'virus.vbs', 'bad.msi', 'evil.zip'];
+    const dangerousFiles = ['trojan.exe', 'script.bat', 'hack.ps1', 'payload.dll', 'virus.vbs', 'bad.msi', 'rootkit.scr'];
 
     for (const name of dangerousFiles) {
       const mockAttachment = {

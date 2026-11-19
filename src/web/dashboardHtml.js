@@ -2602,6 +2602,15 @@ function renderDashboardHtml({
         <span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
         <span class="nav-label">Moderação & Anti-Spam</span>
       </button>
+      <button class="nav-item" data-tab="tab-antibot">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></span>
+        <span class="nav-label">Proteção Anti-Bots</span>
+        <span class="nav-badge-pill" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.4);">Scam</span>
+      </button>
+      <button class="nav-item" data-tab="tab-tempbans">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+        <span class="nav-label">TempBans (Ban Temporário)</span>
+      </button>
       <button class="nav-item" data-tab="tab-welcome">
         <span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg></span>
         <span class="nav-label">Boas-Vindas & AutoRole</span>
@@ -2658,6 +2667,11 @@ function renderDashboardHtml({
         <span class="nav-label">Alertas Sociais</span>
         <span class="nav-badge-pill" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.4);">YouTube/Twitch</span>
       </button>
+      <button class="nav-item" data-tab="tab-summary">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>
+        <span class="nav-label">Resumo Inteligente</span>
+        <span class="nav-badge-pill" style="color: #38bdf8; border-color: rgba(56, 189, 248, 0.4);">300 msgs</span>
+      </button>
 
       <!-- HUB 5: SOCIAL & ENTRETENIMENTO -->
       <div class="menu-group-title">SOCIAL & ENTRETENIMENTO</div>
@@ -2681,6 +2695,16 @@ function renderDashboardHtml({
 
       <!-- HUB 6: SISTEMA & CONFIGURAÇÕES -->
       <div class="menu-group-title">SISTEMA & CONFIGURAÇÕES</div>
+      <button class="nav-item" data-tab="tab-modules">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>
+        <span class="nav-label">Central de Módulos</span>
+        <span class="nav-badge-pill" style="color: #10B981; border-color: rgba(16, 185, 129, 0.4);">26 Módulos</span>
+      </button>
+      <button class="nav-item" data-tab="tab-multibot">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/></svg></span>
+        <span class="nav-label">Multi-Bot Manager</span>
+        <span class="nav-badge-pill" style="color: #a855f7; border-color: rgba(168, 85, 247, 0.4);">Multi-Instâncias</span>
+      </button>
       <button class="nav-item" data-tab="tab-settings">
         <span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
         <span class="nav-label">Configurações do Bot</span>
@@ -6311,6 +6335,286 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       </div>
     </div>
 
+    <!-- TAB: PROTEÇÃO ANTI-BOTS & SCAMS -->
+    <div id="tab-antibot" class="tab-content">
+      <div class="card" style="margin-bottom: 1.5rem; background: linear-gradient(135deg, rgba(239, 68, 68, 0.12), rgba(185, 28, 28, 0.08)); border: 1px solid rgba(239, 68, 68, 0.3);">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+          <div>
+            <h2 style="margin: 0 0 0.4rem 0; display: flex; align-items: center; gap: 0.5rem; color: #f87171;">
+              <span>🛡️</span> Central de Proteção Anti-Bots & Golpes (Scams)
+            </h2>
+            <p style="margin: 0; color: var(--text-muted); font-size: 0.88rem;">
+              Proteção proativa em tempo real contra invasões de bots fakes, brindes fraudulentos do MrBeast, geradores falsos de Nitro, roubos de inventário Steam e links de phishing.
+            </p>
+          </div>
+          <button class="primary-btn" id="saveAntiBotMainBtn" style="background: linear-gradient(135deg, #ef4444, #dc2626); font-weight: 700;">
+            💾 Salvar Proteção Anti-Bot
+          </button>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <h3>⚙️ Configurações Gerais da Proteção</h3>
+          <div class="form-group">
+            <label>Status da Proteção Automática</label>
+            <select id="mainAntiBotEnabled">
+              <option value="true">🟢 Ativada (Monitoramento ativo 24/7)</option>
+              <option value="false">🔴 Desativada</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Ação Disciplinar Imediata</label>
+            <select id="mainAntiBotAction">
+              <option value="TIMEOUT">⏱️ Castigo / Silenciamento Temporário (Timeout)</option>
+              <option value="KICK">👢 Expulsar do Servidor (Kick)</option>
+              <option value="BAN">🔨 Banir Permanentemente (Ban)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Duração do Castigo / Silenciamento</label>
+            <select id="mainAntiBotTimeout">
+              <option value="300">5 Minutos</option>
+              <option value="900">15 Minutos</option>
+              <option value="3600">1 Hora</option>
+              <option value="86400" selected>24 Horas</option>
+              <option value="604800">7 Dias (Máximo Discord)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>🚨 Golpes & Ameaças Bloqueadas Automaticamente</h3>
+          <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+            <div style="background: rgba(0,0,0,0.25); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 8px; padding: 0.75rem;">
+              <strong style="color: #fca5a5;">🎁 Falsos Sorteios do MrBeast & Celebridades</strong>
+              <p style="margin: 0.2rem 0 0 0; font-size: 0.8rem; color: #949ba4;">Mensagens automatizadas prometendo dinheiro fácil, sorteios de 1000$ e links encurtados de roubo.</p>
+            </div>
+            <div style="background: rgba(0,0,0,0.25); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 8px; padding: 0.75rem;">
+              <strong style="color: #fca5a5;">💎 Geradores Falsos de Discord Nitro</strong>
+              <p style="margin: 0.2rem 0 0 0; font-size: 0.8rem; color: #949ba4;">Links simulando domínios oficiais como "discorcl.gift", "dlscord-app.info" e roubos de tokens OAuth.</p>
+            </div>
+            <div style="background: rgba(0,0,0,0.25); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 8px; padding: 0.75rem;">
+              <strong style="color: #fca5a5;">🎮 Roubo de Contas Steam & Skins</strong>
+              <p style="margin: 0.2rem 0 0 0; font-size: 0.8rem; color: #949ba4;">Falsas propostas de trade em jogos como CS2/TF2 com links de phishing ("steamcommuniity").</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: BANIMENTOS TEMPORÁRIOS (TEMPBANS) -->
+    <div id="tab-tempbans" class="tab-content">
+      <div class="card" style="margin-bottom: 1.5rem; background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(217, 119, 6, 0.08)); border: 1px solid rgba(245, 158, 11, 0.3);">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+          <div>
+            <h2 style="margin: 0 0 0.4rem 0; display: flex; align-items: center; gap: 0.5rem; color: #fbbf24;">
+              <span>⏳</span> Gerenciador de Banimentos Temporários (TempBans)
+            </h2>
+            <p style="margin: 0; color: var(--text-muted); font-size: 0.88rem;">
+              Banimentos persistentes no SQLite com worker automático de expiração e desbanimento. Não se perdem com reinicializações do bot.
+            </p>
+          </div>
+          <button class="primary-btn" id="refreshTempbansBtn" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+            🔄 Atualizar Lista
+          </button>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="card" style="grid-column: 1 / -1;">
+          <h3>📋 Banimentos Temporários Ativos</h3>
+          <div style="overflow-x: auto; margin-top: 1rem;">
+            <table class="data-table" style="width: 100%;">
+              <thead>
+                <tr>
+                  <th>ID Usuário</th>
+                  <th>Motivo</th>
+                  <th>Duração</th>
+                  <th>Expira Em</th>
+                  <th>Moderador</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tempbansTableBody">
+                <tr><td colspan="6" style="text-align: center; padding: 1.5rem; color: var(--text-muted);">Nenhum banimento temporário ativo no momento.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: RESUMO INTELIGENTE DO CHAT COM IA -->
+    <div id="tab-summary" class="tab-content">
+      <div class="card" style="margin-bottom: 1.5rem; background: linear-gradient(135deg, rgba(56, 189, 248, 0.12), rgba(14, 165, 233, 0.08)); border: 1px solid rgba(56, 189, 248, 0.3);">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+          <div>
+            <h2 style="margin: 0 0 0.4rem 0; display: flex; align-items: center; gap: 0.5rem; color: #38bdf8;">
+              <span>🧠</span> Resumo Analítico Inteligente & Boletim com IA
+            </h2>
+            <p style="margin: 0; color: var(--text-muted); font-size: 0.88rem;">
+              Gere relatórios executivos de alto nível baseados em até 300 mensagens reais trocadas no canal, identificando participantes, temas reais e conclusões.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <h3>⚙️ Parâmetros da Análise</h3>
+          <div class="form-group">
+            <label>Canal de Texto Alvo</label>
+            <select id="summaryChannelSelect" class="channel-select">
+              <option value="">Carregando canais...</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Tipo de Síntese</label>
+            <select id="summaryTypeSelect">
+              <option value="summary">📋 Resumo Analítico & Estruturado (Executivo)</option>
+              <option value="gossip">📰 Boletim da Fofoca & Destaques de Humor</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Quantidade de Mensagens Analisadas: <strong id="summaryLimitVal" style="color: #38bdf8;">100</strong></label>
+            <input type="range" id="summaryLimitRange" min="20" max="300" step="10" value="100" style="width: 100%;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-muted);">
+              <span>20 msgs (Rápido)</span>
+              <span>150 msgs</span>
+              <span>300 msgs (Profundo)</span>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-top: 1rem;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="checkbox" id="summarySendToDiscord">
+              <span>Publicar o resultado diretamente no canal do Discord ao concluir</span>
+            </label>
+          </div>
+
+          <button class="primary-btn" id="generateSummaryBtn" style="width: 100%; margin-top: 1rem; padding: 0.75rem; font-weight: 700; background: linear-gradient(135deg, #0ea5e9, #0284c7);">
+            ⚡ Gerar Resumo Agora com Gemini
+          </button>
+        </div>
+
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+            <h3 style="margin: 0;">📄 Resultado da Análise</h3>
+            <button class="nav-switch-btn" id="copySummaryBtn" style="padding: 0.3rem 0.75rem; font-size: 0.78rem;">📋 Copiar Texto</button>
+          </div>
+          <div id="summaryResultArea" style="min-height: 280px; max-height: 480px; overflow-y: auto; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 1rem; font-size: 0.86rem; line-height: 1.6; white-space: pre-wrap; color: #e2e8f0;">Selecione um canal e clique em "Gerar Resumo Agora" para iniciar o processamento contextual das conversas.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: CENTRAL DE MÓDULOS (26 MÓDULOS) -->
+    <div id="tab-modules" class="tab-content">
+      <div class="card" style="margin-bottom: 1.5rem; background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(5, 150, 105, 0.08)); border: 1px solid rgba(16, 185, 129, 0.3);">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+          <div>
+            <h2 style="margin: 0 0 0.4rem 0; display: flex; align-items: center; gap: 0.5rem; color: #34d399;">
+              <span>🧩</span> Central de Gerenciamento Modular (26 Módulos)
+            </h2>
+            <p style="margin: 0; color: var(--text-muted); font-size: 0.88rem;">
+              Ative ou desative cada funcionalidade individualmente para este servidor. Desativar um módulo bloqueia comandos, eventos e ferramentas correspondentes em tempo real.
+            </p>
+          </div>
+          <button class="primary-btn" id="saveModulesBtn" style="background: linear-gradient(135deg, #10b981, #059669); font-weight: 700;">
+            💾 Salvar Todos os Módulos
+          </button>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom: 1rem;">
+        <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; justify-content: space-between;">
+          <input type="text" id="moduleSearchInput" placeholder="🔍 Filtrar módulos por nome ou categoria..." style="flex: 1; min-width: 260px; padding: 0.6rem 1rem; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #fff;">
+          <div style="display: flex; gap: 0.5rem;">
+            <button class="nav-switch-btn" id="enableAllModulesBtn">Ativar Todos</button>
+            <button class="nav-switch-btn" id="disableAllModulesBtn">Desativar Todos</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="modulesGridContainer" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 1rem;">
+        <!-- Filled dynamically by JavaScript -->
+      </div>
+    </div>
+
+    <!-- TAB: MULTI-BOT MANAGER -->
+    <div id="tab-multibot" class="tab-content">
+      <div class="card" style="margin-bottom: 1.5rem; background: linear-gradient(135deg, rgba(168, 85, 247, 0.12), rgba(147, 51, 234, 0.08)); border: 1px solid rgba(168, 85, 247, 0.3);">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+          <div>
+            <h2 style="margin: 0 0 0.4rem 0; display: flex; align-items: center; gap: 0.5rem; color: #c084fc;">
+              <span>🤖</span> Multi-Bot Manager (Instâncias Independentes)
+            </h2>
+            <p style="margin: 0; color: var(--text-muted); font-size: 0.88rem;">
+              Hospede múltiplos bots na mesma infraestrutura com isolamento de falhas, tokens próprios e distribuição granular de módulos.
+            </p>
+          </div>
+          <button class="primary-btn" id="refreshMultiBotBtn" style="background: linear-gradient(135deg, #a855f7, #9333ea);">
+            🔄 Atualizar Instâncias
+          </button>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <h3>➕ Adicionar Nova Instância de Bot</h3>
+          <div class="form-group">
+            <label>Nome do Bot / Apelido</label>
+            <input type="text" id="newBotName" placeholder="Ex: Jarvis Moderação ou Sexta-Feira">
+          </div>
+          <div class="form-group">
+            <label>Token do Discord</label>
+            <input type="password" id="newBotToken" placeholder="Insira o Token do Bot do Discord Developer Portal">
+            <small style="color: var(--text-subtle); font-size: 0.74rem;">O token é armazenado com proteção e nunca é exposto publicamente.</small>
+          </div>
+          <button class="primary-btn" id="createMultiBotBtn" style="width: 100%; margin-top: 1rem; background: linear-gradient(135deg, #a855f7, #9333ea); font-weight: 700;">
+            🚀 Cadastrar Instância
+          </button>
+        </div>
+
+        <div class="card">
+          <h3>📌 Como Distribuir Módulos</h3>
+          <p style="font-size: 0.85rem; color: #949ba4;">
+            Você pode criar uma equipe de bots especializados dividindo as cargas de trabalho:
+          </p>
+          <ul style="font-size: 0.82rem; color: #cbd5e1; line-height: 1.6; padding-left: 1.2rem;">
+            <li><strong>Bot Principal (Jarvis):</strong> Inteligência artificial, conversas, memória e ferramentas.</li>
+            <li><strong>Bot Secundário:</strong> Moderação manual, anti-spam, tempbans e tickets.</li>
+            <li><strong>Bot de Mídia:</strong> Player de música, rádio e reprodução de voz 24/7.</li>
+          </ul>
+        </div>
+
+        <div class="card" style="grid-column: 1 / -1;">
+          <h3>📋 Instâncias Configuradas</h3>
+          <div style="overflow-x: auto; margin-top: 1rem;">
+            <table class="data-table" style="width: 100%;">
+              <thead>
+                <tr>
+                  <th>Status</th>
+                  <th>Nome</th>
+                  <th>Token Protegido</th>
+                  <th>Memória RAM</th>
+                  <th>Tempo Online</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="multiBotTableBody">
+                <tr><td colspan="6" style="text-align: center; padding: 1.5rem; color: var(--text-muted);">Nenhuma instância secundária cadastrada. O bot principal continua operando normalmente.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- TAB 21: CONFIGURAÇÕES GERAIS (WHITE-LABEL ENGINE) -->
     <div id="tab-settings" class="tab-content">
       <!-- Header Banner / Resumo -->
@@ -7150,6 +7454,11 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       'tab-casino': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f3b0.png" class="nav-photo-icon" alt=""> Cassino & Apostas',
       'tab-music': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f3b5.png" class="nav-photo-icon" alt=""> Música & Streaming',
       'tab-tickets': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f3ab.png" class="nav-photo-icon" alt=""> Central de Tickets',
+      'tab-antibot': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f6e1.png" class="nav-photo-icon" alt=""> Proteção Anti-Bots & Scams',
+      'tab-tempbans': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/23f3.png" class="nav-photo-icon" alt=""> Banimentos Temporários',
+      'tab-summary': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f9e0.png" class="nav-photo-icon" alt=""> Resumo Inteligente do Chat',
+      'tab-modules': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f9e9.png" class="nav-photo-icon" alt=""> Central de Módulos (26 Módulos)',
+      'tab-multibot': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f916.png" class="nav-photo-icon" alt=""> Multi-Bot Manager',
       'tab-settings': '<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/2699.png" class="nav-photo-icon" alt=""> Configurações Gerais & Base'
     };
 
@@ -13386,7 +13695,411 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
     const rBtnB = document.getElementById('resetConfigBtnBottom');
     if (rBtnB) rBtnB.addEventListener('click', resetBotConfigFromForm);
 
-    // Auto-load bot config data on initialization
+    // ==========================================
+    // 1. PROTEÇÃO ANTI-BOTS & SCAMS HANDLER
+    // ==========================================
+    document.getElementById('saveAntiBotMainBtn')?.addEventListener('click', async () => {
+      const enabled = document.getElementById('mainAntiBotEnabled')?.value === 'true';
+      const action = document.getElementById('mainAntiBotAction')?.value || 'TIMEOUT';
+      const timeoutDurationSeconds = parseInt(document.getElementById('mainAntiBotTimeout')?.value, 10) || 86400;
+
+      const res = await saveModule('moderation', {
+        antiBotScam: {
+          enabled,
+          action,
+          timeoutDurationSeconds
+        }
+      });
+      if (res) {
+        showToast('Proteção Anti-Bot e Golpes salva e ativa com sucesso!', 'success', 'Anti-Bot Configurado');
+      }
+    });
+
+    // ==========================================
+    // 2. TEMPBANS (BANIMENTOS TEMPORÁRIOS)
+    // ==========================================
+    async function loadTempbans() {
+      const tbody = document.getElementById('tempbansTableBody');
+      if (!tbody) return;
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 1.5rem; color: var(--text-muted);">Carregando banimentos temporários...</td></tr>';
+
+      try {
+        const res = await fetch('/api/guilds/' + currentGuildId + '/modules/tempbans', {
+          headers: { 'X-Panel-Password': '1598' },
+          credentials: 'include'
+        });
+        if (!res.ok) throw new Error('Falha ao consultar banimentos');
+        const data = await res.json();
+        const bans = (data.config && data.config.tempbans) || data.tempbans || [];
+
+        if (bans.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 1.5rem; color: var(--text-muted);">Nenhum banimento temporário ativo no momento.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = bans.map(b => {
+          const expiresDate = new Date(b.expires_at);
+          const expiresStr = expiresDate.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+          const mins = Math.max(0, Math.ceil((expiresDate.getTime() - Date.now()) / 60000));
+          const timeRemaining = mins > 1440 ? Math.floor(mins / 1440) + 'd ' + (mins % 1440) + 'm' : (mins > 60 ? Math.floor(mins / 60) + 'h ' + (mins % 60) + 'm' : mins + ' min');
+
+          return '<tr>' +
+            '<td><code style="background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px;">' + b.user_id + '</code></td>' +
+            '<td>' + (b.reason || 'Sem motivo') + '</td>' +
+            '<td>' + (b.duration_seconds >= 86400 ? (b.duration_seconds / 86400) + ' dia(s)' : (b.duration_seconds / 3600) + ' hora(s)') + '</td>' +
+            '<td><span style="color: #fbbf24; font-weight: 600;">' + expiresStr + '</span> (' + timeRemaining + ')</td>' +
+            '<td><code style="background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px;">' + b.moderator_id + '</code></td>' +
+            '<td>' +
+              '<button type="button" class="danger-btn cancel-tempban-btn" data-userid="' + b.user_id + '" style="padding: 0.3rem 0.75rem; font-size: 0.76rem;">' +
+                '🔓 Revogar Ban' +
+              '</button>' +
+            '</td>' +
+          '</tr>';
+        }).join('');
+
+        tbody.querySelectorAll('.cancel-tempban-btn').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const uid = btn.getAttribute('data-userid');
+            if (!confirm('Deseja realmente revogar o banimento temporário do usuário ' + uid + '?')) return;
+            const res = await saveModule('tempbans', { action: 'CANCEL', userId: uid });
+            if (res) {
+              showToast('Banimento temporário revogado com sucesso!', 'success', 'TempBan Cancelado');
+              loadTempbans();
+            }
+          });
+        });
+      } catch (err) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 1.5rem; color: #ef4444;">Erro ao carregar banimentos: ' + err.message + '</td></tr>';
+      }
+    }
+    document.getElementById('refreshTempbansBtn')?.addEventListener('click', loadTempbans);
+
+    // ==========================================
+    // 3. RESUMO INTELIGENTE DO CHAT COM IA
+    // ==========================================
+    const sRange = document.getElementById('summaryLimitRange');
+    const sVal = document.getElementById('summaryLimitVal');
+    if (sRange && sVal) {
+      sRange.addEventListener('input', () => {
+        sVal.innerText = sRange.value;
+      });
+    }
+
+    document.getElementById('generateSummaryBtn')?.addEventListener('click', async () => {
+      const channelId = document.getElementById('summaryChannelSelect')?.value;
+      if (!channelId) {
+        showToast('Selecione um canal de texto para analisar!', 'warning', 'Canal Obrigatório');
+        return;
+      }
+
+      const limit = parseInt(document.getElementById('summaryLimitRange')?.value || '100', 10);
+      const type = document.getElementById('summaryTypeSelect')?.value || 'summary';
+      const sendToDiscord = document.getElementById('summarySendToDiscord')?.checked || false;
+      const resArea = document.getElementById('summaryResultArea');
+      const genBtn = document.getElementById('generateSummaryBtn');
+
+      if (resArea) resArea.innerHTML = '⏳ <em>Conectando à API do Gemini e compilando mensagens do canal... Por favor, aguarde.</em>';
+      if (genBtn) { genBtn.disabled = true; genBtn.innerText = '⏳ Processando com IA...'; }
+
+      try {
+        const activeCsrf = window.csrfToken || currentCsrfToken || csrfToken;
+        const res = await fetch('/api/guilds/' + currentGuildId + '/summary', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': activeCsrf,
+            'X-Panel-Password': '1598'
+          },
+          credentials: 'include',
+          body: JSON.stringify({ channelId, limit, type, sendToDiscord })
+        });
+
+        const data = await res.json();
+        if (res.ok && data.summary) {
+          if (resArea) resArea.innerText = data.summary;
+          showToast('Resumo analítico gerado com sucesso!', 'success', 'Resumo Concluído');
+        } else {
+          if (resArea) resArea.innerText = '❌ Erro: ' + (data.error || 'Falha ao processar resumo.');
+          showToast(data.error || 'Erro ao gerar resumo', 'error', 'Falha');
+        }
+      } catch (err) {
+        if (resArea) resArea.innerText = '❌ Erro de conexão: ' + err.message;
+        showToast(err.message, 'error', 'Erro de Conexão');
+      } finally {
+        if (genBtn) { genBtn.disabled = false; genBtn.innerText = '⚡ Gerar Resumo Agora com Gemini'; }
+      }
+    });
+
+    document.getElementById('copySummaryBtn')?.addEventListener('click', () => {
+      const resArea = document.getElementById('summaryResultArea');
+      if (!resArea || !resArea.innerText) return;
+      navigator.clipboard.writeText(resArea.innerText).then(() => {
+        showToast('Texto do resumo copiado para a área de transferência!', 'success', 'Copiado!');
+      }).catch(() => {
+        showToast('Falha ao copiar texto.', 'warning');
+      });
+    });
+
+    // Populate summary channel selector when guild channels load
+    function populateSummaryChannels(channels) {
+      const sel = document.getElementById('summaryChannelSelect');
+      if (!sel || !channels) return;
+      sel.innerHTML = '<option value="">-- Selecione o Canal de Texto --</option>' +
+        channels.map(c => '<option value="' + c.id + '">#' + c.name + '</option>').join('');
+    }
+
+    // ==========================================
+    // 4. CENTRAL DE MÓDULOS (26 MÓDULOS)
+    // ==========================================
+    let currentGuildModulesState = {};
+    let allModuleDefinitions = [];
+
+    async function loadGuildModules() {
+      const container = document.getElementById('modulesGridContainer');
+      if (!container) return;
+      container.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--text-muted);">Carregando catálogo de módulos...</div>';
+
+      try {
+        const res = await fetch('/api/guilds/' + currentGuildId + '/modules/guild_modules', {
+          headers: { 'X-Panel-Password': '1598' },
+          credentials: 'include'
+        });
+        if (!res.ok) throw new Error('Falha ao obter módulos');
+        const data = await res.json();
+        const payload = data.config || data;
+        allModuleDefinitions = payload.definitions || [];
+        currentGuildModulesState = payload.settings || {};
+
+        renderModulesGrid();
+      } catch (err) {
+        container.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: #ef4444;">Erro ao carregar módulos: ' + err.message + '</div>';
+      }
+    }
+
+    function renderModulesGrid(filterTerm = '') {
+      const container = document.getElementById('modulesGridContainer');
+      if (!container) return;
+
+      const term = filterTerm.toLowerCase().trim();
+      const filtered = allModuleDefinitions.filter(m => {
+        if (!term) return true;
+        return m.name.toLowerCase().includes(term) ||
+               (m.category && m.category.toLowerCase().includes(term)) ||
+               (m.description && m.description.toLowerCase().includes(term));
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--text-muted);">Nenhum módulo encontrado para "' + filterTerm + '".</div>';
+        return;
+      }
+
+      container.innerHTML = filtered.map(m => {
+        const isChecked = currentGuildModulesState[m.id] !== false;
+        return '<div class="card module-card" data-modid="' + m.id + '" style="display: flex; flex-direction: column; justify-content: space-between; border: 1px solid ' + (isChecked ? 'rgba(16, 185, 129, 0.3)' : 'rgba(255,255,255,0.06)') + '; background: ' + (isChecked ? 'rgba(16, 185, 129, 0.04)' : 'rgba(0,0,0,0.2)') + '; transition: all 0.2s ease;">' +
+          '<div>' +
+            '<div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.5rem;">' +
+              '<div style="display: flex; align-items: center; gap: 0.5rem;">' +
+                '<span style="font-size: 1.4rem;">' + (m.icon || '⚙️') + '</span>' +
+                '<div>' +
+                  '<h4 style="margin: 0; font-size: 0.95rem; color: var(--text-main);">' + m.name + '</h4>' +
+                  '<span style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">' + (m.category || 'Sistema') + '</span>' +
+                '</div>' +
+              '</div>' +
+              '<label class="switch" style="position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0;">' +
+                '<input type="checkbox" class="module-toggle-input" data-modkey="' + m.id + '" ' + (isChecked ? 'checked' : '') + ' style="opacity: 0; width: 0; height: 0;">' +
+                '<span class="slider round" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: ' + (isChecked ? '#10B981' : '#475569') + '; border-radius: 24px; transition: 0.3s;"></span>' +
+              '</label>' +
+            '</div>' +
+            '<p style="margin: 0.35rem 0 0 0; font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;">' + m.description + '</p>' +
+          '</div>' +
+          '<div style="margin-top: 0.75rem; font-size: 0.72rem; font-weight: 600; color: ' + (isChecked ? '#10B981' : '#94A3B8') + '; display: flex; align-items: center; gap: 4px;">' +
+            '<span>' + (isChecked ? '🟢 Módulo Ativo' : '🔴 Módulo Desativado') + '</span>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+
+      // Add change listeners to each toggle switch
+      container.querySelectorAll('.module-toggle-input').forEach(input => {
+        input.addEventListener('change', () => {
+          const key = input.getAttribute('data-modkey');
+          currentGuildModulesState[key] = input.checked;
+          const card = input.closest('.module-card');
+          const slider = input.nextElementSibling;
+          if (slider) slider.style.backgroundColor = input.checked ? '#10B981' : '#475569';
+          if (card) {
+            card.style.borderColor = input.checked ? 'rgba(16, 185, 129, 0.3)' : 'rgba(255,255,255,0.06)';
+            card.style.background = input.checked ? 'rgba(16, 185, 129, 0.04)' : 'rgba(0,0,0,0.2)';
+            const statusText = card.querySelector('div:last-child span');
+            if (statusText) {
+              statusText.innerText = input.checked ? '🟢 Módulo Ativo' : '🔴 Módulo Desativado';
+              statusText.parentElement.style.color = input.checked ? '#10B981' : '#94A3B8';
+            }
+          }
+        });
+      });
+    }
+
+    document.getElementById('moduleSearchInput')?.addEventListener('input', (e) => {
+      renderModulesGrid(e.target.value);
+    });
+
+    document.getElementById('enableAllModulesBtn')?.addEventListener('click', () => {
+      for (const m of allModuleDefinitions) currentGuildModulesState[m.id] = true;
+      renderModulesGrid(document.getElementById('moduleSearchInput')?.value || '');
+      showToast('Todos os 26 módulos marcados como ativos. Clique em "Salvar" para confirmar.', 'info', 'Módulos');
+    });
+
+    document.getElementById('disableAllModulesBtn')?.addEventListener('click', () => {
+      for (const m of allModuleDefinitions) currentGuildModulesState[m.id] = false;
+      renderModulesGrid(document.getElementById('moduleSearchInput')?.value || '');
+      showToast('Todos os módulos marcados como desativados. Clique em "Salvar" para confirmar.', 'warning', 'Módulos');
+    });
+
+    document.getElementById('saveModulesBtn')?.addEventListener('click', async () => {
+      const sBtn = document.getElementById('saveModulesBtn');
+      if (sBtn) { sBtn.disabled = true; sBtn.innerText = '💾 Salvando Módulos...'; }
+
+      const res = await saveModule('guild_modules', { modules: currentGuildModulesState });
+      if (res) {
+        showToast('As configurações dos 26 módulos foram salvas e aplicadas em tempo real!', 'success', 'Módulos Sincronizados');
+      }
+
+      if (sBtn) { sBtn.disabled = false; sBtn.innerText = '💾 Salvar Todos os Módulos'; }
+    });
+
+    // ==========================================
+    // 5. MULTI-BOT MANAGER HANDLER
+    // ==========================================
+    async function loadMultiBotInstances() {
+      const tbody = document.getElementById('multiBotTableBody');
+      if (!tbody) return;
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 1.5rem; color: var(--text-muted);">Consultando instâncias de bots...</td></tr>';
+
+      try {
+        const res = await fetch('/api/multi-bot', {
+          headers: { 'X-Panel-Password': '1598' },
+          credentials: 'include'
+        });
+        if (!res.ok) throw new Error('Falha ao obter instâncias');
+        const data = await res.json();
+        const list = data.instances || [];
+
+        if (list.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 1.5rem; color: var(--text-muted);">Nenhuma instância secundária cadastrada. O bot principal continua operando normalmente.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = list.map(inst => {
+          const isOnline = inst.status === 'ONLINE';
+          const isError = inst.status === 'ERROR';
+          const badgeColor = isOnline ? '#10B981' : (isError ? '#EF4444' : '#94A3B8');
+          const badgeBg = isOnline ? 'rgba(16, 185, 129, 0.15)' : (isError ? 'rgba(239, 68, 68, 0.15)' : 'rgba(148, 163, 184, 0.15)');
+
+          return '<tr>' +
+            '<td><span style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 999px; font-size: 0.74rem; font-weight: 700; color: ' + badgeColor + '; background: ' + badgeBg + '; border: 1px solid ' + badgeColor + ';"><span style="width: 6px; height: 6px; border-radius: 50%; background: ' + badgeColor + ';"></span> ' + inst.status + '</span></td>' +
+            '<td><strong>' + inst.name + '</strong></td>' +
+            '<td><code style="background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px;">' + inst.maskedToken + '</code></td>' +
+            '<td>' + (inst.memoryMb ? inst.memoryMb + ' MB' : '0 MB') + '</td>' +
+            '<td>' + (inst.uptimeSeconds ? Math.floor(inst.uptimeSeconds / 60) + ' min' : 'Offline') + '</td>' +
+            '<td>' +
+              '<div style="display: flex; gap: 4px;">' +
+                (isOnline ?
+                  '<button type="button" class="secondary-btn mb-stop-btn" data-instid="' + inst.id + '" style="padding: 0.25rem 0.5rem; font-size: 0.74rem;">⏹️ Parar</button>' :
+                  '<button type="button" class="primary-btn mb-start-btn" data-instid="' + inst.id + '" style="padding: 0.25rem 0.5rem; font-size: 0.74rem; background: #10B981;">▶️ Iniciar</button>'
+                ) +
+                '<button type="button" class="secondary-btn mb-restart-btn" data-instid="' + inst.id + '" style="padding: 0.25rem 0.5rem; font-size: 0.74rem;">🔄</button>' +
+                '<button type="button" class="danger-btn mb-delete-btn" data-instid="' + inst.id + '" style="padding: 0.25rem 0.5rem; font-size: 0.74rem;">🗑️</button>' +
+              '</div>' +
+            '</td>' +
+          '</tr>';
+        }).join('');
+
+        tbody.querySelectorAll('.mb-start-btn').forEach(btn => {
+          btn.addEventListener('click', () => handleMultiBotAction(btn.getAttribute('data-instid'), 'start'));
+        });
+        tbody.querySelectorAll('.mb-stop-btn').forEach(btn => {
+          btn.addEventListener('click', () => handleMultiBotAction(btn.getAttribute('data-instid'), 'stop'));
+        });
+        tbody.querySelectorAll('.mb-restart-btn').forEach(btn => {
+          btn.addEventListener('click', () => handleMultiBotAction(btn.getAttribute('data-instid'), 'restart'));
+        });
+        tbody.querySelectorAll('.mb-delete-btn').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const id = btn.getAttribute('data-instid');
+            if (!confirm('Deseja realmente remover esta instância de bot?')) return;
+            try {
+              const res = await fetch('/api/multi-bot/' + id, {
+                method: 'DELETE',
+                headers: { 'X-Panel-Password': '1598' },
+                credentials: 'include'
+              });
+              if (res.ok) {
+                showToast('Instância de bot removida com sucesso.', 'success', 'Removido');
+                loadMultiBotInstances();
+              }
+            } catch (err) {
+              showToast(err.message, 'error', 'Erro ao Deletar');
+            }
+          });
+        });
+      } catch (err) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 1.5rem; color: #ef4444;">Erro ao carregar instâncias: ' + err.message + '</td></tr>';
+      }
+    }
+
+    async function handleMultiBotAction(id, action) {
+      try {
+        const res = await fetch('/api/multi-bot/' + id + '/' + action, {
+          method: 'POST',
+          headers: { 'X-Panel-Password': '1598' },
+          credentials: 'include'
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast('Instância atualizada com sucesso!', 'success', 'Multi-Bot');
+          loadMultiBotInstances();
+        } else {
+          showToast(data.error || 'Falha na ação da instância.', 'error', 'Erro');
+        }
+      } catch (err) {
+        showToast(err.message, 'error', 'Erro de Conexão');
+      }
+    }
+
+    document.getElementById('createMultiBotBtn')?.addEventListener('click', async () => {
+      const name = document.getElementById('newBotName')?.value?.trim();
+      const token = document.getElementById('newBotToken')?.value?.trim();
+
+      if (!name || !token) {
+        showToast('Informe o nome e o token do bot para cadastrar!', 'warning', 'Campos Obrigatórios');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/multi-bot', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Panel-Password': '1598'
+          },
+          credentials: 'include',
+          body: JSON.stringify({ name, token })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast('Instância de bot "' + name + '" registrada com sucesso!', 'success', 'Bot Cadastrado');
+          document.getElementById('newBotName').value = '';
+          document.getElementById('newBotToken').value = '';
+          loadMultiBotInstances();
+        } else {
+          showToast(data.error || 'Erro ao registrar bot', 'error', 'Erro');
+        }
+      } catch (err) {
+        showToast(err.message, 'error', 'Erro de Conexão');
+      }
+    });
+
+    document.getElementById('refreshMultiBotBtn')?.addEventListener('click', loadMultiBotInstances);
     if (typeof loadBotConfigTab === 'function') {
       loadBotConfigTab();
     }

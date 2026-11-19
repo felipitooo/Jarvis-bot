@@ -430,6 +430,15 @@ class PrefixCommandHandler {
     const member = message.member;
     const aiName = identityService?.getDisplayName(guild.id) || 'Jarvis';
 
+    // Check modular system gating (26 switchable modules per guild)
+    if (context.guildModuleService) {
+      const check = context.guildModuleService.checkCommandAllowed(guild.id, cmdName);
+      if (!check.allowed) {
+        await message.reply(`⚠️ **Módulo Desativado!**\nO módulo **${check.moduleName}** está atualmente desativado pela administração deste servidor.`);
+        return true;
+      }
+    }
+
     // Restrict music prefix commands to configured text channel if set
     const musicCmds = ['play', 'tocar', 'p', 'pause', 'pausar', 'resume', 'continuar', 'skip', 'pular', 'stop', 'parar', 'queue', 'q', 'fila', 'np', 'tocando', 'vol', 'volume', 'loop', 'repetir', 'shuffle', 'embaralhar', 'tts'];
     if (musicCmds.includes(cmdName) && context.musicVoiceRepo) {
@@ -2636,7 +2645,62 @@ class PrefixCommandHandler {
           return true;
         }
 
-        case 'kick':
+        case 'tempban': {
+          if (!member.permissions.has(PermissionFlagsBits.BanMembers) && !member.permissions.has(PermissionFlagsBits.Administrator)) {
+            await message.reply('❌ Você não tem permissão de **Banir Membros**.');
+            return true;
+          }
+          const target = await resolveUser(message, args[0]);
+          if (!target) {
+            await message.reply('❌ Mencione ou informe o ID do usuário para banir temporariamente.\nEx: `+tempban @usuário 2d Spam excessivo e raid`\n*Durações válidas: 30m, 2h, 7d, 1mo*');
+            return true;
+          }
+
+          const durationRaw = args[1];
+          if (!durationRaw) {
+            await message.reply('❌ Especifique a duração do banimento temporário. Ex: `30m` (30 min), `2h` (2 horas), `7d` (7 dias), `1mo` (1 mês).');
+            return true;
+          }
+
+          const durationSeconds = parseTempBanDuration(durationRaw);
+          if (!durationSeconds || durationSeconds < 60) {
+            await message.reply('❌ Duração inválida! Mínimo: 1 minuto (`1m`). Formatos suportados: `30m`, `12h`, `7d`, `1mo`.');
+            return true;
+          }
+
+          const reason = args.slice(2).join(' ') || 'Banimento temporário aplicado por moderador via +tempban.';
+          const targetMember = await guild.members.fetch(target.id).catch(() => null);
+
+          if (moderationService?.hierarchy?.enforceHierarchy && targetMember) {
+            try {
+              moderationService.hierarchy.enforceHierarchy(guild.members.me, member, targetMember, 'banir temporariamente');
+            } catch (err) {
+              await message.reply(`❌ ${err.message}`);
+              return true;
+            }
+          }
+
+          await confirmModerationAction({
+            message,
+            title: '⚠️ Confirmação: Banimento Temporário',
+            description: `Você tem certeza que deseja **banir temporariamente** o usuário **${target.username}**?\n` +
+                         `⏳ **Duração:** ${durationRaw}\n` +
+                         `📝 **Motivo:** ${reason}`,
+            color: 0xF59E0B,
+            confirmLabel: 'Confirmar TempBan',
+            onConfirm: async () => {
+              const res = await moderationService.tempban(guild.members.me, member, target, targetMember, {
+                reason,
+                durationSeconds
+              });
+              return {
+                title: '⏳ Usuário Banido Temporariamente',
+                description: `O usuário **${target.username}** foi banido temporariamente até **${res.formattedExpires}**.\n**Motivo:** ${reason}`
+              };
+            }
+          });
+          return true;
+        }
         case 'expulsar': {
           if (!member.permissions.has(PermissionFlagsBits.KickMembers) && !member.permissions.has(PermissionFlagsBits.Administrator)) {
             await message.reply('❌ Você não tem permissão de **Expulsar Membros**.');
@@ -4972,9 +5036,27 @@ class PrefixCommandHandler {
   }
 }
 
+function parseTempBanDuration(str) {
+  if (!str) return null;
+  const match = String(str).trim().toLowerCase().match(/^(\d+)\s*(s|seg|segundos?|m|min|minutos?|h|hrs?|horas?|d|dias?|mo|mes|mês|meses)$/);
+  if (!match) {
+    const plainNum = parseInt(str, 10);
+    return isNaN(plainNum) ? null : plainNum * 60;
+  }
+  const val = parseInt(match[1], 10);
+  const unit = match[2];
+  if (['s', 'seg', 'segundo', 'segundos'].includes(unit)) return val;
+  if (['m', 'min', 'minuto', 'minutos'].includes(unit)) return val * 60;
+  if (['h', 'hr', 'hrs', 'hora', 'horas'].includes(unit)) return val * 3600;
+  if (['d', 'dia', 'dias'].includes(unit)) return val * 86400;
+  if (['mo', 'mes', 'mês', 'meses'].includes(unit)) return val * 2592000;
+  return val * 60;
+}
+
 const prefixCommandHandler = new PrefixCommandHandler('+');
 
 module.exports = {
   PrefixCommandHandler,
-  prefixCommandHandler
+  prefixCommandHandler,
+  parseTempBanDuration
 };

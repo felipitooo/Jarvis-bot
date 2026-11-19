@@ -667,6 +667,65 @@ class WebServer {
       }
 
       // ==========================================
+      // Multi-Bot Manager API Routes
+      // ==========================================
+
+      if (pathname === '/api/multi-bot' || pathname === '/api/multi-bot/instances') {
+        if (!this._isPanelUnlocked(req, session)) {
+          return this._sendError(res, 401, 'Painel bloqueado.');
+        }
+        const mb = this.webPanelService?.services?.multiBotManager;
+        if (!mb) return this._sendError(res, 503, 'Serviço Multi-Bot indisponível.');
+
+        if (method === 'GET') {
+          return this._sendJson(res, 200, { instances: mb.listInstances() });
+        }
+        if (method === 'POST') {
+          const body = await this._parseBody(req);
+          const created = mb.createInstance(body);
+          return this._sendJson(res, 201, { success: true, instance: created });
+        }
+      }
+
+      const mbActionMatch = pathname.match(/^\/api\/multi-bot\/([^/]+)(?:\/([a-zA-Z0-9_-]+))?$/);
+      if (mbActionMatch && method === 'POST') {
+        if (!this._isPanelUnlocked(req, session)) {
+          return this._sendError(res, 401, 'Painel bloqueado.');
+        }
+        const mb = this.webPanelService?.services?.multiBotManager;
+        if (!mb) return this._sendError(res, 503, 'Serviço Multi-Bot indisponível.');
+
+        const instanceId = mbActionMatch[1];
+        const action = mbActionMatch[2] || 'start';
+
+        try {
+          if (action === 'start') {
+            const out = await mb.startInstance(instanceId);
+            return this._sendJson(res, 200, out);
+          } else if (action === 'stop') {
+            const out = await mb.stopInstance(instanceId);
+            return this._sendJson(res, 200, out);
+          } else if (action === 'restart') {
+            const out = await mb.restartInstance(instanceId);
+            return this._sendJson(res, 200, out);
+          }
+        } catch (actErr) {
+          return this._sendError(res, 400, actErr.message);
+        }
+      }
+
+      if (mbActionMatch && method === 'DELETE') {
+        if (!this._isPanelUnlocked(req, session)) {
+          return this._sendError(res, 401, 'Painel bloqueado.');
+        }
+        const mb = this.webPanelService?.services?.multiBotManager;
+        if (!mb) return this._sendError(res, 503, 'Serviço Multi-Bot indisponível.');
+        const instanceId = mbActionMatch[1];
+        await mb.deleteInstance(instanceId);
+        return this._sendJson(res, 200, { success: true, id: instanceId });
+      }
+
+      // ==========================================
       // API Guild Routes
       // ==========================================
 

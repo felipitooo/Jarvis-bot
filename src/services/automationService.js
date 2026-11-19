@@ -224,6 +224,10 @@ class AutomationService {
     this.schedulerTimer = setInterval(() => {
       this.processDueTasks(client);
       this.processBriefings(client);
+      const modSvc = this.moderationService || this.extraServices?.moderationService || this.extraServices?.modService;
+      if (modSvc && typeof modSvc.processExpiredTempBans === 'function') {
+        modSvc.processExpiredTempBans(client).catch(() => {});
+      }
     }, intervalMs);
 
     if (this.schedulerTimer.unref) {

@@ -1012,6 +1012,17 @@ module.exports = {
       });
     }
 
+    // Modular system check: is this module enabled for this guild?
+    if (guildId && context.guildModuleService) {
+      const check = context.guildModuleService.checkCommandAllowed(guildId, commandName);
+      if (!check.allowed) {
+        return interaction.reply({
+          content: `⚠️ **Módulo Desativado!**\nO módulo **${check.moduleName}** está atualmente desativado pela administração deste servidor.`,
+          ephemeral: true
+        });
+      }
+    }
+
     // Non-blocking asynchronous sync of user and guild in database to maximize slash execution speed
     setImmediate(() => {
       try {

@@ -273,6 +273,85 @@ class ModerationRepository {
 
     return this.getAntiAbuseConfig(guildId);
   }
+
+  // ==========================================
+  // 5. Temporary Bans (TempBans)
+  // ==========================================
+
+  createTempBan({ guildId, userId, moderatorId, reason, durationSeconds, expiresAt }) {
+    const now = new Date().toISOString();
+    // Deactivate any pre-existing active temp ban for this user in this guild
+    this.db.run(
+      `UPDATE temp_bans SET is_active = 0, unban_reason = 'Substituído por novo banimento' WHERE guild_id = ? AND user_id = ? AND is_active = 1`,
+      [guildId, userId]
+    );
+
+    const result = this.db.run(
+      `INSERT INTO temp_bans (guild_id, user_id, moderator_id, reason, duration_seconds, expires_at, is_active, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, 1, ?)`,
+      [guildId, userId, moderatorId, reason, durationSeconds, expiresAt, now]
+    );
+
+    return {
+      id: Number(result.lastInsertRowid),
+      guildId,
+      userId,
+      moderatorId,
+      reason,
+      durationSeconds,
+      expiresAt,
+      isActive: 1,
+      createdAt: now
+    };
+  }
+
+  getActiveTempBans(guildId) {
+    return this.db.all(
+      `SELECT * FROM temp_bans 
+       WHERE guild_id = ? AND is_active = 1 
+       ORDER BY expires_at ASC`,
+      [guildId]
+    );
+  }
+
+  findActiveTempBanByUser(guildId, userId) {
+    return this.db.get(
+      `SELECT * FROM temp_bans 
+       WHERE guild_id = ? AND user_id = ? AND is_active = 1`,
+      [guildId, userId]
+    );
+  }
+
+  getExpiredActiveTempBans() {
+    const now = new Date().toISOString();
+    return this.db.all(
+      `SELECT * FROM temp_bans 
+       WHERE is_active = 1 AND expires_at <= ?`,
+      [now]
+    );
+  }
+
+  deactivateTempBan(tempBanId, unbanReason = 'Banimento temporário expirado') {
+    const now = new Date().toISOString();
+    this.db.run(
+      `UPDATE temp_bans 
+       SET is_active = 0, unbanned_at = ?, unban_reason = ? 
+       WHERE id = ?`,
+      [now, unbanReason, tempBanId]
+    );
+    return true;
+  }
+
+  cancelTempBan(guildId, userId, unbanReason = 'Cancelamento de banimento temporário por moderador') {
+    const now = new Date().toISOString();
+    const res = this.db.run(
+      `UPDATE temp_bans 
+       SET is_active = 0, unbanned_at = ?, unban_reason = ? 
+       WHERE guild_id = ? AND user_id = ? AND is_active = 1`,
+      [now, unbanReason, guildId, userId]
+    );
+    return res.changes > 0;
+  }
 }
 
 module.exports = {

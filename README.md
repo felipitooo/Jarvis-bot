@@ -1,6 +1,6 @@
-# Cell — Bot Unificado para Discord (Versão 1.0.0 — Produção)
+# J.A.R.V.I.S. — Plataforma Unificada para Discord (Versão 8.0.0 — Ultimate Evolution)
 
-O **Cell** é uma plataforma modular de alta performance para Discord construída com Node.js (v22+), Discord.js v14 e SQLite nativo (`node:sqlite`). Ele unifica recursos inspirados no Loritta, Jockie Music, UnbelievaBoat, Ticket Tool, ReviewCord e no assistente de IA FRIDAY.
+O **J.A.R.V.I.S.** é uma plataforma modular de alta performance para Discord construída com Node.js (v22+), Discord.js v14 e SQLite nativo (`node:sqlite`). Ele unifica recursos avançados de Inteligência Artificial (Google Gemini 3.5), Sistema de Banimento Temporário (TempBan), Central de 26 Módulos com gating real, Multi-Bot Manager, leitura segura de arquivos (ZIP/RAR/JAR/DOCX/XLSX), moderação automática, economia, cassino, música, tickets, reviews e painel web completo.
 
 ---
 

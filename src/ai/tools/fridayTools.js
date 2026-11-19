@@ -578,6 +578,111 @@ const fridayTools = [
         timestamp_iso: now.toISOString()
       };
     }
+  },
+  {
+    name: 'pesquisar_web',
+    description: 'Realiza buscas em tempo real na internet para obter informações atualizadas, fatos, notícias ou dados externos, retornando fontes e URLs citadas.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        termo_pesquisa: {
+          type: 'STRING',
+          description: 'Termo de busca ou dúvida para pesquisar na internet.'
+        },
+        limite: {
+          type: 'INTEGER',
+          description: 'Quantidade máxima de resultados a retornar (1 a 5, padrão: 3).'
+        }
+      },
+      required: ['termo_pesquisa']
+    },
+    riskLevel: 'LOW',
+    async execute({ termo_pesquisa, limite = 3 }) {
+      const query = String(termo_pesquisa || '').trim();
+      if (!query) throw new ValidationError('O termo de pesquisa é obrigatório.');
+      const maxResults = Math.min(5, Math.max(1, Number(limite) || 3));
+
+      try {
+        const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+        const res = await fetch(url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+          },
+          signal: AbortSignal.timeout(6000)
+        });
+
+        if (!res.ok) {
+          throw new Error(`Busca retornou HTTP ${res.status}`);
+        }
+
+        const html = await res.text();
+        const results = [];
+        const itemRegex = /<a[^>]*href="([^"]+)"[^>]*class="[^"]*result__a[^"]*"[^>]*>([\s\S]*?)<\/a>|<a[^>]*class="[^"]*result__a[^"]*"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
+
+        const titles = [];
+        let tMatch;
+        while ((tMatch = itemRegex.exec(html)) !== null && titles.length < maxResults) {
+          let rawUrl = tMatch[1] || tMatch[3];
+          const rawTitle = tMatch[2] || tMatch[4];
+          if (rawUrl && rawUrl.includes('uddg=')) {
+            const matchUddg = rawUrl.match(/uddg=([^&]+)/);
+            if (matchUddg) rawUrl = decodeURIComponent(matchUddg[1]);
+          }
+          const cleanTitle = (rawTitle || '').replace(/<[^>]+>/g, '').trim();
+          if (cleanTitle && rawUrl) {
+            titles.push({ title: cleanTitle, url: rawUrl });
+          }
+        }
+
+        const snippets = [];
+        const snipRegex = /<a class="result__snippet[^>]*>([\s\S]*?)<\/a>/gi;
+        let sMatch;
+        while ((sMatch = snipRegex.exec(html)) !== null && snippets.length < maxResults) {
+          snippets.push(sMatch[1].replace(/<[^>]+>/g, '').trim());
+        }
+
+        for (let i = 0; i < titles.length; i++) {
+          results.push({
+            posicao: i + 1,
+            titulo: titles[i].title,
+            url: titles[i].url,
+            resumo: snippets[i] || 'Prévia não disponível.'
+          });
+        }
+
+        if (results.length === 0) {
+          // Fallback to Instant Answer API
+          const apiUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1`;
+          const apiRes = await fetch(apiUrl, { signal: AbortSignal.timeout(4000) }).then(r => r.json()).catch(() => null);
+          if (apiRes && apiRes.AbstractText) {
+            results.push({
+              posicao: 1,
+              titulo: apiRes.Heading || query,
+              url: apiRes.AbstractURL || 'https://duckduckgo.com',
+              resumo: apiRes.AbstractText
+            });
+          }
+        }
+
+        return {
+          status: 'sucesso',
+          termo_pesquisado: query,
+          total_resultados: results.length,
+          fontes_citadas: results,
+          mensagem: results.length > 0
+            ? `Encontrados ${results.length} resultado(s) para "${query}".`
+            : `Nenhum resultado direto encontrado para "${query}". Recomende refinar os termos da busca.`
+        };
+      } catch (err) {
+        return {
+          status: 'aviso',
+          termo_pesquisado: query,
+          erro: err.message,
+          fontes_citadas: [],
+          mensagem: `Não foi possível consultar os servidores de busca externa no momento (${err.message}).`
+        };
+      }
+    }
   }
 ];
 

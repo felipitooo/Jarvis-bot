@@ -53,6 +53,15 @@ module.exports = {
     )
     .addSubcommand(sub =>
       sub
+        .setName('tempban')
+        .setDescription('Bane temporariamente um membro do servidor com desbanimento automático.')
+        .addUserOption(opt => opt.setName('membro').setDescription('Membro a ser banido').setRequired(true))
+        .addStringOption(opt => opt.setName('motivo').setDescription('Motivo obrigatório do banimento').setRequired(true))
+        .addStringOption(opt => opt.setName('duracao').setDescription('Duração (ex: 30m, 2h, 7d, 1mo)').setRequired(true))
+        .addIntegerOption(opt => opt.setName('dias_mensagens').setDescription('Dias de mensagens a apagar (0-7)').setRequired(false))
+    )
+    .addSubcommand(sub =>
+      sub
         .setName('unban')
         .setDescription('Revoga o banimento de um usuário pelo ID.')
         .addStringOption(opt => opt.setName('id_usuario').setDescription('ID do usuário banido').setRequired(true))
@@ -201,16 +210,61 @@ module.exports = {
       });
     }
 
+    if (sub === 'tempban') {
+      const targetUser = interaction.options.getUser('membro', true);
+      const reason = interaction.options.getString('motivo', true);
+      const durationRaw = interaction.options.getString('duracao', true);
+      const days = interaction.options.getInteger('dias_mensagens') || 0;
+      const targetMember = await guild.members.fetch(targetUser.id).catch(() => null);
+
+      const durationSeconds = parseDurationToSeconds(durationRaw);
+      if (!durationSeconds || durationSeconds < 60) {
+        return interaction.reply({
+          content: '❌ Duração inválida! Use formatos como `30m` (minutos), `2h` (horas), `7d` (dias) ou `1mo` (meses). Mínimo: 1 minuto.',
+          ephemeral: true
+        });
+      }
+
+      const res = await moderationService.tempban(botMember, modMember, targetUser, targetMember, {
+        reason,
+        durationSeconds,
+        deleteMessageDays: days
+      });
+
+      return interaction.reply({
+        content: `⏳ **Banimento Temporário Aplicado!**\nO usuário **${targetUser.username}** foi banido até **${res.formattedExpires}**.\n**Motivo:** ${reason}`,
+        ephemeral: false
+      });
+    }
+
     if (sub === 'unban') {
       const targetId = interaction.options.getString('id_usuario', true);
       const reason = interaction.options.getString('motivo') || 'Revogação de banimento.';
 
       await moderationService.unban(guild, modMember, targetId, { reason });
+      await moderationService.cancelTempban(guild, modMember, targetId, { reason }).catch(() => {});
 
       return interaction.reply({
-        content: `✅ Banimento do usuário ID \`${targetId}\` foi revogado.`,
+        content: `✅ Banimento do usuário ID \`${targetId}\` foi revogado com sucesso.`,
         ephemeral: true
       });
     }
   }
 };
+
+function parseDurationToSeconds(str) {
+  if (!str) return null;
+  const match = String(str).trim().toLowerCase().match(/^(\d+)\s*(s|seg|segundos?|m|min|minutos?|h|hrs?|horas?|d|dias?|mo|mes|mês|meses)$/);
+  if (!match) {
+    const plainNum = parseInt(str, 10);
+    return isNaN(plainNum) ? null : plainNum * 60;
+  }
+  const val = parseInt(match[1], 10);
+  const unit = match[2];
+  if (['s', 'seg', 'segundo', 'segundos'].includes(unit)) return val;
+  if (['m', 'min', 'minuto', 'minutos'].includes(unit)) return val * 60;
+  if (['h', 'hr', 'hrs', 'hora', 'horas'].includes(unit)) return val * 3600;
+  if (['d', 'dia', 'dias'].includes(unit)) return val * 86400;
+  if (['mo', 'mes', 'mês', 'meses'].includes(unit)) return val * 2592000;
+  return val * 60;
+}

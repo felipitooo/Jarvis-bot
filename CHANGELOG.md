@@ -5,6 +5,48 @@ Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [8.0.0] - 2026-11-18
+
+### Adicionado
+- **MISSÃO OFICIAL — JARVIS V8.0.0 ULTIMATE EVOLUTION:**
+  - **Sistema Completo de Banimento Temporário (TempBan) (`src/database/repositories/moderationRepository.js`, `src/services/moderationService.js`):**
+    - Subcomando Slash `/punir tempban` com seleção de membro, motivo obrigatório e duração personalizada (`30m`, `2h`, `7d`, `1mo`).
+    - Comando de Prefixo `+tempban @usuario <duracao> <motivo>` com modal de confirmação visual e validação de hierarquia.
+    - Persistência estruturada no SQLite (`temp_bans`) com expiração em timestamp ISO, rastreamento de administrador responsável e histórico.
+    - Worker em background integrado ao agendador (`automationService.js`) que verifica a cada 15s banimentos expirados e remove o banimento no Discord com tratamento resiliente de erros.
+    - Cancelamento antecipado de banimento temporário via `/punir unban` e pelo Painel Web com motivo auditado.
+  - **Central Modular de 26 Funcionalidades com Bloqueio Real (`src/services/guildModuleService.js`):**
+    - Controle independente por servidor para 26 módulos: Inteligência Artificial, Memória da IA, Ferramentas de IA, Música & Player, Recursos de Voz, Economia, Cassino, XP & Níveis, Tickets, Moderação Manual, Proteção Automática, Sistema Social, Casamentos, Reputação, Avaliações, Quiz Arena, Sorteios, Enquetes, Boas-Vindas, Despedidas, AutoRole, Starboard, Automações & Briefings, Lembretes, Diversão e GIFs/Imagens.
+    - Interceptores físicos em tempo de execução: o desligamento de um módulo bloqueia comandos de prefixo (`prefixCommandHandler.js`), comandos slash (`interactionCreate.js`) e execução de ferramentas da IA (`toolRegistry.js`).
+  - **Inspeção Segura de Arquivos em RAM & Zero-Disk (`src/utils/safeArchiveInspector.js`, `src/utils/attachmentProcessor.js`):**
+    - Inspeção in-memory de arquivos compactados PKZIP (`.zip`, `.jar`, `.docx`, `.xlsx`) e `.rar` sem escrita no disco rígido.
+    - Proteção ativa contra Zip Bombs: detecção de taxa de descompressão abusiva (> 100:1) e teto de descompactação máxima de 25 MB.
+    - Proteção estrita contra Path Traversal: detecção e rejeição imediata de entradas perigosas com `..`.
+    - Extração inteligente de texto: suporte nativo a DOCX (`word/document.xml`), XLSX (`xl/sharedStrings.xml`), JAR (manifesto e classes) e arquivos de texto em ZIPs.
+    - Suporte ampliado a anexos: PDF, DOCX, XLSX, TXT, JSON, CSV, JavaScript, Java, ZIP, RAR, JAR, PNG, JPG, WEBP e GIF.
+  - **Pesquisa na Internet com Citações para a IA (`src/ai/tools/fridayTools.js`):**
+    - Nova ferramenta `pesquisar_web` para o Gemini consultar informações em tempo real via DuckDuckGo com formatação estruturada e citações numeradas `[1] Titulo - URL`.
+  - **Sistema Multi-Bot Manager 100% Opcional (`src/services/multiBotManager.js`):**
+    - Capacidade de hospedar bots secundários independentes sob a mesma infraestrutura Jarvis sem interferir no bot principal.
+    - Token individual sempre mascarado (`••••••••••••`), monitoramento de consumo de RAM por instância e isolamento de falhas.
+    - Distribuição flexível de funcionalidades e comandos por bot através de rotas REST dedicadas (`/api/multi-bot`).
+  - **Padronização Centralizada de Identidade Visual (`src/utils/embedFactory.js`):**
+    - Classe `EmbedFactory` unificando a identidade visual do Jarvis com paleta de alta tecnologia (`#00E5FF` Cyan, `#10B981` Emerald, `#F59E0B` Amber, `#EF4444` Crimson).
+    - Métodos para base, sucesso, erro, aviso, confirmação de ações críticas e rodapés paginados consistentes.
+  - **Painel Web Modernizado com Abas Dedicadas (`src/web/dashboardHtml.js`, `src/web/server.js`, `src/services/webPanelService.js`):**
+    - Nova Aba **Proteção Anti-Bots & Scams** (`tab-antibot`): configuração de punição (mute/kick/ban), tempo de mute, canais ignorados e regras ativas contra golpes estilo MrBeast e links falsos.
+    - Nova Aba **Banimentos Temporários** (`tab-tempbans`): tabela em tempo real com contador decrescente, motivo, administrador e botão de cancelamento imediato.
+    - Nova Aba **Resumo Inteligente** (`tab-summary`): controle de volume de mensagens (20 a 300 mensagens), exibição do resumo estruturado em Markdown e opção de publicação direta no canal do Discord.
+    - Nova Aba **Central dos 26 Módulos** (`tab-modules`): interface intuitiva com botões toggle independentes para cada um dos 26 módulos e campo de busca rápida.
+    - Nova Aba **Multi-Bot Manager** (`tab-multibot`): gerenciamento de instâncias secundárias com status, memória e ações de iniciar/parar.
+    - Nova Aba **Alertas Sociais** (`tab-alerts`): canais de YouTube, Twitch e Reddit com templates customizáveis de notificação.
+
+### Corrigido
+- **Correção Geral de Salvamentos & Resolução de HTTP 500 no Painel Web:**
+  - Eliminação definitiva de erros internos de servidor ao salvar módulos (backups, moderação, tickets, etc.) com transações seguras no SQLite e autoconexão de chaves estrangeiras.
+- **Resumo Inteligente do Chat:**
+  - Corrigido o desempacotamento de resposta do Gemini LLM (`response?.text || response`), restabelecendo resumos contextuais precisos com horário de Brasília e linha do tempo de 300 mensagens.
+
 ## [7.5.0] - 2026-11-18
 
 ### Corrigido

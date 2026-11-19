@@ -343,6 +343,7 @@ function createAppContext(customDbPath = null) {
     auditService,
     extraServices: {
       modRepo: moderationRepo,
+      moderationService,
       xpRepo,
       economyRepo,
       ticketRepo,
@@ -350,6 +351,7 @@ function createAppContext(customDbPath = null) {
       communityRepo
     }
   });
+  automationService.moderationService = moderationService;
 
   const { ApiKeyRepository } = require('./database/repositories/apiKeyRepository');
   const apiKeyRepo = new ApiKeyRepository(dbManager);
@@ -384,6 +386,16 @@ function createAppContext(customDbPath = null) {
   const llmAdapter = new GeminiAdapter({
     apiKeys: activeApiKeys,
     model: activeBotConfig.ai?.model || process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite'
+  });
+
+  const { GuildModuleService } = require('./services/guildModuleService');
+  const guildModuleService = new GuildModuleService(dbManager, auditService);
+
+  const { MultiBotManager } = require('./services/multiBotManager');
+  const multiBotManager = new MultiBotManager(dbManager, {
+    createContextFn: createAppContext,
+    loadEventsFn: loadEvents,
+    auditService
   });
 
   const badgeService = new BadgeService(dbManager);
@@ -429,7 +441,9 @@ function createAppContext(customDbPath = null) {
       backupSecurityService,
       backupRepo,
       guildRepo,
-      settingsService
+      settingsService,
+      guildModuleService,
+      multiBotManager
     },
     botClient: client
   });
@@ -662,6 +676,8 @@ function createAppContext(customDbPath = null) {
     predictionService,
     gossipService,
     socialAlertService,
+    guildModuleService,
+    multiBotManager,
     webServer,
     llmAdapter,
     toolRegistry,

@@ -247,6 +247,151 @@ class ModerationService {
     return { status: 'sucesso', punishment };
   }
 
+  // ==========================================
+  // 4.1 Temporary Ban (TempBan)
+  // ==========================================
+
+  async tempban(botMember, modMember, targetUser, targetMember = null, { reason = 'Banimento temporário.', durationSeconds = 3600, evidenceUrl = null, deleteMessageDays = 0 }) {
+    if (targetMember) {
+      this.hierarchy.enforceHierarchy(botMember, modMember, targetMember, 'banir temporariamente');
+    }
+
+    const guild = botMember.guild;
+    const durationSec = Math.max(60, Number(durationSeconds) || 3600);
+    const expiresAtDate = new Date(Date.now() + durationSec * 1000);
+    const expiresAt = expiresAtDate.toISOString();
+
+    const formattedExpires = expiresAtDate.toLocaleString('pt-BR', {
+      timeZone: 'America/Sao_Paulo',
+      dateStyle: 'short',
+      timeStyle: 'short'
+    });
+
+    await this._sendDmNotification(
+      targetUser,
+      guild,
+      `Banimento Temporário (Expira em: ${formattedExpires})`,
+      reason,
+      durationSec
+    );
+
+    if (guild.bans && typeof guild.bans.create === 'function') {
+      await guild.bans.create(targetUser.id, {
+        reason: `[TempBan até ${formattedExpires}] ${reason}`,
+        deleteMessageSeconds: Math.min(7, Math.max(0, deleteMessageDays)) * 86400
+      });
+    }
+
+    const punishment = this.modRepo.createPunishment({
+      guildId: guild.id,
+      targetId: targetUser.id,
+      actorId: modMember.id,
+      type: 'TEMPBAN',
+      reason,
+      durationSeconds: durationSec,
+      evidenceUrl,
+      expiresAt
+    });
+
+    const tempBan = this.modRepo.createTempBan({
+      guildId: guild.id,
+      userId: targetUser.id,
+      moderatorId: modMember.id,
+      reason,
+      durationSeconds: durationSec,
+      expiresAt
+    });
+
+    if (this.auditService) {
+      this.auditService.logAction({
+        guildId: guild.id,
+        actorId: modMember.id,
+        action: 'MEMBER_TEMPBANNED',
+        targetId: targetUser.id,
+        details: { reason, durationSeconds: durationSec, expiresAt, formattedExpires }
+      });
+    }
+
+    if (this.logDispatcher) {
+      await this.logDispatcher.logPunishment(guild, punishment, targetUser, modMember.user || modMember);
+    }
+
+    return { status: 'sucesso', punishment, tempBan, expiresAt, formattedExpires };
+  }
+
+  async cancelTempban(guild, modMember, targetUserId, { reason = 'Cancelamento de banimento temporário por moderador.' } = {}) {
+    if (guild.bans && typeof guild.bans.remove === 'function') {
+      await guild.bans.remove(targetUserId, reason).catch(() => {});
+    }
+
+    const cancelled = this.modRepo.cancelTempBan(guild.id, targetUserId, reason);
+
+    const punishment = this.modRepo.createPunishment({
+      guildId: guild.id,
+      targetId: targetUserId,
+      actorId: modMember?.id || 'SYSTEM',
+      type: 'UNBAN',
+      reason: `[TempBan Cancelado] ${reason}`
+    });
+
+    if (this.auditService) {
+      this.auditService.logAction({
+        guildId: guild.id,
+        actorId: modMember?.id || 'SYSTEM',
+        action: 'MEMBER_TEMPBAN_CANCELLED',
+        targetId: targetUserId,
+        details: { reason }
+      });
+    }
+
+    return { status: 'sucesso', cancelled, punishment };
+  }
+
+  async processExpiredTempBans(client) {
+    if (!client) return { processed: 0, errors: 0 };
+    const expiredList = this.modRepo.getExpiredActiveTempBans();
+    let processed = 0;
+    let errors = 0;
+
+    for (const ban of expiredList) {
+      try {
+        const guild = client.guilds?.cache?.get(ban.guild_id);
+        if (guild && guild.bans && typeof guild.bans.remove === 'function') {
+          await guild.bans.remove(ban.user_id, 'Banimento temporário expirado automaticamente.').catch(err => {
+            // Error 10026: Unknown Ban (user may have been manually unbanned)
+            modLogger.warn(`Notice while unbanning expired tempban user ${ban.user_id} in guild ${ban.guild_id}: ${err.message}`);
+          });
+        }
+
+        this.modRepo.deactivateTempBan(ban.id, 'Banimento temporário expirado e removido com sucesso.');
+
+        this.modRepo.createPunishment({
+          guildId: ban.guild_id,
+          targetId: ban.user_id,
+          actorId: 'AUTO_MOD_WORKER',
+          type: 'UNBAN',
+          reason: 'Expiração automática de banimento temporário (TempBan).'
+        });
+
+        if (this.auditService) {
+          this.auditService.logAction({
+            guildId: ban.guild_id,
+            actorId: 'AUTO_MOD_WORKER',
+            action: 'MEMBER_TEMPBAN_EXPIRED',
+            targetId: ban.user_id,
+            details: { tempBanId: ban.id, originalReason: ban.reason }
+          });
+        }
+        processed++;
+      } catch (err) {
+        errors++;
+        modLogger.error(`Error processing expired tempban #${ban.id}: ${err.message}`);
+      }
+    }
+
+    return { processed, errors };
+  }
+
   async unban(guild, modMember, targetUserId, { reason = 'Revogação de banimento.' }) {
     if (guild.bans && typeof guild.bans.remove === 'function') {
       await guild.bans.remove(targetUserId, reason);

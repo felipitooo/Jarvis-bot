@@ -94,6 +94,17 @@ class ToolRegistry {
     // 1. Validate parameters
     this.validateArgs(tool, args);
 
+    // 1.5 Modular system check (is module active for this guild?)
+    const guildId = context.guildId || context.guild?.id;
+    if (guildId && context.guildModuleService) {
+      const toolCheck = context.guildModuleService.checkToolAllowed(guildId, name);
+      if (!toolCheck.allowed) {
+        throw new PermissionDeniedError(
+          `A ferramenta "${name}" não pôde ser executada porque o módulo correspondente (${toolCheck.moduleKey}) está desativado neste servidor.`
+        );
+      }
+    }
+
     // 2. Permission check
     if (tool.requiredPermission && context.member && context.permissionService) {
       const hasPerm = context.permissionService.hasPermission(context.member, tool.requiredPermission);

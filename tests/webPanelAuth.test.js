@@ -112,7 +112,7 @@ describe('Web Panel, OAuth2 Authentication & Server Authorization (Etapa 9)', ()
     assert.equal(res.headers['x-content-type-options'], 'nosniff');
     assert.equal(res.headers['x-frame-options'], 'DENY');
     assert.ok(res.headers['strict-transport-security']);
-    assert.ok(typeof res.body === 'string' && res.body.includes('Cell — Painel de Controle'));
+    assert.ok(typeof res.body === 'string' && (res.body.includes('Painel de Controle') || res.body.includes('J.A.R.V.I.S.')));
   });
 
   test('OAuth2 session creation and CSRF validation', () => {
