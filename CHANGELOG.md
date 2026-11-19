@@ -5,6 +5,57 @@ Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [8.5.0] - 2026-11-18
+
+### Adicionado
+- **OPERAÇÃO DE CORREÇÃO TOTAL — JARVIS V8.5.0 (Auditoria, Persistência Real, Isolamento Multi-Bot & Testes com Discord Mock):**
+  - **Migração SQLite `034_multi_bot_isolated_configs_and_summaries.sql`:**
+    - Tabela `bot_instance_configs`: armazena em formato estruturado as 18 seções independentes de configuração para cada instância cadastrada no Multi-Bot Manager (`bot_id` PK).
+    - Tabela `bot_instance_memories`: banco de memória de IA isolado por instância (`bot_id`, `guild_id`, `scope`, `subject_id`, `memory_key`, `memory_value`).
+    - Tabela `bot_instance_logs`: histórico persistente de logs operacionais e erros isolado por instância (`bot_id`).
+    - Tabela `channel_summaries`: histórico persistente de todos os resumos inteligentes de chat gerados (`guild_id`, `channel_id`, `message_count`, `summary_text`, `participants_json`, `triggered_by`).
+  - **Página Administrativa Individual de 18 Seções por Instância Multi-Bot (`src/services/multiBotManager.js`, `src/web/server.js`, `src/web/dashboardHtml.js`):**
+    - Ao clicar em qualquer bot no Multi-Bot Manager, abre uma central administrativa dedicada exclusivamente àquela instância com 18 seções completas e persistentes no SQLite:
+      1. Visão geral (Identidade, Prefixo, Notas)
+      2. Status e presença (Online/Idle/DND, Tipo e Texto de atividade)
+      3. Módulos (Ativação individual dos 26 módulos exclusivos da instância)
+      4. Inteligência artificial (Modelo Gemini, Temperatura, Personalidade, Prompt customizado)
+      5. Memória (Política de retenção + CRUD de memórias isoladas por `bot_id`)
+      6. Comandos (Toggles e aliases personalizados por instância)
+      7. Moderação (Anti-Spam, Anti-Links, Anti-Bot Scam, Canal de log)
+      8. Economia e XP (Moeda, Recompensa diária, Taxa de XP)
+      9. Música (Volume padrão, DJ Role, Limite de fila, Auto-leave)
+      10. Tickets (Categoria, Cargo de suporte, Limite por usuário, Transcript)
+      11. Sistemas sociais (Casamentos, Reputação, Avaliações, Aniversários)
+      12. Automações (Briefing diário, Lembretes, Limpeza automática)
+      13. Embeds e imagens (Tema Stark, Cor primária, Rodapé customizado)
+      14. Permissões (Cargos Admin/Mod, Bypass de dono, Canais bloqueados)
+      15. Integrações (Webhooks, Alertas YouTube/Twitch/Reddit, Pesquisa Web)
+      16. Banco de dados (Namespace SQLite isolado, contadores de registros da instância)
+      17. Logs e erros (Visualização e limpeza de eventos/erros exclusivos da instância)
+      18. Configurações avançadas (Rate limit, Timeout de comandos, Debug mode, Exclusão segura)
+    - Isolamento lógico absoluto: alterações feitas no Bot A jamais afetam o Bot B ou o bot principal.
+  - **Fonte Única de Verdade para o Sistema de 26 Módulos (`src/services/guildModuleService.js`):**
+    - Catálogo único com metadados completos para todos os 26 módulos: `id`, `name`, `description`, `category`, `dependencies`, `requiredPermissions`, `commands`, `events`, `automations`, `configTab`, `healthStatus` e `errorLog`.
+    - Validação de dependências (`validateDependencies`): ativar um módulo com dependências ativa automaticamente seus pré-requisitos (ou bloqueia no modo estrito); desativar um módulo base desativa em cascata os módulos dependentes para evitar estados inconsistentes.
+    - Bloqueio físico completo em tempo de execução: comandos (`checkCommandAllowed`), ferramentas de IA (`checkToolAllowed`), eventos do Discord (`checkEventAllowed` integrado em `messageCreate.js`, `guildMemberAdd.js`, `guildMemberRemove.js`, `messageReactionAdd.js`, `communityService.js`) e rotinas automáticas (`checkAutomationAllowed` integrado em `automationService.js`).
+    - Preservação integral de dados no SQLite ao desativar e reativar módulos.
+  - **Suíte Automatizada com Discord Mock & Teste de Persistência (`tests/discordMockAndPersistence.test.js`):**
+    - Simulador completo de Guilds, Canais, Membros, Mensagens e Eventos sem necessidade de servidor Discord real conectado.
+    - 9 testes automatizados cobrindo isolamento Bot A vs Bot B após restart, ciclo completo dos 26 módulos, bloqueio de eventos/comandos, preservação de dados, resumo inteligente factual e persistência de todas as abas após F5.
+
+### Corrigido
+- **Persistência Completa no Painel Web após Atualização de Página (F5) e Reinício do Servidor:**
+  - Corrigida a ordem de inicialização no `src/web/dashboardHtml.js` onde `restoreInitialTab()` era invocada antes da definição de `loadTempbans`, `loadGuildModules` e `loadMultiBotInstances`, e adicionados gatilhos automáticos de carregamento em `switchTab()`.
+  - Corrigida a divergência camelCase vs snake_case (`antiBotScamEnabled` vs `anti_bot_scam_enabled` em `webPanelService.js`, e `sourceId` vs `source_id` em `socialAlertRepository.js`), garantindo que a Proteção Anti-Bot Scam e os Alertas Sociais permaneçam preenchidos ao atualizar a página com F5.
+  - Removidas as caixas de seleção de módulos duplicadas da aba `Configurações Gerais`, mantendo todos os 26 módulos centralizados na aba `Central de Módulos` com atalhos diretos para suas respectivas abas de configuração.
+- **Resumo Inteligente do Chat & Fallback Automático de Modelo Gemini (`src/services/gossipService.js`, `src/ai/adapters/geminiAdapter.js`, `src/services/webPanelService.js`):**
+  - Corrigido o retorno da rota `/api/guilds/:id/chat-summary` (`summary: text`) e removido o listener duplicado de `#generateSummaryBtn` que exibia falso erro no painel.
+  - Adicionado fallback automático no `GeminiAdapter` para os modelos `gemini-2.5-flash` -> `gemini-2.0-flash` -> `gemini-1.5-flash` caso o modelo configurado retorne HTTP 404 na API Google v1beta.
+  - Aprimorado o motor extrativo de resumo (`_generateMockSummary`) para extrair participantes reais, fatos, números, declarações e linha do tempo com data e horário de Brasília (`America/Sao_Paulo`), salvando cada resumo gerado na tabela `channel_summaries`.
+- **Backup de Servidor (`src/services/backupSecurityService.js`):**
+  - Corrigido `TypeError: Cannot read properties of undefined (reading 'bitfield')` ao criar snapshot de cargos e canais com permissões simplificadas.
+
 ## [8.0.0] - 2026-11-18
 
 ### Adicionado

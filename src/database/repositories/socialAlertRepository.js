@@ -81,13 +81,18 @@ class SocialAlertRepository {
     return {
       id: row.id,
       guildId: row.guild_id,
+      guild_id: row.guild_id,
       platform: row.platform,
       sourceId: row.source_id,
+      source_id: row.source_id,
       channelTargetId: row.channel_target_id,
+      channel_target_id: row.channel_target_id,
       customMessage: row.custom_message,
+      custom_message: row.custom_message,
       lastNotifiedId: row.last_notified_id,
       isActive: Boolean(row.is_active),
-      createdAt: row.created_at
+      createdAt: row.created_at,
+      created_at: row.created_at
     };
   }
 }

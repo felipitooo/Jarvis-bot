@@ -31,6 +31,8 @@ class GeminiAdapter extends LLMAdapter {
     this.currentKeyIndex = 0;
     this.keyCooldowns = new Map();
     this.model = options.model || process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
+    this._activeApiModel = null;
+    this._fallbackModels = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
     this.timeoutMs = options.timeoutMs || 15000;
     this.maxRetries = options.maxRetries || 3;
     this.maxPromptChars = options.maxPromptChars || 16000;
@@ -209,13 +211,14 @@ class GeminiAdapter extends LLMAdapter {
   /**
    * Internal HTTP call to Gemini generateContent with automatic key failover rotation & timeout.
    */
-  async _callApi(payload, attempt = 1) {
+  async _callApi(payload, attempt = 1, fallbackModelIdx = -1) {
     const key = this.getActiveApiKey();
     if (!key) {
       throw new Error('GEMINI_API_KEY is not configured.');
     }
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${key}`;
+    const effectiveModel = this._activeApiModel || this.model;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${effectiveModel}:generateContent?key=${key}`;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
     const apiStartTime = Date.now();
@@ -232,6 +235,16 @@ class GeminiAdapter extends LLMAdapter {
 
       if (!response.ok) {
         const errorText = await response.text().catch(() => '');
+
+        // Automatic model fallback if configured model returns 404 NOT_FOUND on Google's API
+        if (response.status === 404 && this._fallbackModels && fallbackModelIdx + 1 < this._fallbackModels.length) {
+          const nextIdx = fallbackModelIdx + 1;
+          const nextModel = this._fallbackModels[nextIdx];
+          this._activeApiModel = nextModel;
+          aiLogger.warn(`Gemini model "${effectiveModel}" returned 404. Automatically falling back to "${nextModel}"...`);
+          return this._callApi(payload, attempt, nextIdx);
+        }
+
         const isQuotaOrLimit = response.status === 429 ||
           errorText.includes('RESOURCE_EXHAUSTED') ||
           errorText.includes('quota') ||

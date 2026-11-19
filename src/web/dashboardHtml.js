@@ -6509,6 +6509,32 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           </div>
           <div id="summaryResultArea" style="min-height: 280px; max-height: 480px; overflow-y: auto; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 1rem; font-size: 0.86rem; line-height: 1.6; white-space: pre-wrap; color: #e2e8f0;">Selecione um canal e clique em "Gerar Resumo Agora" para iniciar o processamento contextual das conversas.</div>
         </div>
+
+        <div class="card" style="grid-column: 1 / -1;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+            <div>
+              <h3 style="margin: 0;">🗂️ Histórico de Resumos Persistidos no Banco (SQLite)</h3>
+              <p style="margin: 0.2rem 0 0 0; font-size: 0.8rem; color: var(--text-muted);">Todos os resumos gerados ficam salvos permanentemente no banco de dados e podem ser consultados a qualquer momento.</p>
+            </div>
+          </div>
+          <div style="overflow-x: auto;">
+            <table class="data-table" style="width: 100%;">
+              <thead>
+                <tr>
+                  <th>Data / Hora</th>
+                  <th>Canal</th>
+                  <th>Tipo</th>
+                  <th>Mensagens</th>
+                  <th>Participantes</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="savedSummariesTableBody">
+                <tr><td colspan="6" style="text-align: center; padding: 1.25rem; color: var(--text-muted);">Nenhum resumo salvo ainda neste servidor.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -6518,10 +6544,10 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
           <div>
             <h2 style="margin: 0 0 0.4rem 0; display: flex; align-items: center; gap: 0.5rem; color: #34d399;">
-              <span>🧩</span> Central de Gerenciamento Modular (26 Módulos)
+              <span>🧩</span> Central de Gerenciamento Modular (Fonte Única — 26 Módulos)
             </h2>
             <p style="margin: 0; color: var(--text-muted); font-size: 0.88rem;">
-              Ative ou desative cada funcionalidade individualmente para este servidor. Desativar um módulo bloqueia comandos, eventos e ferramentas correspondentes em tempo real.
+              Ative ou desative cada funcionalidade individualmente para este servidor. Desativar um módulo bloqueia comandos, eventos, ferramentas de IA e tarefas automáticas em tempo real, preservando todos os seus dados salvos.
             </p>
           </div>
           <button class="primary-btn" id="saveModulesBtn" style="background: linear-gradient(135deg, #10b981, #059669); font-weight: 700;">
@@ -6532,84 +6558,720 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
 
       <div class="card" style="margin-bottom: 1rem;">
         <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; justify-content: space-between;">
-          <input type="text" id="moduleSearchInput" placeholder="🔍 Filtrar módulos por nome ou categoria..." style="flex: 1; min-width: 260px; padding: 0.6rem 1rem; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #fff;">
+          <input type="text" id="moduleSearchInput" placeholder="🔍 Filtrar módulos por nome, ID, comando ou categoria..." style="flex: 1; min-width: 260px; padding: 0.6rem 1rem; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #fff;">
           <div style="display: flex; gap: 0.5rem;">
-            <button class="nav-switch-btn" id="enableAllModulesBtn">Ativar Todos</button>
-            <button class="nav-switch-btn" id="disableAllModulesBtn">Desativar Todos</button>
+            <button class="nav-switch-btn" id="enableAllModulesBtn">✅ Ativar Todos</button>
+            <button class="nav-switch-btn" id="disableAllModulesBtn">🚫 Desativar Todos</button>
           </div>
         </div>
       </div>
 
-      <div id="modulesGridContainer" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 1rem;">
+      <div id="modulesGridContainer" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 1rem;">
         <!-- Filled dynamically by JavaScript -->
       </div>
     </div>
 
-    <!-- TAB: MULTI-BOT MANAGER -->
+    <!-- TAB: MULTI-BOT MANAGER & PÁGINA ADMINISTRATIVA INDIVIDUAL POR BOT -->
     <div id="tab-multibot" class="tab-content">
-      <div class="card" style="margin-bottom: 1.5rem; background: linear-gradient(135deg, rgba(168, 85, 247, 0.12), rgba(147, 51, 234, 0.08)); border: 1px solid rgba(168, 85, 247, 0.3);">
-        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
-          <div>
-            <h2 style="margin: 0 0 0.4rem 0; display: flex; align-items: center; gap: 0.5rem; color: #c084fc;">
-              <span>🤖</span> Multi-Bot Manager (Instâncias Independentes)
-            </h2>
-            <p style="margin: 0; color: var(--text-muted); font-size: 0.88rem;">
-              Hospede múltiplos bots na mesma infraestrutura com isolamento de falhas, tokens próprios e distribuição granular de módulos.
-            </p>
+      <!-- VIEW 1: LISTA E CADASTRO DE INSTÂNCIAS -->
+      <div id="multiBotListView">
+        <div class="card" style="margin-bottom: 1.5rem; background: linear-gradient(135deg, rgba(168, 85, 247, 0.12), rgba(147, 51, 234, 0.08)); border: 1px solid rgba(168, 85, 247, 0.3);">
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+            <div>
+              <h2 style="margin: 0 0 0.4rem 0; display: flex; align-items: center; gap: 0.5rem; color: #c084fc;">
+                <span>🤖</span> Multi-Bot Manager (Instâncias Independentes & Isoladas)
+              </h2>
+              <p style="margin: 0; color: var(--text-muted); font-size: 0.88rem;">
+                Hospede múltiplos bots na mesma infraestrutura com página administrativa própria, banco lógico isolado, tokens protegidos e distribuição independente de módulos.
+              </p>
+            </div>
+            <button class="primary-btn" id="refreshMultiBotBtn" style="background: linear-gradient(135deg, #a855f7, #9333ea);">
+              🔄 Atualizar Instâncias
+            </button>
           </div>
-          <button class="primary-btn" id="refreshMultiBotBtn" style="background: linear-gradient(135deg, #a855f7, #9333ea);">
-            🔄 Atualizar Instâncias
-          </button>
+        </div>
+
+        <div class="grid">
+          <div class="card">
+            <h3>➕ Adicionar Nova Instância de Bot</h3>
+            <div class="form-group">
+              <label>Nome do Bot / Identidade</label>
+              <input type="text" id="newBotName" placeholder="Ex: Jarvis Moderação, FRIDAY ou Veronica">
+            </div>
+            <div class="form-group">
+              <label>Token do Discord</label>
+              <input type="password" id="newBotToken" placeholder="Insira o Token do Bot do Discord Developer Portal">
+              <small style="color: var(--text-subtle); font-size: 0.74rem;">O token é validado, persistido no SQLite e mascarado (nunca exposto em texto aberto).</small>
+            </div>
+            <button class="primary-btn" id="createMultiBotBtn" style="width: 100%; margin-top: 1rem; background: linear-gradient(135deg, #a855f7, #9333ea); font-weight: 700;">
+              🚀 Cadastrar Instância
+            </button>
+          </div>
+
+          <div class="card">
+            <h3>📌 Administração Individual por Instância</h3>
+            <p style="font-size: 0.85rem; color: #949ba4;">
+              Clique em <strong>"⚙️ Gerenciar Bot"</strong> em qualquer instância abaixo para abrir sua <strong>Página Administrativa Exclusiva</strong> com 18 seções isoladas:
+            </p>
+            <ul style="font-size: 0.81rem; color: #cbd5e1; line-height: 1.55; padding-left: 1.2rem;">
+              <li><strong>Isolamento Total:</strong> Alterar configurações, IA, economia ou módulos no Bot A jamais afeta o Bot B ou o Bot Principal.</li>
+              <li><strong>18 Seções Dedicadas:</strong> Visão Geral, Presença, 26 Módulos, IA, Memórias, Comandos, Moderação, Economia/XP, Música, Tickets, Social, Automações, Embeds, Permissões, Integrações, Banco, Logs e Avançado.</li>
+            </ul>
+          </div>
+
+          <div class="card" style="grid-column: 1 / -1;">
+            <h3>📋 Instâncias Cadastradas no Sistema</h3>
+            <div style="overflow-x: auto; margin-top: 1rem;">
+              <table class="data-table" style="width: 100%;">
+                <thead>
+                  <tr>
+                    <th>Status</th>
+                    <th>Nome da Instância</th>
+                    <th>Token Protegido</th>
+                    <th>Módulos Ativos</th>
+                    <th>Memória RAM</th>
+                    <th>Ações & Administração</th>
+                  </tr>
+                </thead>
+                <tbody id="multiBotTableBody">
+                  <tr><td colspan="6" style="text-align: center; padding: 1.5rem; color: var(--text-muted);">Nenhuma instância secundária cadastrada. O bot principal continua operando normalmente.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="grid">
-        <div class="card">
-          <h3>➕ Adicionar Nova Instância de Bot</h3>
-          <div class="form-group">
-            <label>Nome do Bot / Apelido</label>
-            <input type="text" id="newBotName" placeholder="Ex: Jarvis Moderação ou Sexta-Feira">
+      <!-- VIEW 2: PÁGINA ADMINISTRATIVA INDIVIDUAL DO BOT (18 SEÇÕES ORGANIZADAS) -->
+      <div id="multiBotInstanceAdminView" style="display: none;">
+        <!-- Top Bar da Instância -->
+        <div class="card" style="margin-bottom: 1.25rem; background: linear-gradient(135deg, rgba(168, 85, 247, 0.16), rgba(56, 189, 248, 0.1)); border: 1px solid rgba(168, 85, 247, 0.4);">
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+            <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+              <button type="button" class="secondary-btn" id="mbBackToListBtn" style="padding: 0.5rem 0.9rem; font-weight: 700;">
+                ← Voltar às Instâncias
+              </button>
+              <div>
+                <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+                  <h2 id="mbAdminHeaderName" style="margin: 0; color: #f8fafc; font-size: 1.3rem;">Bot Instance</h2>
+                  <span id="mbAdminHeaderStatus" class="badge" style="background: rgba(148, 163, 184, 0.2); color: #cbd5e1;">STOPPED</span>
+                  <code id="mbAdminHeaderId" style="font-size: 0.75rem; background: rgba(0,0,0,0.35); padding: 2px 8px; border-radius: 4px; color: #c084fc;">bot_id</code>
+                </div>
+                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
+                  Token: <code id="mbAdminHeaderToken">••••••••••••</code> • Namespace Isolado: <code id="mbAdminHeaderNamespace">tenant_bot</code>
+                </div>
+              </div>
+            </div>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+              <button type="button" class="secondary-btn" id="mbAdminStartBtn" style="border-color: #10B981; color: #10B981;">▶️ Iniciar</button>
+              <button type="button" class="secondary-btn" id="mbAdminStopBtn" style="border-color: #F59E0B; color: #F59E0B;">⏹️ Parar</button>
+              <button type="button" class="secondary-btn" id="mbAdminRestartBtn">🔄 Reiniciar</button>
+              <button type="button" class="primary-btn" id="mbAdminSaveAllBtn" style="background: linear-gradient(135deg, #10b981, #059669); font-weight: 700; padding: 0.55rem 1.25rem;">
+                💾 Salvar Configurações deste Bot
+              </button>
+            </div>
           </div>
-          <div class="form-group">
-            <label>Token do Discord</label>
-            <input type="password" id="newBotToken" placeholder="Insira o Token do Bot do Discord Developer Portal">
-            <small style="color: var(--text-subtle); font-size: 0.74rem;">O token é armazenado com proteção e nunca é exposto publicamente.</small>
-          </div>
-          <button class="primary-btn" id="createMultiBotBtn" style="width: 100%; margin-top: 1rem; background: linear-gradient(135deg, #a855f7, #9333ea); font-weight: 700;">
-            🚀 Cadastrar Instância
-          </button>
         </div>
 
-        <div class="card">
-          <h3>📌 Como Distribuir Módulos</h3>
-          <p style="font-size: 0.85rem; color: #949ba4;">
-            Você pode criar uma equipe de bots especializados dividindo as cargas de trabalho:
-          </p>
-          <ul style="font-size: 0.82rem; color: #cbd5e1; line-height: 1.6; padding-left: 1.2rem;">
-            <li><strong>Bot Principal (Jarvis):</strong> Inteligência artificial, conversas, memória e ferramentas.</li>
-            <li><strong>Bot Secundário:</strong> Moderação manual, anti-spam, tempbans e tickets.</li>
-            <li><strong>Bot de Mídia:</strong> Player de música, rádio e reprodução de voz 24/7.</li>
-          </ul>
+        <!-- Menu de Navegação das 18 Seções da Instância -->
+        <div class="card" style="margin-bottom: 1.25rem; padding: 0.75rem;">
+          <div id="mbSubtabsNav" style="display: flex; flex-wrap: wrap; gap: 0.4rem;">
+            <button type="button" class="secondary-btn mb-subtab-btn active" data-mb-sec="mb-sec-overview" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">1. Visão Geral</button>
+            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-presence" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">2. Status & Presença</button>
+            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-modules" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">3. Módulos (26)</button>
+            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-ai" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">4. Inteligência Artificial</button>
+            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-memory" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">5. Memória</button>
+            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-commands" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">6. Comandos</button>
+            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-moderation" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">7. Moderação</button>
+            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-economy" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">8. Economia & XP</button>
+            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-music" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">9. Música</button>
+            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-tickets" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">10. Tickets</button>
+            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-social" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">11. Sistemas Sociais</button>
+            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-automations" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">12. Automações</button>
+            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-embeds" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">13. Embeds & Imagens</button>
+            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-permissions" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">14. Permissões</button>
+            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-integrations" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">15. Integrações</button>
+            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-database" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">16. Banco de Dados</button>
+            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-logs" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">17. Logs & Erros</button>
+            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-advanced" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">18. Avançado</button>
+          </div>
         </div>
 
-        <div class="card" style="grid-column: 1 / -1;">
-          <h3>📋 Instâncias Configuradas</h3>
-          <div style="overflow-x: auto; margin-top: 1rem;">
-            <table class="data-table" style="width: 100%;">
-              <thead>
-                <tr>
-                  <th>Status</th>
-                  <th>Nome</th>
-                  <th>Token Protegido</th>
-                  <th>Memória RAM</th>
-                  <th>Tempo Online</th>
-                  <th>Ações</th>
-                </tr>
-              </thead>
-              <tbody id="multiBotTableBody">
-                <tr><td colspan="6" style="text-align: center; padding: 1.5rem; color: var(--text-muted);">Nenhuma instância secundária cadastrada. O bot principal continua operando normalmente.</td></tr>
-              </tbody>
-            </table>
+        <!-- SEÇÃO 1: VISÃO GERAL -->
+        <div id="mb-sec-overview" class="mb-admin-section">
+          <div class="grid">
+            <div class="card">
+              <h3>🏠 Identificação & Credenciais da Instância</h3>
+              <div class="form-group">
+                <label>Nome Oficial desta Instância</label>
+                <input type="text" id="mbCfgName" placeholder="Ex: Jarvis Security">
+              </div>
+              <div class="form-group">
+                <label>Substituir Token Discord (Opcional — deixe em branco para manter o atual)</label>
+                <input type="password" id="mbCfgToken" placeholder="Mantendo token atual protegido (••••••••••••)">
+              </div>
+              <div class="form-group">
+                <label>Inicialização Automática com o Sistema</label>
+                <select id="mbCfgEnabled">
+                  <option value="true">🟢 Habilitada (Iniciar junto com o servidor)</option>
+                  <option value="false">🔴 Desabilitada (Apenas manual)</option>
+                </select>
+              </div>
+            </div>
+            <div class="card">
+              <h3>📊 Telemetria Isolada da Instância</h3>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                <div style="background: rgba(0,0,0,0.25); padding: 0.85rem; border-radius: 8px;">
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">Módulos Ativos</div>
+                  <div id="mbStatActiveModules" style="font-size: 1.25rem; font-weight: 700; color: #10B981;">26 / 26</div>
+                </div>
+                <div style="background: rgba(0,0,0,0.25); padding: 0.85rem; border-radius: 8px;">
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">Consumo RAM</div>
+                  <div id="mbStatRam" style="font-size: 1.25rem; font-weight: 700; color: #38bdf8;">0 MB</div>
+                </div>
+                <div style="background: rgba(0,0,0,0.25); padding: 0.85rem; border-radius: 8px;">
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">Memórias Isoladas</div>
+                  <div id="mbStatMemories" style="font-size: 1.25rem; font-weight: 700; color: #c084fc;">0</div>
+                </div>
+                <div style="background: rgba(0,0,0,0.25); padding: 0.85rem; border-radius: 8px;">
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">Eventos no Log</div>
+                  <div id="mbStatLogs" style="font-size: 1.25rem; font-weight: 700; color: #fbbf24;">0</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SEÇÃO 2: STATUS E PRESENÇA -->
+        <div id="mb-sec-presence" class="mb-admin-section" style="display: none;">
+          <div class="card">
+            <h3>🟢 Status & Presença Individual no Discord</h3>
+            <p style="font-size: 0.84rem; color: var(--text-muted);">Configure o status e recado exibidos exclusivamente no perfil desta instância.</p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+              <div class="form-group">
+                <label>Status de Conexão</label>
+                <select id="mbCfgPresenceStatus">
+                  <option value="online">🟢 Online</option>
+                  <option value="idle">🟡 Ausente (Idle)</option>
+                  <option value="dnd">🔴 Não Perturbe (DND)</option>
+                  <option value="invisible">⚪ Invisível</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Tipo de Atividade</label>
+                <select id="mbCfgPresenceType">
+                  <option value="Custom">💬 Personalizado</option>
+                  <option value="Playing">🎮 Jogando</option>
+                  <option value="Listening">🎧 Ouvindo</option>
+                  <option value="Watching">📺 Assistindo</option>
+                  <option value="Competing">🏆 Competindo</option>
+                  <option value="Streaming">🔴 Transmitindo</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Frase de Atividade</label>
+                <input type="text" id="mbCfgPresenceText" placeholder="Ex: Protegendo o Servidor | +ajuda">
+              </div>
+              <div class="form-group">
+                <label>URL de Transmissão (Opcional)</label>
+                <input type="text" id="mbCfgPresenceUrl" placeholder="https://twitch.tv/...">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SEÇÃO 3: MÓDULOS DA INSTÂNCIA (26 MÓDULOS) -->
+        <div id="mb-sec-modules" class="mb-admin-section" style="display: none;">
+          <div class="card" style="margin-bottom: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+              <div>
+                <h3 style="margin: 0;">🧩 Distribuição de Módulos desta Instância (26 Módulos Reais)</h3>
+                <p style="margin: 0.25rem 0 0 0; font-size: 0.82rem; color: var(--text-muted);">Escolha quais módulos esta instância executará. As configurações desta instância são 100% independentes dos demais bots.</p>
+              </div>
+              <div style="display: flex; gap: 0.5rem;">
+                <button type="button" class="secondary-btn" id="mbEnableAllModsBtn">✅ Ativar Todos</button>
+                <button type="button" class="secondary-btn" id="mbDisableAllModsBtn">🚫 Desativar Todos</button>
+              </div>
+            </div>
+          </div>
+          <div id="mbInstanceModulesGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0.85rem;"></div>
+        </div>
+
+        <!-- SEÇÃO 4: INTELIGÊNCIA ARTIFICIAL -->
+        <div id="mb-sec-ai" class="mb-admin-section" style="display: none;">
+          <div class="card">
+            <h3>🤖 Inteligência Artificial & Personalidade Própria</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem;">
+              <div class="form-group">
+                <label>Nome de Exibição da IA desta Instância</label>
+                <input type="text" id="mbCfgAiName" placeholder="Ex: FRIDAY">
+              </div>
+              <div class="form-group">
+                <label>Modelo Gemini</label>
+                <select id="mbCfgAiModel">
+                  <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite</option>
+                  <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                  <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Modo de Humor</label>
+                <select id="mbCfgAiHumor">
+                  <option value="normal">⚖️ Normal / Equilibrado</option>
+                  <option value="zoeiro">🤣 Zoeiro & Comediante</option>
+                  <option value="sarcastico">😏 Sarcástico & Debochado</option>
+                  <option value="amigavel">💖 Amigável & Acolhedor</option>
+                  <option value="sabio">🧙‍♂️ Sábio & Filosófico</option>
+                  <option value="serio">🤖 Sério & Técnico</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Temperatura / Criatividade (0.0 a 1.0)</label>
+                <input type="number" id="mbCfgAiTemp" min="0" max="1" step="0.05" value="0.65">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Papel / Função da Persona</label>
+              <input type="text" id="mbCfgAiRole" placeholder="Ex: Especialista em segurança e moderação tática.">
+            </div>
+            <div class="form-group">
+              <label>Tom de Voz</label>
+              <input type="text" id="mbCfgAiTone" placeholder="Ex: Direto, vigilante e analítico.">
+            </div>
+          </div>
+        </div>
+
+        <!-- SEÇÃO 5: MEMÓRIA ISOLADA -->
+        <div id="mb-sec-memory" class="mb-admin-section" style="display: none;">
+          <div class="grid">
+            <div class="card">
+              <h3>🧠 Gravar Memória Exclusiva nesta Instância</h3>
+              <p style="font-size: 0.82rem; color: var(--text-muted);">Fatos gravados aqui pertencem somente à memória desta instância de bot.</p>
+              <div class="form-group">
+                <label>Chave / Identificador</label>
+                <input type="text" id="mbMemKeyInput" placeholder="Ex: diretriz_principal">
+              </div>
+              <div class="form-group">
+                <label>Conteúdo da Memória</label>
+                <textarea id="mbMemValInput" rows="4" placeholder="Descreva a informação que este bot deve memorizar..."></textarea>
+              </div>
+              <button type="button" class="primary-btn" id="mbSaveMemoryBtn" style="width: 100%;">💾 Salvar Memória na Instância</button>
+            </div>
+            <div class="card">
+              <h3>📋 Memórias Ativas desta Instância</h3>
+              <div id="mbMemoriesListContainer" style="display: flex; flex-direction: column; gap: 0.6rem; max-height: 360px; overflow-y: auto;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SEÇÃO 6: COMANDOS -->
+        <div id="mb-sec-commands" class="mb-admin-section" style="display: none;">
+          <div class="card">
+            <h3>⚡ Configuração de Comandos da Instância</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem;">
+              <div class="form-group">
+                <label>Prefixo Exclusivo desta Instância</label>
+                <input type="text" id="mbCfgPrefix" placeholder="Ex: !, +, $">
+              </div>
+              <div class="form-group">
+                <label>Modo Sem Prefixo (Triggers Diretos)</label>
+                <select id="mbCfgPrefixless">
+                  <option value="false">🔴 Desativado (Exigir prefixo)</option>
+                  <option value="true">🟢 Ativado</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Comandos Bloqueados nesta Instância (Separados por vírgula)</label>
+              <input type="text" id="mbCfgDisabledCommands" placeholder="Ex: crime, slut, roubar">
+            </div>
+          </div>
+        </div>
+
+        <!-- SEÇÃO 7: MODERAÇÃO -->
+        <div id="mb-sec-moderation" class="mb-admin-section" style="display: none;">
+          <div class="card">
+            <h3>🛡️ Políticas de Moderação & Anti-Abuso da Instância</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem;">
+              <div class="form-group">
+                <label>ID do Canal de Logs Disciplinares</label>
+                <input type="text" id="mbCfgModLogChannel" placeholder="ID do canal Discord">
+              </div>
+              <div class="form-group">
+                <label>Proteção Anti-Spam</label>
+                <select id="mbCfgAntiSpam">
+                  <option value="true">🟢 Ativada</option>
+                  <option value="false">🔴 Desativada</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Máx. Mensagens por Intervalo (5s)</label>
+                <input type="number" id="mbCfgAntiSpamMax" min="2" max="30" value="5">
+              </div>
+              <div class="form-group">
+                <label>Proteção Anti-Bot / Golpes (MrBeast, Phishing)</label>
+                <select id="mbCfgAntiBotScam">
+                  <option value="true">🟢 Ativada</option>
+                  <option value="false">🔴 Desativada</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Ação Anti-Bot / Scam</label>
+                <select id="mbCfgAntiBotAction">
+                  <option value="TIMEOUT">⏱️ Timeout (Castigo)</option>
+                  <option value="KICK">👢 Kick (Expulsão)</option>
+                  <option value="BAN">🔨 Ban Permanente</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Worker de Expiração TempBan</label>
+                <select id="mbCfgTempBanWorker">
+                  <option value="true">🟢 Ativo</option>
+                  <option value="false">🔴 Inativo</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SEÇÃO 8: ECONOMIA E XP -->
+        <div id="mb-sec-economy" class="mb-admin-section" style="display: none;">
+          <div class="card">
+            <h3>💰 Parâmetros de Economia & Níveis de XP da Instância</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+              <div class="form-group">
+                <label>Nome da Moeda</label>
+                <input type="text" id="mbCfgEcoName" placeholder="StarkCoins">
+              </div>
+              <div class="form-group">
+                <label>Símbolo da Moeda</label>
+                <input type="text" id="mbCfgEcoSymbol" placeholder="🪙">
+              </div>
+              <div class="form-group">
+                <label>Recompensa Diária (+daily)</label>
+                <input type="number" id="mbCfgEcoDaily" value="500">
+              </div>
+              <div class="form-group">
+                <label>Trabalho Mínimo (+work)</label>
+                <input type="number" id="mbCfgEcoWorkMin" value="50">
+              </div>
+              <div class="form-group">
+                <label>Trabalho Máximo (+work)</label>
+                <input type="number" id="mbCfgEcoWorkMax" value="200">
+              </div>
+              <div class="form-group">
+                <label>XP Mínimo por Mensagem</label>
+                <input type="number" id="mbCfgXpMin" value="15">
+              </div>
+              <div class="form-group">
+                <label>XP Máximo por Mensagem</label>
+                <input type="number" id="mbCfgXpMax" value="25">
+              </div>
+              <div class="form-group">
+                <label>XP por Minuto em Voz</label>
+                <input type="number" id="mbCfgVoiceXp" value="10">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SEÇÃO 9: MÚSICA -->
+        <div id="mb-sec-music" class="mb-admin-section" style="display: none;">
+          <div class="card">
+            <h3>🎵 Configurações de Música & Áudio da Instância</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+              <div class="form-group">
+                <label>Volume Padrão (1 a 100%)</label>
+                <input type="number" id="mbCfgMusicVol" min="1" max="100" value="80">
+              </div>
+              <div class="form-group">
+                <label>Tamanho Máximo da Fila</label>
+                <input type="number" id="mbCfgMusicQueue" min="5" max="500" value="100">
+              </div>
+              <div class="form-group">
+                <label>Desconexão por Inatividade (Minutos)</label>
+                <input type="number" id="mbCfgMusicDisconnect" min="1" max="60" value="5">
+              </div>
+              <div class="form-group">
+                <label>ID do Cargo de DJ</label>
+                <input type="text" id="mbCfgMusicDjRole" placeholder="Livre para todos se vazio">
+              </div>
+              <div class="form-group">
+                <label>Idioma de Voz TTS</label>
+                <select id="mbCfgMusicTtsLang">
+                  <option value="pt-BR">🇧🇷 Português (pt-BR)</option>
+                  <option value="en-US">🇺🇸 Inglês (en-US)</option>
+                  <option value="es-ES">🇪🇸 Espanhol (es-ES)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SEÇÃO 10: TICKETS -->
+        <div id="mb-sec-tickets" class="mb-admin-section" style="display: none;">
+          <div class="card">
+            <h3>🎫 Central de Atendimento & Tickets da Instância</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem;">
+              <div class="form-group">
+                <label>Título do Painel de Tickets</label>
+                <input type="text" id="mbCfgTicketTitle" placeholder="🎫 Central de Atendimento">
+              </div>
+              <div class="form-group">
+                <label>Limite de Tickets Abertos por Usuário</label>
+                <input type="number" id="mbCfgTicketMax" min="1" max="10" value="1">
+              </div>
+              <div class="form-group">
+                <label>ID do Canal de Transcrições</label>
+                <input type="text" id="mbCfgTicketTranscript" placeholder="ID do canal Discord">
+              </div>
+              <div class="form-group">
+                <label>ID do Cargo da Equipe de Suporte</label>
+                <input type="text" id="mbCfgTicketRole" placeholder="ID do cargo Discord">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Descrição do Painel de Tickets</label>
+              <textarea id="mbCfgTicketDesc" rows="3"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- SEÇÃO 11: SISTEMAS SOCIAIS -->
+        <div id="mb-sec-social" class="mb-admin-section" style="display: none;">
+          <div class="card">
+            <h3>❤️ Sistemas Sociais, Casamentos & Diversão da Instância</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+              <div class="form-group">
+                <label>Sistema de Casamentos</label>
+                <select id="mbCfgSocialMarriage">
+                  <option value="true">🟢 Habilitado</option>
+                  <option value="false">🔴 Desabilitado</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Custo de Casamento (Moedas)</label>
+                <input type="number" id="mbCfgSocialCost" min="0" value="5000">
+              </div>
+              <div class="form-group">
+                <label>Comandos de Ship & Afeto</label>
+                <select id="mbCfgSocialShip">
+                  <option value="true">🟢 Habilitados</option>
+                  <option value="false">🔴 Desabilitados</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Comandos de Diversão & GIFs</label>
+                <select id="mbCfgSocialFun">
+                  <option value="true">🟢 Habilitados</option>
+                  <option value="false">🔴 Desabilitados</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SEÇÃO 12: AUTOMAÇÕES -->
+        <div id="mb-sec-automations" class="mb-admin-section" style="display: none;">
+          <div class="card">
+            <h3>⏱️ Automações, Briefings & Lembretes da Instância</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+              <div class="form-group">
+                <label>Briefing Diário Automático</label>
+                <select id="mbCfgAutoBriefing">
+                  <option value="false">🔴 Desativado</option>
+                  <option value="true">🟢 Ativado</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Horário de Disparo (Hora UTC 0-23)</label>
+                <input type="number" id="mbCfgAutoHour" min="0" max="23" value="18">
+              </div>
+              <div class="form-group">
+                <label>Worker de Lembretes (+lembrete)</label>
+                <select id="mbCfgAutoReminders">
+                  <option value="true">🟢 Ativo</option>
+                  <option value="false">🔴 Inativo</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Monitoramento de Alertas Sociais</label>
+                <select id="mbCfgAutoAlerts">
+                  <option value="true">🟢 Ativo</option>
+                  <option value="false">🔴 Inativo</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SEÇÃO 13: EMBEDS E IMAGENS -->
+        <div id="mb-sec-embeds" class="mb-admin-section" style="display: none;">
+          <div class="card">
+            <h3>🎨 Identidade Visual de Embeds & Cartões da Instância</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+              <div class="form-group">
+                <label>Cor Primária (Hex)</label>
+                <input type="text" id="mbCfgEmbedPrimary" placeholder="#00E5FF">
+              </div>
+              <div class="form-group">
+                <label>Cor de Sucesso (Hex)</label>
+                <input type="text" id="mbCfgEmbedSuccess" placeholder="#10B981">
+              </div>
+              <div class="form-group">
+                <label>Cor de Aviso (Hex)</label>
+                <input type="text" id="mbCfgEmbedWarning" placeholder="#F59E0B">
+              </div>
+              <div class="form-group">
+                <label>Cor de Erro (Hex)</label>
+                <input type="text" id="mbCfgEmbedError" placeholder="#EF4444">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Assinatura de Rodapé Padrão dos Embeds</label>
+              <input type="text" id="mbCfgEmbedFooter" placeholder="Ex: FRIDAY • Sistemas Táticos">
+            </div>
+          </div>
+        </div>
+
+        <!-- SEÇÃO 14: PERMISSÕES -->
+        <div id="mb-sec-permissions" class="mb-admin-section" style="display: none;">
+          <div class="card">
+            <h3>🔒 Controle de Permissões & Servidores Autorizados</h3>
+            <div class="form-group">
+              <label>Restringir Atuação Apenas a Servidores Autorizados</label>
+              <select id="mbCfgPermRestrict">
+                <option value="false">🌐 Atuar em todos os servidores onde o bot estiver presente</option>
+                <option value="true">🔒 Restringir estritamente aos IDs listados abaixo</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>IDs de Servidores Autorizados (Separados por vírgula)</label>
+              <input type="text" id="mbCfgPermGuilds" placeholder="Ex: 112233445566778899, 998877665544332211">
+            </div>
+            <div class="form-group">
+              <label>IDs de Cargos Administrativos da Instância (Separados por vírgula)</label>
+              <input type="text" id="mbCfgPermAdmins" placeholder="IDs de cargos com acesso total aos comandos deste bot">
+            </div>
+          </div>
+        </div>
+
+        <!-- SEÇÃO 15: INTEGRAÇÕES -->
+        <div id="mb-sec-integrations" class="mb-admin-section" style="display: none;">
+          <div class="card">
+            <h3>🌐 Integrações Externas da Instância</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+              <div class="form-group">
+                <label>Alertas YouTube</label>
+                <select id="mbCfgIntYoutube">
+                  <option value="true">🟢 Habilitados</option>
+                  <option value="false">🔴 Desabilitados</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Alertas Twitch</label>
+                <select id="mbCfgIntTwitch">
+                  <option value="true">🟢 Habilitados</option>
+                  <option value="false">🔴 Desabilitados</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Alertas Reddit</label>
+                <select id="mbCfgIntReddit">
+                  <option value="true">🟢 Habilitados</option>
+                  <option value="false">🔴 Desabilitados</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Pesquisa na Web (DuckDuckGo IA)</label>
+                <select id="mbCfgIntWebSearch">
+                  <option value="true">🟢 Habilitada</option>
+                  <option value="false">🔴 Desabilitada</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Webhook Externo para Notificações de Eventos (Opcional)</label>
+              <input type="text" id="mbCfgIntWebhook" placeholder="https://discord.com/api/webhooks/...">
+            </div>
+          </div>
+        </div>
+
+        <!-- SEÇÃO 16: BANCO DE DADOS -->
+        <div id="mb-sec-database" class="mb-admin-section" style="display: none;">
+          <div class="card">
+            <h3>🗄️ Isolamento Lógico de Banco de Dados (SQLite Multi-Tenant)</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted);">Cada instância opera em uma partição lógica isolada por <code>bot_id</code> nas tabelas <code>bot_instances</code>, <code>bot_instance_configs</code>, <code>bot_instance_memories</code> e <code>bot_instance_logs</code>.</p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-top: 1rem;">
+              <div style="background: rgba(0,0,0,0.28); padding: 1rem; border-radius: 8px; border: 1px solid rgba(56, 189, 248, 0.25);">
+                <div style="font-size: 0.76rem; color: var(--text-muted);">Namespace da Partição</div>
+                <div id="mbDbNamespace" style="font-size: 1rem; font-weight: 700; color: #38bdf8; margin-top: 4px; font-family: monospace;">tenant_bot</div>
+              </div>
+              <div style="background: rgba(0,0,0,0.28); padding: 1rem; border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.25);">
+                <div style="font-size: 0.76rem; color: var(--text-muted);">Modo de Persistência</div>
+                <div style="font-size: 1rem; font-weight: 700; color: #10B981; margin-top: 4px;">SQLite WAL Isolado</div>
+              </div>
+              <div style="background: rgba(0,0,0,0.28); padding: 1rem; border-radius: 8px; border: 1px solid rgba(168, 85, 247, 0.25);">
+                <div style="font-size: 0.76rem; color: var(--text-muted);">Registros de Memória</div>
+                <div id="mbDbMemoriesCount" style="font-size: 1rem; font-weight: 700; color: #c084fc; margin-top: 4px;">0 registros</div>
+              </div>
+              <div style="background: rgba(0,0,0,0.28); padding: 1rem; border-radius: 8px; border: 1px solid rgba(245, 158, 11, 0.25);">
+                <div style="font-size: 0.76rem; color: var(--text-muted);">Registros de Auditoria/Logs</div>
+                <div id="mbDbLogsCount" style="font-size: 1rem; font-weight: 700; color: #fbbf24; margin-top: 4px;">0 eventos</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SEÇÃO 17: LOGS E ERROS -->
+        <div id="mb-sec-logs" class="mb-admin-section" style="display: none;">
+          <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.85rem;">
+              <div>
+                <h3 style="margin: 0;">📜 Console de Logs & Erros da Instância</h3>
+                <p style="margin: 0.2rem 0 0 0; font-size: 0.8rem; color: var(--text-muted);">Histórico operacional exclusivo desta instância.</p>
+              </div>
+              <div style="display: flex; gap: 0.5rem;">
+                <button type="button" class="secondary-btn" id="mbRefreshLogsBtn" style="padding: 0.35rem 0.75rem; font-size: 0.78rem;">🔄 Atualizar</button>
+                <button type="button" class="danger-btn" id="mbClearLogsBtn" style="padding: 0.35rem 0.75rem; font-size: 0.78rem;">🗑️ Limpar Logs</button>
+              </div>
+            </div>
+            <div id="mbLogsConsoleContainer" style="background: #090b10; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 1rem; max-height: 400px; overflow-y: auto; font-family: monospace; font-size: 0.8rem; display: flex; flex-direction: column; gap: 0.45rem;"></div>
+          </div>
+        </div>
+
+        <!-- SEÇÃO 18: CONFIGURAÇÕES AVANÇADAS -->
+        <div id="mb-sec-advanced" class="mb-admin-section" style="display: none;">
+          <div class="card">
+            <h3>⚙️ Controle de Concorrência, Limites & Recuperação</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+              <div class="form-group">
+                <label>Concorrência Máxima de Requisições IA</label>
+                <input type="number" id="mbCfgAdvConcurrency" min="1" max="50" value="5">
+              </div>
+              <div class="form-group">
+                <label>Rate Limit por Minuto (Comandos)</label>
+                <input type="number" id="mbCfgAdvRateLimit" min="10" max="600" value="60">
+              </div>
+              <div class="form-group">
+                <label>Teto de Alerta de Memória RAM (MB)</label>
+                <input type="number" id="mbCfgAdvMemLimit" min="128" max="4096" value="512">
+              </div>
+              <div class="form-group">
+                <label>Auto-Reinicialização em Caso de Queda</label>
+                <select id="mbCfgAdvAutoRestart">
+                  <option value="true">🟢 Ativada (Isolamento Resiliente)</option>
+                  <option value="false">🔴 Desativada</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Modo de Depuração Detalhado (Debug)</label>
+                <select id="mbCfgAdvDebug">
+                  <option value="false">🔴 Desativado</option>
+                  <option value="true">🟢 Ativado</option>
+                </select>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -6963,67 +7625,18 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           </div>
         </div>
 
-        <!-- 6. MÓDULOS & RECURSOS ATIVOS -->
-        <div class="card" style="grid-column: 1 / -1;">
-          <h2 id="cfgHeadingModules">⚡ Módulos & Recursos Ativos do Sistema</h2>
-          <p id="cfgHeadingModulesDesc">Ative ou desative subsistemas inteiros conforme a proposta do seu bot.</p>
-
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin-top: 0.75rem;">
-            <label style="display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.2); padding: 0.85rem 1.15rem; border-radius: 8px; border: 1px solid var(--border-color); cursor: pointer;">
-              <div>
-                <div style="font-weight: 700; color: var(--text-main);">🤖 Chat com IA & Ferramentas</div>
-                <div style="font-size: 0.8rem; color: var(--text-muted);">Processamento autônomo com Gemini</div>
-              </div>
-              <input type="checkbox" id="cfgModAiChat" style="width: 20px; height: 20px; accent-color: var(--primary);">
-            </label>
-
-            <label style="display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.2); padding: 0.85rem 1.15rem; border-radius: 8px; border: 1px solid var(--border-color); cursor: pointer;">
-              <div>
-                <div style="font-weight: 700; color: var(--text-main);">🎵 Música & Voz</div>
-                <div style="font-size: 0.8rem; color: var(--text-muted);">Player de YouTube, filas e rádios</div>
-              </div>
-              <input type="checkbox" id="cfgModMusic" style="width: 20px; height: 20px; accent-color: var(--primary);">
-            </label>
-
-            <label style="display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.2); padding: 0.85rem 1.15rem; border-radius: 8px; border: 1px solid var(--border-color); cursor: pointer;">
-              <div>
-                <div style="font-weight: 700; color: var(--text-main);">💰 Economia & Banco</div>
-                <div style="font-size: 0.8rem; color: var(--text-muted);">Trabalho, banco, cassino e bolsa</div>
-              </div>
-              <input type="checkbox" id="cfgModEconomy" style="width: 20px; height: 20px; accent-color: var(--primary);">
-            </label>
-
-            <label style="display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.2); padding: 0.85rem 1.15rem; border-radius: 8px; border: 1px solid var(--border-color); cursor: pointer;">
-              <div>
-                <div style="font-weight: 700; color: var(--text-main);">🏆 Níveis & Recompensas de XP</div>
-                <div style="font-size: 0.8rem; color: var(--text-muted);">Leveling em mensagens e cargos</div>
-              </div>
-              <input type="checkbox" id="cfgModXp" style="width: 20px; height: 20px; accent-color: var(--primary);">
-            </label>
-
-            <label style="display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.2); padding: 0.85rem 1.15rem; border-radius: 8px; border: 1px solid var(--border-color); cursor: pointer;">
-              <div>
-                <div style="font-weight: 700; color: var(--text-main);">🛡️ Moderação & Anti-Spam</div>
-                <div style="font-size: 0.8rem; color: var(--text-muted);">Proteção contra flood, ban e mute</div>
-              </div>
-              <input type="checkbox" id="cfgModModeration" style="width: 20px; height: 20px; accent-color: var(--primary);">
-            </label>
-
-            <label style="display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.2); padding: 0.85rem 1.15rem; border-radius: 8px; border: 1px solid var(--border-color); cursor: pointer;">
-              <div>
-                <div style="font-weight: 700; color: var(--text-main);">🎫 Central de Tickets</div>
-                <div style="font-size: 0.8rem; color: var(--text-muted);">Canais de suporte e transcrições</div>
-              </div>
-              <input type="checkbox" id="cfgModTickets" style="width: 20px; height: 20px; accent-color: var(--primary);">
-            </label>
-
-            <label style="display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.2); padding: 0.85rem 1.15rem; border-radius: 8px; border: 1px solid var(--border-color); cursor: pointer;">
-              <div>
-                <div style="font-weight: 700; color: var(--text-main);">🎯 Quiz Arena</div>
-                <div style="font-size: 0.8rem; color: var(--text-muted);">Desafios de perguntas e ranking</div>
-              </div>
-              <input type="checkbox" id="cfgModQuiz" style="width: 20px; height: 20px; accent-color: var(--primary);">
-            </label>
+        <!-- 6. MÓDULOS & RECURSOS ATIVOS (REDIRECIONAMENTO FONTE ÚNICA) -->
+        <div class="card" style="grid-column: 1 / -1; border-color: rgba(16, 185, 129, 0.35); background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(15, 23, 42, 0.4));">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+            <div>
+              <h2 id="cfgHeadingModules" style="margin: 0 0 0.35rem 0; color: #34d399;">🧩 Central de Gerenciamento Modular (Fonte Única — 26 Módulos)</h2>
+              <p id="cfgHeadingModulesDesc" style="margin: 0; color: var(--text-muted); max-width: 760px;">
+                Para garantir integridade absoluta e evitar duplicidade de estados, todos os <strong>26 módulos oficiais</strong> do J.A.R.V.I.S. (com validação de dependências, permissões, saúde e bloqueio real) são gerenciados diretamente na <strong>Central de Módulos</strong>.
+              </p>
+            </div>
+            <button type="button" class="primary-btn" onclick="switchTab('tab-modules')" style="background: linear-gradient(135deg, #10b981, #059669); font-weight: 700; padding: 0.65rem 1.35rem;">
+              🧩 Abrir Central dos 26 Módulos
+            </button>
           </div>
         </div>
 
@@ -7564,6 +8177,18 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       }
       if (tabId === 'tab-settings') {
         if (typeof loadBotConfigTab === 'function') loadBotConfigTab();
+      }
+      if (tabId === 'tab-tempbans') {
+        if (typeof loadTempbans === 'function') loadTempbans();
+      }
+      if (tabId === 'tab-modules') {
+        if (typeof loadGuildModules === 'function') loadGuildModules();
+      }
+      if (tabId === 'tab-multibot') {
+        if (typeof loadMultiBotInstances === 'function') loadMultiBotInstances();
+      }
+      if (tabId === 'tab-summary') {
+        if (typeof loadChannelSummaries === 'function') loadChannelSummaries();
       }
     }
 
@@ -8229,18 +8854,24 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         if (data.settings?.prefix && document.getElementById('serverPrefixInput')) document.getElementById('serverPrefixInput').value = data.settings.prefix;
         if (data.settings?.aiDisplayName && document.getElementById('aiNameInput')) document.getElementById('aiNameInput').value = data.settings.aiDisplayName;
 
-        // Anti-Bot Scam (MrBeast, Nitro Falso, Phishing)
-        if (mods.moderation?.antiBotScam) {
-          const abs = mods.moderation.antiBotScam;
-          if (abs.enabled !== undefined && document.getElementById('antiBotScamEnabledSelect')) {
-            document.getElementById('antiBotScamEnabledSelect').value = String(Boolean(abs.enabled));
-          }
-          if (abs.action && document.getElementById('antiBotScamActionSelect')) {
-            document.getElementById('antiBotScamActionSelect').value = abs.action;
-          }
-          if (abs.timeoutDurationSeconds && document.getElementById('antiBotScamTimeoutSelect')) {
-            document.getElementById('antiBotScamTimeoutSelect').value = String(abs.timeoutDurationSeconds);
-          }
+        // Anti-Bot Scam (MrBeast, Nitro Falso, Phishing) - Both in Moderation Tab and Dedicated Anti-Bot Tab
+        const abs = mods.moderation?.antiBotScam || (mods.moderation?.antiAbuse ? {
+          enabled: mods.moderation.antiAbuse.anti_bot_scam_enabled === 1 || mods.moderation.antiAbuse.anti_bot_scam_enabled === true,
+          action: mods.moderation.antiAbuse.anti_bot_scam_action || 'TIMEOUT',
+          timeoutDurationSeconds: mods.moderation.antiAbuse.anti_bot_scam_timeout_seconds || 86400
+        } : null);
+        if (abs) {
+          const enabledStr = String(Boolean(abs.enabled));
+          const actionStr = abs.action || 'TIMEOUT';
+          const timeoutStr = String(abs.timeoutDurationSeconds || 86400);
+
+          if (document.getElementById('antiBotScamEnabledSelect')) document.getElementById('antiBotScamEnabledSelect').value = enabledStr;
+          if (document.getElementById('antiBotScamActionSelect')) document.getElementById('antiBotScamActionSelect').value = actionStr;
+          if (document.getElementById('antiBotScamTimeoutSelect')) document.getElementById('antiBotScamTimeoutSelect').value = timeoutStr;
+
+          if (document.getElementById('mainAntiBotEnabled')) document.getElementById('mainAntiBotEnabled').value = enabledStr;
+          if (document.getElementById('mainAntiBotAction')) document.getElementById('mainAntiBotAction').value = actionStr;
+          if (document.getElementById('mainAntiBotTimeout')) document.getElementById('mainAntiBotTimeout').value = timeoutStr;
         }
 
         // Social Alerts Table & Backups Table
@@ -8249,6 +8880,24 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         }
         if (typeof renderBackupsTable === 'function') {
           renderBackupsTable(mods.backups || []);
+        }
+
+        // Central de 26 Módulos, Resumos Persistidos, TempBans & Multi-Bot Manager
+        if (mods.guildModules) {
+          allModuleDefinitions = mods.guildModules.definitions || [];
+          currentGuildModulesState = mods.guildModules.settings || {};
+          if (typeof renderModulesGrid === 'function') renderModulesGrid(document.getElementById('moduleSearchInput')?.value || '');
+        } else if (typeof loadGuildModules === 'function') {
+          loadGuildModules();
+        }
+        if (typeof renderSavedSummariesTable === 'function') {
+          renderSavedSummariesTable(mods.channelSummaries || []);
+        }
+        if (typeof loadTempbans === 'function') {
+          loadTempbans();
+        }
+        if (typeof loadMultiBotInstances === 'function') {
+          loadMultiBotInstances();
         }
 
         // Bot Avatar Synchronization & Favicon
@@ -11205,13 +11854,16 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       tbody.innerHTML = alerts.map(a => {
         const platIcon = a.platform === 'YOUTUBE' ? '▶️ YouTube' : a.platform === 'TWITCH' ? '🟣 Twitch' : '🔴 Reddit';
         const platColor = a.platform === 'YOUTUBE' ? '#FF0000' : a.platform === 'TWITCH' ? '#9146FF' : '#FF4500';
-        const channelName = '<#' + a.channel_target_id + '>';
-        const createdDate = a.created_at ? new Date(a.created_at).toLocaleDateString('pt-BR') : 'Recente';
+        const chanId = a.channelTargetId || a.channel_target_id || 'N/A';
+        const srcId = a.sourceId || a.source_id || 'N/A';
+        const cAt = a.createdAt || a.created_at;
+        const channelName = '<#' + chanId + '>';
+        const createdDate = cAt ? new Date(cAt).toLocaleDateString('pt-BR') : 'Recente';
 
         return '<tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">' +
           '<td style="padding: 0.65rem 0.85rem; color: var(--text-muted); font-size: 0.78rem;">#' + a.id + '</td>' +
           '<td style="padding: 0.65rem 0.85rem;"><span style="font-weight: 700; color: ' + platColor + ';">' + platIcon + '</span></td>' +
-          '<td style="padding: 0.65rem 0.85rem; font-weight: 600; color: var(--text-main);">' + (a.source_id || 'N/A') + '</td>' +
+          '<td style="padding: 0.65rem 0.85rem; font-weight: 600; color: var(--text-main);">' + escapeHtml(srcId) + '</td>' +
           '<td style="padding: 0.65rem 0.85rem; color: #38bdf8;">' + channelName + '</td>' +
           '<td style="padding: 0.65rem 0.85rem; color: var(--text-muted); font-size: 0.8rem;">' + createdDate + '</td>' +
           '<td style="padding: 0.65rem 0.85rem; text-align: right; display: flex; gap: 0.5rem; justify-content: flex-end;">' +
@@ -11307,68 +11959,6 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         renderBackupsTable(res.data || res.config || res.backups || []);
         loadGuildDetails(currentGuildId);
       }
-    });
-
-    // ==========================================
-    // RESUMO INTELIGENTE DO CHAT (IA ATÉ 300 MSG)
-    // ==========================================
-    document.getElementById('generateSummaryBtn')?.addEventListener('click', async () => {
-      if (!currentGuildId) currentGuildId = document.getElementById('guildSelector')?.value || '${initialServerId || ''}';
-      const channelId = document.getElementById('summaryChannelSelect')?.value;
-      if (!channelId) return showToast('Selecione um canal de texto para analisar!', 'warning', 'Canal Obrigatório');
-
-      const limit = parseInt(document.getElementById('summaryLimitSelect')?.value, 10) || 300;
-      const type = document.getElementById('summaryTypeSelect')?.value || 'summary';
-      const sendToDiscord = document.getElementById('summarySendToDiscordCheckbox')?.checked || false;
-
-      const genBtn = document.getElementById('generateSummaryBtn');
-      const originalText = genBtn.innerText;
-      genBtn.disabled = true;
-      genBtn.innerText = '⏳ Analisando ' + limit + ' mensagens com IA...';
-
-      const outputBox = document.getElementById('summaryOutputBox');
-      const resultCard = document.getElementById('summaryResultCard');
-      if (resultCard) resultCard.style.display = 'block';
-      if (outputBox) outputBox.innerText = 'Coletando histórico e gerando síntese analítica...';
-
-      try {
-        const activeCsrf = window.csrfToken || currentCsrfToken || csrfToken;
-        const res = await fetch('/api/guilds/' + currentGuildId + '/summary', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-Token': activeCsrf,
-            'X-Panel-Password': '1598'
-          },
-          credentials: 'same-origin',
-          body: JSON.stringify({ channelId, limit, type, sendToDiscord })
-        });
-
-        const data = await res.json();
-        if (res.ok && data.summary) {
-          if (outputBox) outputBox.innerText = data.summary;
-          showToast('Resumo gerado com sucesso em ' + (data.durationMs || 0) + 'ms!', 'success', 'IA Concluída');
-        } else {
-          if (outputBox) outputBox.innerText = 'Falha ao processar: ' + (data.error || 'Erro desconhecido');
-          showToast(data.error || 'Falha ao gerar resumo', 'error', 'Erro');
-        }
-      } catch (err) {
-        if (outputBox) outputBox.innerText = 'Erro de conexão: ' + err.message;
-        showToast('Erro: ' + err.message, 'error', 'Falha');
-      } finally {
-        genBtn.disabled = false;
-        genBtn.innerText = originalText;
-      }
-    });
-
-    document.getElementById('copySummaryBtn')?.addEventListener('click', () => {
-      const text = document.getElementById('summaryOutputBox')?.innerText;
-      if (!text) return;
-      navigator.clipboard.writeText(text).then(() => {
-        showToast('Resumo copiado para a área de transferência!', 'success', 'Copiado');
-      }).catch(() => {
-        showToast('Não foi possível copiar automaticamente.', 'warning');
-      });
     });
 
     function applyBotAvatar(url) {
@@ -13480,13 +14070,10 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       } catch(e) {}
 
       updateThemeLivePreview();
-      const toastMsg = currentLang === 'en' ? ('Theme ' + (theme.name || presetKey) + ' applied successfully!') : ('Tema ' + (theme.name || presetKey) + ' aplicado com sucesso!');
-      const toastTitle = currentLang === 'en' ? 'Theme Applied' : 'Tema Atualizado';
-      showToast(toastMsg, 'success', toastTitle);
 
-      // 5. Persist to backend
+      // 5. Persist to backend and only show success toast AFTER backend confirmation
       try {
-        await authFetch('/api/bot/config', {
+        const res = await authFetch('/api/bot/config', {
           method: 'POST',
           body: JSON.stringify({
             theme: {
@@ -13504,8 +14091,16 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
             }
           })
         });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.success) {
+          const toastMsg = currentLang === 'en' ? ('Theme ' + (theme.name || presetKey) + ' applied and persisted!') : ('Tema ' + (theme.name || presetKey) + ' salvo e aplicado com sucesso!');
+          const toastTitle = currentLang === 'en' ? 'Theme Applied' : 'Tema Salvo';
+          showToast(toastMsg, 'success', toastTitle);
+        } else {
+          showToast(data.error || 'Falha ao persistir tema no servidor.', 'error', 'Erro ao Salvar Tema');
+        }
       } catch(err) {
-        console.warn('Erro ao sincronizar preset no backend:', err);
+        showToast('Erro de conexão ao salvar tema: ' + err.message, 'error', 'Erro de Rede');
       }
     }
 
@@ -13711,6 +14306,9 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         }
       });
       if (res) {
+        if (document.getElementById('antiBotScamEnabledSelect')) document.getElementById('antiBotScamEnabledSelect').value = String(enabled);
+        if (document.getElementById('antiBotScamActionSelect')) document.getElementById('antiBotScamActionSelect').value = action;
+        if (document.getElementById('antiBotScamTimeoutSelect')) document.getElementById('antiBotScamTimeoutSelect').value = String(timeoutDurationSeconds);
         showToast('Proteção Anti-Bot e Golpes salva e ativa com sucesso!', 'success', 'Anti-Bot Configurado');
       }
     });
@@ -13721,7 +14319,9 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
     async function loadTempbans() {
       const tbody = document.getElementById('tempbansTableBody');
       if (!tbody) return;
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 1.5rem; color: var(--text-muted);">Carregando banimentos temporários...</td></tr>';
+      if (!currentGuildId) {
+        currentGuildId = document.getElementById('guildSelector')?.value || '${initialServerId || ''}' || 'guild_local';
+      }
 
       try {
         const res = await fetch('/api/guilds/' + currentGuildId + '/modules/tempbans', {
@@ -13744,13 +14344,13 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           const timeRemaining = mins > 1440 ? Math.floor(mins / 1440) + 'd ' + (mins % 1440) + 'm' : (mins > 60 ? Math.floor(mins / 60) + 'h ' + (mins % 60) + 'm' : mins + ' min');
 
           return '<tr>' +
-            '<td><code style="background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px;">' + b.user_id + '</code></td>' +
-            '<td>' + (b.reason || 'Sem motivo') + '</td>' +
-            '<td>' + (b.duration_seconds >= 86400 ? (b.duration_seconds / 86400) + ' dia(s)' : (b.duration_seconds / 3600) + ' hora(s)') + '</td>' +
+            '<td><code style="background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px;">' + escapeHtml(b.user_id) + '</code></td>' +
+            '<td>' + escapeHtml(b.reason || 'Sem motivo') + '</td>' +
+            '<td>' + (b.duration_seconds >= 86400 ? Math.round(b.duration_seconds / 86400) + ' dia(s)' : Math.max(1, Math.round(b.duration_seconds / 60)) + ' min') + '</td>' +
             '<td><span style="color: #fbbf24; font-weight: 600;">' + expiresStr + '</span> (' + timeRemaining + ')</td>' +
-            '<td><code style="background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px;">' + b.moderator_id + '</code></td>' +
+            '<td><code style="background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px;">' + escapeHtml(b.moderator_id) + '</code></td>' +
             '<td>' +
-              '<button type="button" class="danger-btn cancel-tempban-btn" data-userid="' + b.user_id + '" style="padding: 0.3rem 0.75rem; font-size: 0.76rem;">' +
+              '<button type="button" class="danger-btn cancel-tempban-btn" data-userid="' + escapeHtml(b.user_id) + '" style="padding: 0.3rem 0.75rem; font-size: 0.76rem;">' +
                 '🔓 Revogar Ban' +
               '</button>' +
             '</td>' +
@@ -13769,14 +14369,16 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           });
         });
       } catch (err) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 1.5rem; color: #ef4444;">Erro ao carregar banimentos: ' + err.message + '</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 1.5rem; color: #ef4444;">Erro ao carregar banimentos: ' + escapeHtml(err.message) + '</td></tr>';
       }
     }
     document.getElementById('refreshTempbansBtn')?.addEventListener('click', loadTempbans);
 
     // ==========================================
-    // 3. RESUMO INTELIGENTE DO CHAT COM IA
+    // 3. RESUMO INTELIGENTE DO CHAT COM IA (PERSISTIDO NO SQLITE)
     // ==========================================
+    let cachedChannelSummaries = [];
+
     const sRange = document.getElementById('summaryLimitRange');
     const sVal = document.getElementById('summaryLimitVal');
     if (sRange && sVal) {
@@ -13785,7 +14387,89 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       });
     }
 
+    async function loadChannelSummaries() {
+      if (!currentGuildId) {
+        currentGuildId = document.getElementById('guildSelector')?.value || '${initialServerId || ''}' || 'guild_local';
+      }
+      try {
+        const res = await fetch('/api/guilds/' + currentGuildId + '/modules/summaries', {
+          headers: { 'X-Panel-Password': '1598' },
+          credentials: 'include'
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const list = (data.config && data.config.summaries) || data.summaries || [];
+        renderSavedSummariesTable(list);
+      } catch {}
+    }
+
+    function renderSavedSummariesTable(summaries = []) {
+      cachedChannelSummaries = Array.isArray(summaries) ? summaries : [];
+      const tbody = document.getElementById('savedSummariesTableBody');
+      const resArea = document.getElementById('summaryResultArea');
+      if (!tbody) return;
+
+      // If result area is still showing the default placeholder and we have saved summaries, display the most recent one
+      if (resArea && cachedChannelSummaries.length > 0 && resArea.innerText.includes('Selecione um canal e clique')) {
+        resArea.innerText = cachedChannelSummaries[0].summaryText || '';
+      }
+
+      if (cachedChannelSummaries.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 1.25rem; color: var(--text-muted);">Nenhum resumo salvo ainda neste servidor.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = cachedChannelSummaries.map(s => {
+        const dt = s.createdAt ? new Date(s.createdAt).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : 'Recente';
+        const typeBadge = s.summaryType === 'gossip'
+          ? '<span class="badge" style="background: rgba(236, 72, 153, 0.15); color: #f472b6;">📰 Fofoca</span>'
+          : '<span class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8;">📋 Executivo</span>';
+        const parts = Array.isArray(s.participants) && s.participants.length > 0 ? escapeHtml(s.participants.slice(0, 4).join(', ')) : 'Membros';
+
+        return '<tr>' +
+          '<td style="font-size: 0.8rem; color: var(--text-muted);">' + dt + '</td>' +
+          '<td><strong style="color: #38bdf8;">#' + escapeHtml(s.channelName || 'chat') + '</strong></td>' +
+          '<td>' + typeBadge + '</td>' +
+          '<td>' + (s.messageCount || 0) + ' msgs</td>' +
+          '<td style="font-size: 0.8rem;">' + parts + '</td>' +
+          '<td>' +
+            '<div style="display: flex; gap: 6px;">' +
+              '<button type="button" class="secondary-btn view-saved-summary-btn" data-sumid="' + s.id + '" style="padding: 0.25rem 0.65rem; font-size: 0.75rem;">👁️ Ver Resumo</button>' +
+              '<button type="button" class="danger-btn del-saved-summary-btn" data-sumid="' + s.id + '" style="padding: 0.25rem 0.65rem; font-size: 0.75rem;">🗑️</button>' +
+            '</div>' +
+          '</td>' +
+        '</tr>';
+      }).join('');
+
+      tbody.querySelectorAll('.view-saved-summary-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const sid = Number(btn.getAttribute('data-sumid'));
+          const found = cachedChannelSummaries.find(x => Number(x.id) === sid);
+          if (found && resArea) {
+            resArea.innerText = found.summaryText;
+            showToast('Exibindo resumo salvo de #' + found.channelName, 'info', 'Resumo Recuperado');
+          }
+        });
+      });
+
+      tbody.querySelectorAll('.del-saved-summary-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const sid = Number(btn.getAttribute('data-sumid'));
+          if (!confirm('Deseja excluir este resumo do histórico?')) return;
+          const res = await saveModule('summaries', { action: 'DELETE', id: sid });
+          if (res && res.config && res.config.summaries) {
+            renderSavedSummariesTable(res.config.summaries);
+          } else {
+            loadChannelSummaries();
+          }
+        });
+      });
+    }
+
     document.getElementById('generateSummaryBtn')?.addEventListener('click', async () => {
+      if (!currentGuildId) {
+        currentGuildId = document.getElementById('guildSelector')?.value || '${initialServerId || ''}' || 'guild_local';
+      }
       const channelId = document.getElementById('summaryChannelSelect')?.value;
       if (!channelId) {
         showToast('Selecione um canal de texto para analisar!', 'warning', 'Canal Obrigatório');
@@ -13798,7 +14482,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       const resArea = document.getElementById('summaryResultArea');
       const genBtn = document.getElementById('generateSummaryBtn');
 
-      if (resArea) resArea.innerHTML = '⏳ <em>Conectando à API do Gemini e compilando mensagens do canal... Por favor, aguarde.</em>';
+      if (resArea) resArea.innerHTML = '⏳ <em>Conectando ao motor analítico da IA e compilando mensagens do canal... Por favor, aguarde.</em>';
       if (genBtn) { genBtn.disabled = true; genBtn.innerText = '⏳ Processando com IA...'; }
 
       try {
@@ -13815,9 +14499,15 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         });
 
         const data = await res.json();
-        if (res.ok && data.summary) {
-          if (resArea) resArea.innerText = data.summary;
-          showToast('Resumo analítico gerado com sucesso!', 'success', 'Resumo Concluído');
+        const summaryText = data.summary || data.text;
+        if (res.ok && summaryText) {
+          if (resArea) resArea.innerText = summaryText;
+          if (Array.isArray(data.summaries)) {
+            renderSavedSummariesTable(data.summaries);
+          } else {
+            loadChannelSummaries();
+          }
+          showToast('Resumo analítico gerado e salvo no banco com sucesso!', 'success', 'Resumo Concluído');
         } else {
           if (resArea) resArea.innerText = '❌ Erro: ' + (data.error || 'Falha ao processar resumo.');
           showToast(data.error || 'Erro ao gerar resumo', 'error', 'Falha');
@@ -13840,16 +14530,8 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       });
     });
 
-    // Populate summary channel selector when guild channels load
-    function populateSummaryChannels(channels) {
-      const sel = document.getElementById('summaryChannelSelect');
-      if (!sel || !channels) return;
-      sel.innerHTML = '<option value="">-- Selecione o Canal de Texto --</option>' +
-        channels.map(c => '<option value="' + c.id + '">#' + c.name + '</option>').join('');
-    }
-
     // ==========================================
-    // 4. CENTRAL DE MÓDULOS (26 MÓDULOS)
+    // 4. CENTRAL DE MÓDULOS (FONTE ÚNICA — 26 MÓDULOS COM DEPENDÊNCIAS)
     // ==========================================
     let currentGuildModulesState = {};
     let allModuleDefinitions = [];
@@ -13857,7 +14539,9 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
     async function loadGuildModules() {
       const container = document.getElementById('modulesGridContainer');
       if (!container) return;
-      container.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--text-muted);">Carregando catálogo de módulos...</div>';
+      if (!currentGuildId) {
+        currentGuildId = document.getElementById('guildSelector')?.value || '${initialServerId || ''}' || 'guild_local';
+      }
 
       try {
         const res = await fetch('/api/guilds/' + currentGuildId + '/modules/guild_modules', {
@@ -13870,9 +14554,9 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         allModuleDefinitions = payload.definitions || [];
         currentGuildModulesState = payload.settings || {};
 
-        renderModulesGrid();
+        renderModulesGrid(document.getElementById('moduleSearchInput')?.value || '');
       } catch (err) {
-        container.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: #ef4444;">Erro ao carregar módulos: ' + err.message + '</div>';
+        container.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: #ef4444;">Erro ao carregar módulos: ' + escapeHtml(err.message) + '</div>';
       }
     }
 
@@ -13880,29 +14564,48 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       const container = document.getElementById('modulesGridContainer');
       if (!container) return;
 
-      const term = filterTerm.toLowerCase().trim();
+      const term = (filterTerm || '').toLowerCase().trim();
       const filtered = allModuleDefinitions.filter(m => {
         if (!term) return true;
+        const cmdsStr = Array.isArray(m.commands) ? m.commands.join(' ') : '';
         return m.name.toLowerCase().includes(term) ||
+               m.id.toLowerCase().includes(term) ||
+               cmdsStr.toLowerCase().includes(term) ||
                (m.category && m.category.toLowerCase().includes(term)) ||
                (m.description && m.description.toLowerCase().includes(term));
       });
 
       if (filtered.length === 0) {
-        container.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--text-muted);">Nenhum módulo encontrado para "' + filterTerm + '".</div>';
+        container.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--text-muted);">Nenhum módulo encontrado para "' + escapeHtml(filterTerm) + '".</div>';
         return;
       }
 
       container.innerHTML = filtered.map(m => {
         const isChecked = currentGuildModulesState[m.id] !== false;
-        return '<div class="card module-card" data-modid="' + m.id + '" style="display: flex; flex-direction: column; justify-content: space-between; border: 1px solid ' + (isChecked ? 'rgba(16, 185, 129, 0.3)' : 'rgba(255,255,255,0.06)') + '; background: ' + (isChecked ? 'rgba(16, 185, 129, 0.04)' : 'rgba(0,0,0,0.2)') + '; transition: all 0.2s ease;">' +
+        const deps = Array.isArray(m.dependencies) && m.dependencies.length > 0
+          ? m.dependencies.map(dId => {
+              const found = allModuleDefinitions.find(x => x.id === dId);
+              return found ? found.name : dId;
+            }).join(', ')
+          : null;
+        const cmdsCount = Array.isArray(m.commands) ? m.commands.length : 0;
+        const evtsCount = Array.isArray(m.events) ? m.events.length : 0;
+        const permsStr = Array.isArray(m.requiredPermissions) && m.requiredPermissions.length > 0
+          ? m.requiredPermissions.slice(0, 2).join(', ')
+          : 'Padrão';
+        const healthLabel = !isChecked ? '🔴 Desativado' : (m.healthStatus === 'DEGRADED' ? '🟡 Alerta' : '🟢 Saudável');
+
+        return '<div class="card module-card" data-modid="' + m.id + '" style="display: flex; flex-direction: column; justify-content: space-between; border: 1px solid ' + (isChecked ? 'rgba(16, 185, 129, 0.32)' : 'rgba(255,255,255,0.07)') + '; background: ' + (isChecked ? 'rgba(16, 185, 129, 0.04)' : 'rgba(0,0,0,0.22)') + '; transition: all 0.2s ease;">' +
           '<div>' +
-            '<div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.5rem;">' +
+            '<div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.45rem;">' +
               '<div style="display: flex; align-items: center; gap: 0.5rem;">' +
                 '<span style="font-size: 1.4rem;">' + (m.icon || '⚙️') + '</span>' +
                 '<div>' +
-                  '<h4 style="margin: 0; font-size: 0.95rem; color: var(--text-main);">' + m.name + '</h4>' +
-                  '<span style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">' + (m.category || 'Sistema') + '</span>' +
+                  '<div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">' +
+                    '<h4 style="margin: 0; font-size: 0.94rem; color: var(--text-main);">' + escapeHtml(m.name) + '</h4>' +
+                    '<code style="font-size: 0.68rem; background: rgba(0,0,0,0.35); padding: 1px 5px; border-radius: 4px; color: #93c5fd;">' + m.id + '</code>' +
+                  '</div>' +
+                  '<span style="font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">' + escapeHtml(m.category || 'Sistema') + '</span>' +
                 '</div>' +
               '</div>' +
               '<label class="switch" style="position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0;">' +
@@ -13910,31 +14613,51 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
                 '<span class="slider round" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: ' + (isChecked ? '#10B981' : '#475569') + '; border-radius: 24px; transition: 0.3s;"></span>' +
               '</label>' +
             '</div>' +
-            '<p style="margin: 0.35rem 0 0 0; font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;">' + m.description + '</p>' +
+            '<p style="margin: 0.35rem 0 0.5rem 0; font-size: 0.79rem; color: var(--text-muted); line-height: 1.4;">' + escapeHtml(m.description) + '</p>' +
+            (deps ? '<div style="font-size: 0.72rem; color: #fbbf24; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.25); padding: 3px 7px; border-radius: 4px; margin-bottom: 0.45rem;">🔗 Requer: <strong>' + escapeHtml(deps) + '</strong></div>' : '') +
+            '<div style="display: flex; flex-wrap: wrap; gap: 4px; font-size: 0.69rem; color: #94a3b8;">' +
+              '<span style="background: rgba(255,255,255,0.04); padding: 2px 6px; border-radius: 4px;">⚡ ' + cmdsCount + ' cmd(s)</span>' +
+              '<span style="background: rgba(255,255,255,0.04); padding: 2px 6px; border-radius: 4px;">📡 ' + evtsCount + ' evt(s)</span>' +
+              '<span style="background: rgba(255,255,255,0.04); padding: 2px 6px; border-radius: 4px;">🔒 ' + escapeHtml(permsStr) + '</span>' +
+            '</div>' +
           '</div>' +
-          '<div style="margin-top: 0.75rem; font-size: 0.72rem; font-weight: 600; color: ' + (isChecked ? '#10B981' : '#94A3B8') + '; display: flex; align-items: center; gap: 4px;">' +
-            '<span>' + (isChecked ? '🟢 Módulo Ativo' : '🔴 Módulo Desativado') + '</span>' +
+          '<div style="margin-top: 0.75rem; padding-top: 0.55rem; border-top: 1px solid rgba(255,255,255,0.05); font-size: 0.72rem; font-weight: 600; display: flex; align-items: center; justify-content: space-between;">' +
+            '<span style="color: ' + (isChecked ? '#10B981' : '#94A3B8') + ';">' + healthLabel + '</span>' +
+            (m.configTab ? '<button type="button" class="secondary-btn" data-tab="' + m.configTab + '" style="padding: 2px 8px; font-size: 0.7rem;">⚙️ Configurar</button>' : '') +
           '</div>' +
         '</div>';
       }).join('');
 
-      // Add change listeners to each toggle switch
+      // Add change listeners with live dependency enforcement
       container.querySelectorAll('.module-toggle-input').forEach(input => {
         input.addEventListener('change', () => {
           const key = input.getAttribute('data-modkey');
-          currentGuildModulesState[key] = input.checked;
-          const card = input.closest('.module-card');
-          const slider = input.nextElementSibling;
-          if (slider) slider.style.backgroundColor = input.checked ? '#10B981' : '#475569';
-          if (card) {
-            card.style.borderColor = input.checked ? 'rgba(16, 185, 129, 0.3)' : 'rgba(255,255,255,0.06)';
-            card.style.background = input.checked ? 'rgba(16, 185, 129, 0.04)' : 'rgba(0,0,0,0.2)';
-            const statusText = card.querySelector('div:last-child span');
-            if (statusText) {
-              statusText.innerText = input.checked ? '🟢 Módulo Ativo' : '🔴 Módulo Desativado';
-              statusText.parentElement.style.color = input.checked ? '#10B981' : '#94A3B8';
+          const modDef = allModuleDefinitions.find(x => x.id === key);
+          const newState = input.checked;
+          currentGuildModulesState[key] = newState;
+
+          // If enabling a module, automatically enable its required parent dependencies
+          if (newState && modDef && Array.isArray(modDef.dependencies)) {
+            for (const depId of modDef.dependencies) {
+              if (currentGuildModulesState[depId] === false) {
+                currentGuildModulesState[depId] = true;
+                const depDef = allModuleDefinitions.find(x => x.id === depId);
+                showToast('Dependência ativada automaticamente: ' + (depDef ? depDef.name : depId), 'info', 'Dependência de Módulo');
+              }
             }
           }
+
+          // If disabling a parent module, warn and disable any active dependent child modules
+          if (!newState) {
+            for (const other of allModuleDefinitions) {
+              if (Array.isArray(other.dependencies) && other.dependencies.includes(key) && currentGuildModulesState[other.id] !== false) {
+                currentGuildModulesState[other.id] = false;
+                showToast('O módulo dependente "' + other.name + '" foi desativado pois requer "' + (modDef ? modDef.name : key) + '".', 'warning', 'Dependência Desativada');
+              }
+            }
+          }
+
+          renderModulesGrid(document.getElementById('moduleSearchInput')?.value || '');
         });
       });
     }
@@ -13960,20 +14683,25 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       if (sBtn) { sBtn.disabled = true; sBtn.innerText = '💾 Salvando Módulos...'; }
 
       const res = await saveModule('guild_modules', { modules: currentGuildModulesState });
-      if (res) {
-        showToast('As configurações dos 26 módulos foram salvas e aplicadas em tempo real!', 'success', 'Módulos Sincronizados');
+      if (res && res.config) {
+        currentGuildModulesState = res.config;
+        renderModulesGrid(document.getElementById('moduleSearchInput')?.value || '');
       }
 
       if (sBtn) { sBtn.disabled = false; sBtn.innerText = '💾 Salvar Todos os Módulos'; }
     });
 
     // ==========================================
-    // 5. MULTI-BOT MANAGER HANDLER
+    // 5. MULTI-BOT MANAGER & PÁGINA ADMINISTRATIVA INDIVIDUAL (18 SEÇÕES)
     // ==========================================
+    let currentEditingBotId = null;
+    let currentEditingBotInstance = null;
+    let currentEditingBotModules = {};
+    let multiBotModuleDefinitions = [];
+
     async function loadMultiBotInstances() {
       const tbody = document.getElementById('multiBotTableBody');
       if (!tbody) return;
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 1.5rem; color: var(--text-muted);">Consultando instâncias de bots...</td></tr>';
 
       try {
         const res = await fetch('/api/multi-bot', {
@@ -13983,6 +14711,9 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         if (!res.ok) throw new Error('Falha ao obter instâncias');
         const data = await res.json();
         const list = data.instances || [];
+        if (Array.isArray(data.moduleDefinitions) && data.moduleDefinitions.length > 0) {
+          multiBotModuleDefinitions = data.moduleDefinitions;
+        }
 
         if (list.length === 0) {
           tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 1.5rem; color: var(--text-muted);">Nenhuma instância secundária cadastrada. O bot principal continua operando normalmente.</td></tr>';
@@ -13994,26 +14725,31 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           const isError = inst.status === 'ERROR';
           const badgeColor = isOnline ? '#10B981' : (isError ? '#EF4444' : '#94A3B8');
           const badgeBg = isOnline ? 'rgba(16, 185, 129, 0.15)' : (isError ? 'rgba(239, 68, 68, 0.15)' : 'rgba(148, 163, 184, 0.15)');
+          const activeModsCnt = inst.databaseStats?.activeModulesCount ?? Object.values(inst.config?.modules || {}).filter(Boolean).length;
 
           return '<tr>' +
-            '<td><span style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 999px; font-size: 0.74rem; font-weight: 700; color: ' + badgeColor + '; background: ' + badgeBg + '; border: 1px solid ' + badgeColor + ';"><span style="width: 6px; height: 6px; border-radius: 50%; background: ' + badgeColor + ';"></span> ' + inst.status + '</span></td>' +
-            '<td><strong>' + inst.name + '</strong></td>' +
-            '<td><code style="background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px;">' + inst.maskedToken + '</code></td>' +
+            '<td><span style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 999px; font-size: 0.74rem; font-weight: 700; color: ' + badgeColor + '; background: ' + badgeBg + '; border: 1px solid ' + badgeColor + ';"><span style="width: 6px; height: 6px; border-radius: 50%; background: ' + badgeColor + ';"></span> ' + escapeHtml(inst.status) + '</span></td>' +
+            '<td><a href="javascript:void(0)" class="mb-open-admin-link" data-instid="' + escapeHtml(inst.id) + '" style="color: #38bdf8; font-weight: 700; text-decoration: none;">🤖 ' + escapeHtml(inst.name) + '</a><div style="font-size: 0.72rem; color: var(--text-muted);">Prefixo: <code>' + escapeHtml(inst.config?.prefix || '+') + '</code> • IA: ' + escapeHtml(inst.config?.aiName || inst.name) + '</div></td>' +
+            '<td><code style="background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px;">' + escapeHtml(inst.maskedToken) + '</code></td>' +
+            '<td><span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10B981;">' + activeModsCnt + ' / 26 ativos</span></td>' +
             '<td>' + (inst.memoryMb ? inst.memoryMb + ' MB' : '0 MB') + '</td>' +
-            '<td>' + (inst.uptimeSeconds ? Math.floor(inst.uptimeSeconds / 60) + ' min' : 'Offline') + '</td>' +
             '<td>' +
-              '<div style="display: flex; gap: 4px;">' +
+              '<div style="display: flex; gap: 5px; flex-wrap: wrap;">' +
+                '<button type="button" class="primary-btn mb-manage-btn" data-instid="' + escapeHtml(inst.id) + '" style="padding: 0.28rem 0.65rem; font-size: 0.75rem; background: linear-gradient(135deg, #a855f7, #7e22ce);">⚙️ Gerenciar Bot</button>' +
                 (isOnline ?
-                  '<button type="button" class="secondary-btn mb-stop-btn" data-instid="' + inst.id + '" style="padding: 0.25rem 0.5rem; font-size: 0.74rem;">⏹️ Parar</button>' :
-                  '<button type="button" class="primary-btn mb-start-btn" data-instid="' + inst.id + '" style="padding: 0.25rem 0.5rem; font-size: 0.74rem; background: #10B981;">▶️ Iniciar</button>'
+                  '<button type="button" class="secondary-btn mb-stop-btn" data-instid="' + escapeHtml(inst.id) + '" style="padding: 0.28rem 0.55rem; font-size: 0.74rem;">⏹️ Parar</button>' :
+                  '<button type="button" class="primary-btn mb-start-btn" data-instid="' + escapeHtml(inst.id) + '" style="padding: 0.28rem 0.55rem; font-size: 0.74rem; background: #10B981;">▶️ Iniciar</button>'
                 ) +
-                '<button type="button" class="secondary-btn mb-restart-btn" data-instid="' + inst.id + '" style="padding: 0.25rem 0.5rem; font-size: 0.74rem;">🔄</button>' +
-                '<button type="button" class="danger-btn mb-delete-btn" data-instid="' + inst.id + '" style="padding: 0.25rem 0.5rem; font-size: 0.74rem;">🗑️</button>' +
+                '<button type="button" class="secondary-btn mb-restart-btn" data-instid="' + escapeHtml(inst.id) + '" style="padding: 0.28rem 0.5rem; font-size: 0.74rem;">🔄</button>' +
+                '<button type="button" class="danger-btn mb-delete-btn" data-instid="' + escapeHtml(inst.id) + '" style="padding: 0.28rem 0.5rem; font-size: 0.74rem;">🗑️</button>' +
               '</div>' +
             '</td>' +
           '</tr>';
         }).join('');
 
+        tbody.querySelectorAll('.mb-manage-btn, .mb-open-admin-link').forEach(btn => {
+          btn.addEventListener('click', () => openMultiBotAdminPage(btn.getAttribute('data-instid')));
+        });
         tbody.querySelectorAll('.mb-start-btn').forEach(btn => {
           btn.addEventListener('click', () => handleMultiBotAction(btn.getAttribute('data-instid'), 'start'));
         });
@@ -14026,7 +14762,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         tbody.querySelectorAll('.mb-delete-btn').forEach(btn => {
           btn.addEventListener('click', async () => {
             const id = btn.getAttribute('data-instid');
-            if (!confirm('Deseja realmente remover esta instância de bot?')) return;
+            if (!confirm('Deseja realmente remover esta instância de bot e suas configurações isoladas?')) return;
             try {
               const res = await fetch('/api/multi-bot/' + id, {
                 method: 'DELETE',
@@ -14034,18 +14770,529 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
                 credentials: 'include'
               });
               if (res.ok) {
+                try {
+                  if (localStorage.getItem('jarvis_active_multibot_id') === id) {
+                    localStorage.removeItem('jarvis_active_multibot_id');
+                  }
+                } catch {}
                 showToast('Instância de bot removida com sucesso.', 'success', 'Removido');
                 loadMultiBotInstances();
+              } else {
+                const errData = await res.json().catch(() => ({}));
+                showToast(errData.error || 'Falha ao remover instância.', 'error');
               }
             } catch (err) {
               showToast(err.message, 'error', 'Erro ao Deletar');
             }
           });
         });
+
+        // If user had an open bot admin page before F5, restore it automatically
+        try {
+          const savedBotId = localStorage.getItem('jarvis_active_multibot_id');
+          if (savedBotId && list.some(x => x.id === savedBotId) && document.getElementById('tab-multibot')?.classList.contains('active')) {
+            openMultiBotAdminPage(savedBotId);
+          }
+        } catch {}
       } catch (err) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 1.5rem; color: #ef4444;">Erro ao carregar instâncias: ' + err.message + '</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 1.5rem; color: #ef4444;">Erro ao carregar instâncias: ' + escapeHtml(err.message) + '</td></tr>';
       }
     }
+
+    // Switch between the 18 sub-sections of an individual bot instance
+    function switchMultiBotSubtab(secId) {
+      document.querySelectorAll('.mb-admin-section').forEach(sec => {
+        sec.style.display = sec.id === secId ? 'block' : 'none';
+      });
+      document.querySelectorAll('#mbSubtabsNav .mb-subtab-btn').forEach(btn => {
+        const isAct = btn.getAttribute('data-mb-sec') === secId;
+        btn.classList.toggle('active', isAct);
+        btn.style.background = isAct ? 'linear-gradient(135deg, #a855f7, #7e22ce)' : '';
+        btn.style.color = isAct ? '#fff' : '';
+      });
+      try { localStorage.setItem('jarvis_active_multibot_sec', secId); } catch {}
+    }
+
+    document.querySelectorAll('#mbSubtabsNav .mb-subtab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        switchMultiBotSubtab(btn.getAttribute('data-mb-sec'));
+      });
+    });
+
+    document.getElementById('mbBackToListBtn')?.addEventListener('click', () => {
+      currentEditingBotId = null;
+      try { localStorage.removeItem('jarvis_active_multibot_id'); } catch {}
+      document.getElementById('multiBotInstanceAdminView').style.display = 'none';
+      document.getElementById('multiBotListView').style.display = 'block';
+      loadMultiBotInstances();
+    });
+
+    async function openMultiBotAdminPage(botId) {
+      if (!botId) return;
+      try {
+        const res = await fetch('/api/multi-bot/' + botId, {
+          headers: { 'X-Panel-Password': '1598' },
+          credentials: 'include'
+        });
+        if (!res.ok) throw new Error('Não foi possível carregar dados da instância.');
+        const data = await res.json();
+        const inst = data.instance;
+        if (!inst) throw new Error('Instância não encontrada.');
+
+        currentEditingBotId = inst.id;
+        currentEditingBotInstance = inst;
+        if (Array.isArray(data.moduleDefinitions) && data.moduleDefinitions.length > 0) {
+          multiBotModuleDefinitions = data.moduleDefinitions;
+        } else if (allModuleDefinitions.length > 0) {
+          multiBotModuleDefinitions = allModuleDefinitions;
+        }
+
+        try { localStorage.setItem('jarvis_active_multibot_id', inst.id); } catch {}
+
+        document.getElementById('multiBotListView').style.display = 'none';
+        document.getElementById('multiBotInstanceAdminView').style.display = 'block';
+
+        // Populate Header
+        document.getElementById('mbAdminHeaderName').innerText = inst.name;
+        document.getElementById('mbAdminHeaderStatus').innerText = inst.status;
+        document.getElementById('mbAdminHeaderId').innerText = inst.id;
+        document.getElementById('mbAdminHeaderToken').innerText = inst.maskedToken;
+        document.getElementById('mbAdminHeaderNamespace').innerText = inst.databaseStats?.logicalNamespace || ('tenant_' + inst.id);
+
+        const cfg = inst.config || {};
+        currentEditingBotModules = { ...(cfg.modules || {}) };
+
+        // 1. Overview
+        document.getElementById('mbCfgName').value = inst.name || '';
+        document.getElementById('mbCfgToken').value = '';
+        document.getElementById('mbCfgEnabled').value = String(Boolean(inst.isEnabled));
+        const activeCnt = Object.values(currentEditingBotModules).filter(Boolean).length;
+        document.getElementById('mbStatActiveModules').innerText = activeCnt + ' / ' + (multiBotModuleDefinitions.length || 26);
+        document.getElementById('mbStatRam').innerText = (inst.memoryMb || 0) + ' MB';
+        document.getElementById('mbStatMemories').innerText = String((data.memories || []).length);
+        document.getElementById('mbStatLogs').innerText = String((data.logs || []).length);
+
+        // 2. Presence
+        document.getElementById('mbCfgPresenceStatus').value = cfg.presenceStatus || 'online';
+        document.getElementById('mbCfgPresenceType').value = cfg.presenceActivityType || 'Custom';
+        document.getElementById('mbCfgPresenceText').value = cfg.presenceActivityText || '';
+        document.getElementById('mbCfgPresenceUrl').value = cfg.presenceActivityUrl || '';
+
+        // 3. Modules Grid (26 modules)
+        renderMultiBotModulesGrid();
+
+        // 4. AI
+        document.getElementById('mbCfgAiName').value = cfg.aiName || inst.name;
+        document.getElementById('mbCfgAiModel').value = cfg.aiModel || 'gemini-3.5-flash-lite';
+        document.getElementById('mbCfgAiHumor').value = cfg.aiHumorMode || 'normal';
+        document.getElementById('mbCfgAiTemp').value = cfg.aiTemperature ?? 0.65;
+        document.getElementById('mbCfgAiRole').value = cfg.aiPersonaRole || '';
+        document.getElementById('mbCfgAiTone').value = cfg.aiPersonaTone || '';
+
+        // 5. Memories
+        renderMultiBotMemories(data.memories || []);
+
+        // 6. Commands
+        document.getElementById('mbCfgPrefix').value = cfg.prefix || cfg.commands?.prefix || '+';
+        document.getElementById('mbCfgPrefixless').value = String(Boolean(cfg.commands?.prefixlessMode));
+        document.getElementById('mbCfgDisabledCommands').value = (cfg.commands?.disabledCommands || []).join(', ');
+
+        // 7. Moderation
+        document.getElementById('mbCfgModLogChannel').value = cfg.moderation?.logChannelId || '';
+        document.getElementById('mbCfgAntiSpam').value = String(cfg.moderation?.antiSpamEnabled !== false);
+        document.getElementById('mbCfgAntiSpamMax').value = cfg.moderation?.maxMessagesPerInterval ?? 5;
+        document.getElementById('mbCfgAntiBotScam').value = String(cfg.moderation?.antiBotScamEnabled !== false);
+        document.getElementById('mbCfgAntiBotAction').value = cfg.moderation?.antiBotScamAction || 'TIMEOUT';
+        document.getElementById('mbCfgTempBanWorker').value = String(cfg.moderation?.tempBanWorkerEnabled !== false);
+
+        // 8. Economy & XP
+        document.getElementById('mbCfgEcoName').value = cfg.economyXp?.currencyName || 'StarkCoins';
+        document.getElementById('mbCfgEcoSymbol').value = cfg.economyXp?.currencySymbol || '🪙';
+        document.getElementById('mbCfgEcoDaily').value = cfg.economyXp?.dailyAmount ?? 500;
+        document.getElementById('mbCfgEcoWorkMin').value = cfg.economyXp?.workMin ?? 50;
+        document.getElementById('mbCfgEcoWorkMax').value = cfg.economyXp?.workMax ?? 200;
+        document.getElementById('mbCfgXpMin').value = cfg.economyXp?.xpMin ?? 15;
+        document.getElementById('mbCfgXpMax').value = cfg.economyXp?.xpMax ?? 25;
+        document.getElementById('mbCfgVoiceXp').value = cfg.economyXp?.voiceXpPerMinute ?? 10;
+
+        // 9. Music
+        document.getElementById('mbCfgMusicVol').value = cfg.music?.defaultVolume ?? 80;
+        document.getElementById('mbCfgMusicQueue').value = cfg.music?.maxQueueSize ?? 100;
+        document.getElementById('mbCfgMusicDisconnect').value = cfg.music?.autoDisconnectMinutes ?? 5;
+        document.getElementById('mbCfgMusicDjRole').value = cfg.music?.djRoleId || '';
+        document.getElementById('mbCfgMusicTtsLang').value = cfg.music?.ttsLanguage || 'pt-BR';
+
+        // 10. Tickets
+        document.getElementById('mbCfgTicketTitle').value = cfg.tickets?.panelTitle || '';
+        document.getElementById('mbCfgTicketMax').value = cfg.tickets?.maxOpenTicketsPerUser ?? 1;
+        document.getElementById('mbCfgTicketTranscript').value = cfg.tickets?.transcriptChannelId || '';
+        document.getElementById('mbCfgTicketRole').value = cfg.tickets?.defaultSupportRoleId || '';
+        document.getElementById('mbCfgTicketDesc').value = cfg.tickets?.panelDescription || '';
+
+        // 11. Social
+        document.getElementById('mbCfgSocialMarriage').value = String(cfg.social?.marriageEnabled !== false);
+        document.getElementById('mbCfgSocialCost').value = cfg.social?.marriageCost ?? 5000;
+        document.getElementById('mbCfgSocialShip').value = String(cfg.social?.shippingEnabled !== false);
+        document.getElementById('mbCfgSocialFun').value = String(cfg.social?.funCommandsEnabled !== false);
+
+        // 12. Automations
+        document.getElementById('mbCfgAutoBriefing').value = String(Boolean(cfg.automations?.briefingEnabled));
+        document.getElementById('mbCfgAutoHour').value = cfg.automations?.briefingHourUtc ?? 18;
+        document.getElementById('mbCfgAutoReminders').value = String(cfg.automations?.remindersEnabled !== false);
+        document.getElementById('mbCfgAutoAlerts').value = String(cfg.automations?.socialAlertsEnabled !== false);
+
+        // 13. Embeds
+        document.getElementById('mbCfgEmbedPrimary').value = cfg.embeds?.primaryColor || '#00E5FF';
+        document.getElementById('mbCfgEmbedSuccess').value = cfg.embeds?.successColor || '#10B981';
+        document.getElementById('mbCfgEmbedWarning').value = cfg.embeds?.warningColor || '#F59E0B';
+        document.getElementById('mbCfgEmbedError').value = cfg.embeds?.errorColor || '#EF4444';
+        document.getElementById('mbCfgEmbedFooter').value = cfg.embeds?.footerText || '';
+
+        // 14. Permissions
+        document.getElementById('mbCfgPermRestrict').value = String(Boolean(cfg.permissions?.restrictToAllowedGuilds));
+        document.getElementById('mbCfgPermGuilds').value = (cfg.permissions?.allowedGuilds || inst.allowedGuilds || []).join(', ');
+        document.getElementById('mbCfgPermAdmins').value = (cfg.permissions?.adminRoleIds || []).join(', ');
+
+        // 15. Integrations
+        document.getElementById('mbCfgIntYoutube').value = String(cfg.integrations?.youtubeAlertsEnabled !== false);
+        document.getElementById('mbCfgIntTwitch').value = String(cfg.integrations?.twitchAlertsEnabled !== false);
+        document.getElementById('mbCfgIntReddit').value = String(cfg.integrations?.redditAlertsEnabled !== false);
+        document.getElementById('mbCfgIntWebSearch').value = String(cfg.integrations?.webSearchEnabled !== false);
+        document.getElementById('mbCfgIntWebhook').value = cfg.integrations?.webhookLogUrl || '';
+
+        // 16. Database
+        document.getElementById('mbDbNamespace').innerText = inst.databaseStats?.logicalNamespace || ('tenant_' + inst.id);
+        document.getElementById('mbDbMemoriesCount').innerText = (data.memories || []).length + ' registros';
+        document.getElementById('mbDbLogsCount').innerText = (data.logs || []).length + ' eventos';
+
+        // 17. Logs
+        renderMultiBotLogs(data.logs || []);
+
+        // 18. Advanced
+        document.getElementById('mbCfgAdvConcurrency').value = cfg.advanced?.maxConcurrency ?? 5;
+        document.getElementById('mbCfgAdvRateLimit').value = cfg.advanced?.rateLimitPerMinute ?? 60;
+        document.getElementById('mbCfgAdvMemLimit').value = cfg.advanced?.memoryLimitMb ?? 512;
+        document.getElementById('mbCfgAdvAutoRestart').value = String(cfg.advanced?.autoRestartOnCrash !== false);
+        document.getElementById('mbCfgAdvDebug').value = String(Boolean(cfg.advanced?.debugMode));
+
+        let savedSec = 'mb-sec-overview';
+        try { savedSec = localStorage.getItem('jarvis_active_multibot_sec') || 'mb-sec-overview'; } catch {}
+        switchMultiBotSubtab(document.getElementById(savedSec) ? savedSec : 'mb-sec-overview');
+      } catch (err) {
+        showToast(err.message, 'error', 'Erro ao Abrir Instância');
+      }
+    }
+
+    function renderMultiBotModulesGrid() {
+      const grid = document.getElementById('mbInstanceModulesGrid');
+      if (!grid) return;
+      const defs = multiBotModuleDefinitions.length > 0 ? multiBotModuleDefinitions : allModuleDefinitions;
+
+      grid.innerHTML = defs.map(m => {
+        const isChecked = currentEditingBotModules[m.id] !== false;
+        const deps = Array.isArray(m.dependencies) && m.dependencies.length > 0 ? m.dependencies.join(', ') : null;
+        return '<div class="card" style="padding: 0.85rem; border: 1px solid ' + (isChecked ? 'rgba(16, 185, 129, 0.35)' : 'rgba(255,255,255,0.06)') + '; background: ' + (isChecked ? 'rgba(16, 185, 129, 0.05)' : 'rgba(0,0,0,0.2)') + ';">' +
+          '<div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">' +
+            '<div style="display: flex; align-items: center; gap: 0.45rem;">' +
+              '<span>' + (m.icon || '⚙️') + '</span>' +
+              '<div>' +
+                '<div style="font-weight: 700; font-size: 0.86rem; color: var(--text-main);">' + escapeHtml(m.name) + '</div>' +
+                '<div style="font-size: 0.68rem; color: var(--text-muted);"><code>' + m.id + '</code>' + (deps ? ' • Requer: ' + deps : '') + '</div>' +
+              '</div>' +
+            '</div>' +
+            '<input type="checkbox" class="mb-inst-mod-checkbox" data-modid="' + m.id + '" ' + (isChecked ? 'checked' : '') + ' style="width: 18px; height: 18px; accent-color: #10B981; cursor: pointer;">' +
+          '</div>' +
+        '</div>';
+      }).join('');
+
+      grid.querySelectorAll('.mb-inst-mod-checkbox').forEach(cb => {
+        cb.addEventListener('change', () => {
+          const mId = cb.getAttribute('data-modid');
+          const defsList = multiBotModuleDefinitions.length > 0 ? multiBotModuleDefinitions : allModuleDefinitions;
+          const modDef = defsList.find(x => x.id === mId);
+          currentEditingBotModules[mId] = cb.checked;
+
+          if (cb.checked && modDef && Array.isArray(modDef.dependencies)) {
+            for (const depId of modDef.dependencies) {
+              if (currentEditingBotModules[depId] === false) {
+                currentEditingBotModules[depId] = true;
+                showToast('Dependência "' + depId + '" ativada automaticamente para esta instância.', 'info');
+              }
+            }
+          }
+          if (!cb.checked) {
+            for (const other of defsList) {
+              if (Array.isArray(other.dependencies) && other.dependencies.includes(mId) && currentEditingBotModules[other.id] !== false) {
+                currentEditingBotModules[other.id] = false;
+                showToast('Módulo dependente "' + other.name + '" desativado automaticamente nesta instância.', 'warning');
+              }
+            }
+          }
+          renderMultiBotModulesGrid();
+        });
+      });
+    }
+
+    document.getElementById('mbEnableAllModsBtn')?.addEventListener('click', () => {
+      const defs = multiBotModuleDefinitions.length > 0 ? multiBotModuleDefinitions : allModuleDefinitions;
+      for (const m of defs) currentEditingBotModules[m.id] = true;
+      renderMultiBotModulesGrid();
+    });
+
+    document.getElementById('mbDisableAllModsBtn')?.addEventListener('click', () => {
+      const defs = multiBotModuleDefinitions.length > 0 ? multiBotModuleDefinitions : allModuleDefinitions;
+      for (const m of defs) currentEditingBotModules[m.id] = false;
+      renderMultiBotModulesGrid();
+    });
+
+    function renderMultiBotMemories(memories = []) {
+      const container = document.getElementById('mbMemoriesListContainer');
+      if (!container) return;
+      if (memories.length === 0) {
+        container.innerHTML = '<div style="text-align: center; padding: 1.5rem; color: var(--text-muted); font-size: 0.84rem;">Nenhuma memória isolada gravada para esta instância.</div>';
+        return;
+      }
+      container.innerHTML = memories.map(m => {
+        const k = m.memory_key || m.key;
+        const v = m.memory_value || m.value;
+        return '<div style="background: rgba(0,0,0,0.28); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 0.7rem; display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem;">' +
+          '<div>' +
+            '<code style="color: #c084fc; font-weight: 700;">' + escapeHtml(k) + '</code>' +
+            '<div style="font-size: 0.82rem; color: #e2e8f0; margin-top: 4px;">' + escapeHtml(v) + '</div>' +
+          '</div>' +
+          '<button type="button" class="danger-btn mb-del-mem-btn" data-memkey="' + escapeHtml(k) + '" style="padding: 0.2rem 0.5rem; font-size: 0.72rem;">🗑️</button>' +
+        '</div>';
+      }).join('');
+
+      container.querySelectorAll('.mb-del-mem-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const key = btn.getAttribute('data-memkey');
+          if (!currentEditingBotId) return;
+          const res = await fetch('/api/multi-bot/' + currentEditingBotId + '/memories', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Panel-Password': '1598' },
+            credentials: 'include',
+            body: JSON.stringify({ action: 'DELETE', key })
+          });
+          const data = await res.json();
+          if (res.ok) {
+            renderMultiBotMemories(data.memories || []);
+            showToast('Memória removida da instância.', 'success');
+          }
+        });
+      });
+    }
+
+    document.getElementById('mbSaveMemoryBtn')?.addEventListener('click', async () => {
+      if (!currentEditingBotId) return;
+      const key = document.getElementById('mbMemKeyInput')?.value?.trim();
+      const value = document.getElementById('mbMemValInput')?.value?.trim();
+      if (!key || !value) return showToast('Preencha a chave e o conteúdo da memória!', 'warning');
+
+      try {
+        const res = await fetch('/api/multi-bot/' + currentEditingBotId + '/memories', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Panel-Password': '1598' },
+          credentials: 'include',
+          body: JSON.stringify({ action: 'SAVE', key, value })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          document.getElementById('mbMemKeyInput').value = '';
+          document.getElementById('mbMemValInput').value = '';
+          renderMultiBotMemories(data.memories || []);
+          showToast('Memória gravada exclusivamente nesta instância!', 'success', 'Memória Salva');
+        } else {
+          showToast(data.error || 'Erro ao gravar memória', 'error');
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+
+    function renderMultiBotLogs(logs = []) {
+      const container = document.getElementById('mbLogsConsoleContainer');
+      if (!container) return;
+      if (logs.length === 0) {
+        container.innerHTML = '<div style="color: #64748b; text-align: center; padding: 1.5rem;">Nenhum log registrado nesta instância.</div>';
+        return;
+      }
+      container.innerHTML = logs.map(l => {
+        const dt = l.created_at ? new Date(l.created_at).toLocaleTimeString('pt-BR') : '';
+        const color = l.level === 'ERROR' ? '#ef4444' : (l.level === 'WARN' ? '#f59e0b' : '#10b981');
+        return '<div style="border-bottom: 1px solid rgba(255,255,255,0.04); padding-bottom: 4px;">' +
+          '<span style="color: #64748b;">[' + dt + ']</span> ' +
+          '<span style="color: ' + color + '; font-weight: 700;">[' + escapeHtml(l.level) + ']</span> ' +
+          '<span style="color: #38bdf8;">[' + escapeHtml(l.category) + ']</span> ' +
+          '<span style="color: #e2e8f0;">' + escapeHtml(l.message) + '</span>' +
+        '</div>';
+      }).join('');
+    }
+
+    document.getElementById('mbRefreshLogsBtn')?.addEventListener('click', async () => {
+      if (!currentEditingBotId) return;
+      const res = await fetch('/api/multi-bot/' + currentEditingBotId + '/logs', {
+        headers: { 'X-Panel-Password': '1598' },
+        credentials: 'include'
+      });
+      if (res.ok) {
+        const data = await res.json();
+        renderMultiBotLogs(data.logs || []);
+        showToast('Logs da instância atualizados.', 'info');
+      }
+    });
+
+    document.getElementById('mbClearLogsBtn')?.addEventListener('click', async () => {
+      if (!currentEditingBotId) return;
+      const res = await fetch('/api/multi-bot/' + currentEditingBotId + '/clear-logs', {
+        method: 'POST',
+        headers: { 'X-Panel-Password': '1598' },
+        credentials: 'include'
+      });
+      if (res.ok) {
+        renderMultiBotLogs([]);
+        showToast('Histórico de logs desta instância limpo.', 'success');
+      }
+    });
+
+    document.getElementById('mbAdminStartBtn')?.addEventListener('click', () => {
+      if (currentEditingBotId) handleMultiBotAction(currentEditingBotId, 'start');
+    });
+    document.getElementById('mbAdminStopBtn')?.addEventListener('click', () => {
+      if (currentEditingBotId) handleMultiBotAction(currentEditingBotId, 'stop');
+    });
+    document.getElementById('mbAdminRestartBtn')?.addEventListener('click', () => {
+      if (currentEditingBotId) handleMultiBotAction(currentEditingBotId, 'restart');
+    });
+
+    document.getElementById('mbAdminSaveAllBtn')?.addEventListener('click', async () => {
+      if (!currentEditingBotId) return;
+      const saveBtn = document.getElementById('mbAdminSaveAllBtn');
+      if (saveBtn) { saveBtn.disabled = true; saveBtn.innerText = '⏳ Salvando no SQLite...'; }
+
+      const disabledCmds = (document.getElementById('mbCfgDisabledCommands')?.value || '')
+        .split(',').map(s => s.trim()).filter(Boolean);
+      const allowedGuilds = (document.getElementById('mbCfgPermGuilds')?.value || '')
+        .split(',').map(s => s.trim()).filter(Boolean);
+      const adminRoles = (document.getElementById('mbCfgPermAdmins')?.value || '')
+        .split(',').map(s => s.trim()).filter(Boolean);
+
+      const payload = {
+        name: document.getElementById('mbCfgName')?.value?.trim() || 'Bot Instance',
+        token: document.getElementById('mbCfgToken')?.value?.trim() || undefined,
+        isEnabled: document.getElementById('mbCfgEnabled')?.value === 'true',
+        allowedGuilds,
+        config: {
+          prefix: document.getElementById('mbCfgPrefix')?.value?.trim() || '+',
+          aiName: document.getElementById('mbCfgAiName')?.value?.trim() || 'J.A.R.V.I.S.',
+          aiModel: document.getElementById('mbCfgAiModel')?.value || 'gemini-3.5-flash-lite',
+          aiHumorMode: document.getElementById('mbCfgAiHumor')?.value || 'normal',
+          aiTemperature: parseFloat(document.getElementById('mbCfgAiTemp')?.value || '0.65'),
+          aiPersonaRole: document.getElementById('mbCfgAiRole')?.value || '',
+          aiPersonaTone: document.getElementById('mbCfgAiTone')?.value || '',
+          presenceStatus: document.getElementById('mbCfgPresenceStatus')?.value || 'online',
+          presenceActivityType: document.getElementById('mbCfgPresenceType')?.value || 'Custom',
+          presenceActivityText: document.getElementById('mbCfgPresenceText')?.value || '',
+          presenceActivityUrl: document.getElementById('mbCfgPresenceUrl')?.value || '',
+          modules: currentEditingBotModules,
+          commands: {
+            prefix: document.getElementById('mbCfgPrefix')?.value?.trim() || '+',
+            prefixlessMode: document.getElementById('mbCfgPrefixless')?.value === 'true',
+            disabledCommands: disabledCmds
+          },
+          moderation: {
+            logChannelId: document.getElementById('mbCfgModLogChannel')?.value?.trim() || '',
+            antiSpamEnabled: document.getElementById('mbCfgAntiSpam')?.value === 'true',
+            maxMessagesPerInterval: parseInt(document.getElementById('mbCfgAntiSpamMax')?.value || '5', 10),
+            antiBotScamEnabled: document.getElementById('mbCfgAntiBotScam')?.value === 'true',
+            antiBotScamAction: document.getElementById('mbCfgAntiBotAction')?.value || 'TIMEOUT',
+            tempBanWorkerEnabled: document.getElementById('mbCfgTempBanWorker')?.value === 'true'
+          },
+          economyXp: {
+            currencyName: document.getElementById('mbCfgEcoName')?.value?.trim() || 'StarkCoins',
+            currencySymbol: document.getElementById('mbCfgEcoSymbol')?.value?.trim() || '🪙',
+            dailyAmount: parseInt(document.getElementById('mbCfgEcoDaily')?.value || '500', 10),
+            workMin: parseInt(document.getElementById('mbCfgEcoWorkMin')?.value || '50', 10),
+            workMax: parseInt(document.getElementById('mbCfgEcoWorkMax')?.value || '200', 10),
+            xpMin: parseInt(document.getElementById('mbCfgXpMin')?.value || '15', 10),
+            xpMax: parseInt(document.getElementById('mbCfgXpMax')?.value || '25', 10),
+            voiceXpPerMinute: parseInt(document.getElementById('mbCfgVoiceXp')?.value || '10', 10)
+          },
+          music: {
+            defaultVolume: parseInt(document.getElementById('mbCfgMusicVol')?.value || '80', 10),
+            maxQueueSize: parseInt(document.getElementById('mbCfgMusicQueue')?.value || '100', 10),
+            autoDisconnectMinutes: parseInt(document.getElementById('mbCfgMusicDisconnect')?.value || '5', 10),
+            djRoleId: document.getElementById('mbCfgMusicDjRole')?.value?.trim() || '',
+            ttsLanguage: document.getElementById('mbCfgMusicTtsLang')?.value || 'pt-BR'
+          },
+          tickets: {
+            panelTitle: document.getElementById('mbCfgTicketTitle')?.value?.trim() || '',
+            maxOpenTicketsPerUser: parseInt(document.getElementById('mbCfgTicketMax')?.value || '1', 10),
+            transcriptChannelId: document.getElementById('mbCfgTicketTranscript')?.value?.trim() || '',
+            defaultSupportRoleId: document.getElementById('mbCfgTicketRole')?.value?.trim() || '',
+            panelDescription: document.getElementById('mbCfgTicketDesc')?.value || ''
+          },
+          social: {
+            marriageEnabled: document.getElementById('mbCfgSocialMarriage')?.value === 'true',
+            marriageCost: parseInt(document.getElementById('mbCfgSocialCost')?.value || '5000', 10),
+            shippingEnabled: document.getElementById('mbCfgSocialShip')?.value === 'true',
+            funCommandsEnabled: document.getElementById('mbCfgSocialFun')?.value === 'true'
+          },
+          automations: {
+            briefingEnabled: document.getElementById('mbCfgAutoBriefing')?.value === 'true',
+            briefingHourUtc: parseInt(document.getElementById('mbCfgAutoHour')?.value || '18', 10),
+            remindersEnabled: document.getElementById('mbCfgAutoReminders')?.value === 'true',
+            socialAlertsEnabled: document.getElementById('mbCfgAutoAlerts')?.value === 'true'
+          },
+          embeds: {
+            primaryColor: document.getElementById('mbCfgEmbedPrimary')?.value?.trim() || '#00E5FF',
+            successColor: document.getElementById('mbCfgEmbedSuccess')?.value?.trim() || '#10B981',
+            warningColor: document.getElementById('mbCfgEmbedWarning')?.value?.trim() || '#F59E0B',
+            errorColor: document.getElementById('mbCfgEmbedError')?.value?.trim() || '#EF4444',
+            footerText: document.getElementById('mbCfgEmbedFooter')?.value?.trim() || ''
+          },
+          permissions: {
+            restrictToAllowedGuilds: document.getElementById('mbCfgPermRestrict')?.value === 'true',
+            allowedGuilds,
+            adminRoleIds: adminRoles
+          },
+          integrations: {
+            youtubeAlertsEnabled: document.getElementById('mbCfgIntYoutube')?.value === 'true',
+            twitchAlertsEnabled: document.getElementById('mbCfgIntTwitch')?.value === 'true',
+            redditAlertsEnabled: document.getElementById('mbCfgIntReddit')?.value === 'true',
+            webSearchEnabled: document.getElementById('mbCfgIntWebSearch')?.value === 'true',
+            webhookLogUrl: document.getElementById('mbCfgIntWebhook')?.value?.trim() || ''
+          },
+          advanced: {
+            maxConcurrency: parseInt(document.getElementById('mbCfgAdvConcurrency')?.value || '5', 10),
+            rateLimitPerMinute: parseInt(document.getElementById('mbCfgAdvRateLimit')?.value || '60', 10),
+            memoryLimitMb: parseInt(document.getElementById('mbCfgAdvMemLimit')?.value || '512', 10),
+            autoRestartOnCrash: document.getElementById('mbCfgAdvAutoRestart')?.value === 'true',
+            debugMode: document.getElementById('mbCfgAdvDebug')?.value === 'true'
+          }
+        }
+      };
+
+      try {
+        const res = await fetch('/api/multi-bot/' + currentEditingBotId + '/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Panel-Password': '1598' },
+          credentials: 'include',
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          showToast('Todas as 18 seções da instância "' + payload.name + '" foram salvas no SQLite com sucesso!', 'success', 'Instância Salva');
+          openMultiBotAdminPage(currentEditingBotId);
+        } else {
+          showToast(data.error || 'Erro ao salvar configurações da instância.', 'error', 'Falha ao Salvar');
+        }
+      } catch (err) {
+        showToast(err.message, 'error', 'Erro de Conexão');
+      } finally {
+        if (saveBtn) { saveBtn.disabled = false; saveBtn.innerText = '💾 Salvar Configurações deste Bot'; }
+      }
+    });
 
     async function handleMultiBotAction(id, action) {
       try {
@@ -14057,7 +15304,8 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         const data = await res.json();
         if (res.ok) {
           showToast('Instância atualizada com sucesso!', 'success', 'Multi-Bot');
-          loadMultiBotInstances();
+          if (currentEditingBotId === id) openMultiBotAdminPage(id);
+          else loadMultiBotInstances();
         } else {
           showToast(data.error || 'Falha na ação da instância.', 'error', 'Erro');
         }
@@ -14086,11 +15334,11 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           body: JSON.stringify({ name, token })
         });
         const data = await res.json();
-        if (res.ok) {
-          showToast('Instância de bot "' + name + '" registrada com sucesso!', 'success', 'Bot Cadastrado');
+        if (res.ok && data.success) {
+          showToast('Instância de bot "' + name + '" registrada e persistida no SQLite!', 'success', 'Bot Cadastrado');
           document.getElementById('newBotName').value = '';
           document.getElementById('newBotToken').value = '';
-          loadMultiBotInstances();
+          await loadMultiBotInstances();
         } else {
           showToast(data.error || 'Erro ao registrar bot', 'error', 'Erro');
         }
@@ -14103,6 +15351,11 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
     if (typeof loadBotConfigTab === 'function') {
       loadBotConfigTab();
     }
+
+    // Initial Boot Synchronization: Guarantee all data tabs load immediately on page open or F5 refresh
+    loadGuilds();
+    loadMultiBotInstances();
+    restoreInitialTab();
 
     // Apply Twemoji photo icons across initial DOM
     setTimeout(() => {

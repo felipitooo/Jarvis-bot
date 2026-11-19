@@ -1,4 +1,4 @@
-# J.A.R.V.I.S. — Plataforma Unificada para Discord (Versão 8.0.0 — Ultimate Evolution)
+# J.A.R.V.I.S. — Plataforma Unificada para Discord (Versão 8.5.0 — Total Audit & Persistence Release)
 
 O **J.A.R.V.I.S.** é uma plataforma modular de alta performance para Discord construída com Node.js (v22+), Discord.js v14 e SQLite nativo (`node:sqlite`). Ele unifica recursos avançados de Inteligência Artificial (Google Gemini 3.5), Sistema de Banimento Temporário (TempBan), Central de 26 Módulos com gating real, Multi-Bot Manager, leitura segura de arquivos (ZIP/RAR/JAR/DOCX/XLSX), moderação automática, economia, cassino, música, tickets, reviews e painel web completo.
 

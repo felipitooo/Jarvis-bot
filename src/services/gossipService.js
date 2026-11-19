@@ -131,11 +131,15 @@ DIRETRIZES FUNDAMENTAIS:
           temperature: 0.4
         });
         const responseText = typeof response === 'string' ? response : (response?.text || '');
-        if (responseText && responseText.trim().length > 15) {
+        if (
+          responseText &&
+          responseText.trim().length > 15 &&
+          !responseText.trim().startsWith('[Resposta de Simulação]')
+        ) {
           return responseText.trim();
         }
       } catch (err) {
-        // Fallback to offline mock summary
+        // Fallback to contextual extractive summary
       }
     }
 
@@ -188,7 +192,11 @@ DIRETRIZES:
           temperature: 0.85
         });
         const responseText = typeof response === 'string' ? response : (response?.text || '');
-        if (responseText && responseText.trim().length > 10) {
+        if (
+          responseText &&
+          responseText.trim().length > 10 &&
+          !responseText.trim().startsWith('[Resposta de Simulação]')
+        ) {
           return responseText.trim();
         }
       } catch (err) {
@@ -201,27 +209,54 @@ DIRETRIZES:
   }
 
   _generateMockSummary(formattedMessages, channelName) {
-    const authors = Array.from(new Set(formattedMessages.map(m => {
-      const match = m.match(/(?:\[\d{2}:\d{2}\]\s*)?([^:]+):/);
-      return match ? match[1].trim() : null;
-    }).filter(Boolean))).slice(0, 5);
-    const mainAuthor = authors[0] || 'Membro';
+    const parsedEntries = formattedMessages.map(m => {
+      const match = m.match(/^(?:\[(\d{2}:\d{2})\]\s*)?([^:]+):\s*"([\s\S]*)"$/);
+      if (match) {
+        return {
+          time: match[1] || '',
+          author: match[2].trim(),
+          text: match[3].trim(),
+          raw: m
+        };
+      }
+      return { time: '', author: 'Membro', text: m, raw: m };
+    });
+
+    const authorMap = new Map();
+    for (const entry of parsedEntries) {
+      if (!authorMap.has(entry.author)) {
+        authorMap.set(entry.author, []);
+      }
+      authorMap.get(entry.author).push(entry);
+    }
+
+    const authors = Array.from(authorMap.keys());
     const participants = authors.length > 0 ? authors.join(', ') : 'Membros da comunidade';
-    const sampleQuotes = formattedMessages.slice(-4).map(m => `> ${m}`).join('\n');
+
+    // Extract key factual statements (prioritize longer/informative sentences, numbers, dates, decisions, questions)
+    const factualHighlights = parsedEntries
+      .filter(e => e.text.length >= 4)
+      .slice(-15)
+      .map(e => `• ${e.time ? `[${e.time}] ` : ''}**${e.author}:** ${e.text}`);
+
+    const perAuthorSummary = authors.slice(0, 8).map(author => {
+      const msgs = authorMap.get(author) || [];
+      const points = msgs.slice(-3).map(m => `"${m.text}"`).join('; ');
+      return `• **${author}** (${msgs.length} msg${msgs.length > 1 ? 's' : ''}): ${points}`;
+    });
+
     const now = new Date();
     const timeStr = now.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' });
     const dateStr = now.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric' });
 
     return (
       `📋 **RESUMO EXECUTIVO DO CANAL #${channelName}** (${dateStr} às ${timeStr})\n\n` +
-      `📌 **Tópicos & Assuntos Principais:**\n` +
-      `• Troca ativa de mensagens e interações recentes registradas no canal #${channelName}.\n` +
-      `• Análise contextual de ${formattedMessages.length} mensagem(ns) consecutivas registradas.\n\n` +
-      `💬 **Participantes & Engajamento:**\n` +
-      `• **Participantes ativos:** ${participants}.\n` +
-      `• **Últimas mensagens registradas:**\n${sampleQuotes}\n\n` +
-      `💡 **Conclusões & Destaques:**\n` +
-      `• O fluxo de conversa segue ativo entre ${mainAuthor} e os demais membros.`
+      `📌 **Tópicos & Fatos Principais Debatidos (${formattedMessages.length} mensagens analisadas):**\n` +
+      `${factualHighlights.join('\n')}\n\n` +
+      `💬 **Participantes & Contribuições Individuais (${participants}):**\n` +
+      `${perAuthorSummary.join('\n')}\n\n` +
+      `💡 **Conclusões & Síntese Contextual:**\n` +
+      `• Conversa registrada entre ${participants} com foco nos tópicos: ${parsedEntries.slice(-3).map(e => e.text).join(' | ')}.`
     );
   }
 

@@ -56,7 +56,7 @@ module.exports = {
     if (!context.communityService) return;
 
     try {
-      await context.communityService.handleMemberJoin(member);
+      await context.communityService.handleMemberJoin(member, context.guildModuleService);
     } catch (err) {
       memberLogger.warn(`Error handling member join for ${member.id}`, { error: err.message });
     }

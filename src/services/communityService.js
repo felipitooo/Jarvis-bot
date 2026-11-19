@@ -10,10 +10,11 @@ class CommunityService {
    * @param {import('./identityService').IdentityService} params.identityService
    * @param {import('./auditService').AuditService} [params.auditService]
    */
-  constructor({ communityRepo, identityService, auditService = null }) {
+  constructor({ communityRepo, identityService, auditService = null, guildModuleService = null }) {
     this.communityRepo = communityRepo;
     this.identityService = identityService;
     this.auditService = auditService;
+    this.guildModuleService = guildModuleService;
     // Cache of processed member joins: `${guildId}:${userId}` to avoid duplicate welcomes
     this.processedMemberJoins = new Set();
   }
@@ -35,9 +36,10 @@ class CommunityService {
       .replace(/{members}/g, String(memberCount));
   }
 
-  async handleMemberJoin(member) {
+  async handleMemberJoin(member, guildModuleService = null) {
     if (!member || !member.guild) return;
     const guild = member.guild;
+    const gms = guildModuleService || this.guildModuleService;
     const joinKey = `${guild.id}:${member.id}`;
     if (this.processedMemberJoins.has(joinKey)) {
       return; // Already processed recently
@@ -50,9 +52,10 @@ class CommunityService {
     const config = this.communityRepo.getWelcomeConfig(guild.id);
     const aiName = this.identityService?.getDisplayName ? this.identityService.getDisplayName(guild.id) : 'J.A.R.V.I.S';
 
-    // 1. Apply AutoRoles
+    // 1. Apply AutoRoles (only if autorole module is enabled)
+    const isAutoroleAllowed = !gms || gms.isModuleEnabled(guild.id, 'autorole');
     const autoRoles = this.communityRepo.getAutoRoles(guild.id);
-    if (autoRoles.length > 0 && member.roles?.add) {
+    if (isAutoroleAllowed && autoRoles.length > 0 && member.roles?.add) {
       try {
         await member.roles.add(autoRoles);
       } catch (err) {
@@ -60,8 +63,9 @@ class CommunityService {
       }
     }
 
-    // 2. Send Welcome Message
-    if (config.welcomeEnabled && config.welcomeChannelId && guild.channels) {
+    // 2. Send Welcome Message (only if welcome module is enabled)
+    const isWelcomeAllowed = !gms || gms.isModuleEnabled(guild.id, 'welcome');
+    if (isWelcomeAllowed && config.welcomeEnabled && config.welcomeChannelId && guild.channels) {
       let channel = guild.channels.cache?.get(config.welcomeChannelId);
       if (!channel && guild.channels.fetch) {
         channel = await guild.channels.fetch(config.welcomeChannelId).catch(() => null);
@@ -121,8 +125,13 @@ class CommunityService {
     }
   }
 
-  async handleMemberLeave(member) {
+  async handleMemberLeave(member, guildModuleService = null) {
+    if (!member || !member.guild) return;
     const guild = member.guild;
+    const gms = guildModuleService || this.guildModuleService;
+    if (gms && !gms.isModuleEnabled(guild.id, 'goodbye')) {
+      return;
+    }
     const config = this.communityRepo.getWelcomeConfig(guild.id);
     const aiName = this.identityService.getDisplayName(guild.id);
 

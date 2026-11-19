@@ -106,7 +106,10 @@ class AutomationService {
         // Complete immediately to prevent duplicate execution across polling ticks
         this.automationRepo.completeTask(task.id);
 
-        if (client) {
+        const gms = this.extraServices?.guildModuleService;
+        const isAllowed = !gms || gms.isModuleEnabled(task.guildId, 'reminders');
+
+        if (client && isAllowed) {
           await this._deliverTaskNotification(client, task).catch(err => {
             autoLogger.warn(`Failed to deliver notification for task ${task.id}`, { error: err.message });
           });
@@ -188,6 +191,9 @@ class AutomationService {
 
     for (const [guildId, guild] of client.guilds.cache) {
       try {
+        const gms = this.extraServices?.guildModuleService;
+        if (gms && !gms.isModuleEnabled(guildId, 'automations')) continue;
+
         const config = this.automationRepo.getBriefingConfig(guildId);
         if (!config || !config.isEnabled || !config.briefingChannelId) continue;
 

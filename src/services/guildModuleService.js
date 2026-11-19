@@ -1,169 +1,379 @@
 const { logger } = require('../utils/logger');
+const { ValidationError } = require('../utils/errorHandler');
 
 const moduleLogger = logger.forContext('GuildModuleService');
 
 /**
- * Registry of all 26 official modular systems in Jarvis.
- * Each module can be toggled independently per guild and physically halts
- * real execution (commands, events, AI tools, automations) when disabled.
+ * Single Source of Truth Registry of all 26 official modular systems in Jarvis.
+ * Each module has:
+ * - id: Unique identifier
+ * - name: Display name
+ * - description: Detailed explanation
+ * - category: Grouping category
+ * - icon: Visual emoji/icon
+ * - dependencies: Array of required parent module IDs
+ * - configTab: Associated Web Panel tab ID for deep settings
+ * - requiredPermissions: Discord permissions needed
+ * - commands: Associated slash/prefix commands
+ * - events: Associated Discord gateway events
+ * - automations: Associated background workers/schedulers
  */
 const MODULE_DEFINITIONS = [
-  { id: 'ai_chat', name: 'Inteligência Artificial (Chat)', category: 'IA & Automação', icon: '🤖', description: 'Conversas inteligentes, menções ao Jarvis e respostas automáticas com Gemini.' },
-  { id: 'ai_memory', name: 'Memória da IA', category: 'IA & Automação', icon: '🧠', description: 'Gravação e recuperação contextual de memórias do usuário e do servidor.' },
-  { id: 'ai_tools', name: 'Ferramentas de IA', category: 'IA & Automação', icon: '⚙️', description: 'Capacidade do Jarvis executar ações administrativas, pesquisas e utilitários via IA.' },
-  { id: 'music', name: 'Música & Player', category: 'Mídia & Voz', icon: '🎵', description: 'Reprodução de músicas, rádio, playlists, DJ role e controles de voz.' },
-  { id: 'voice_xp', name: 'Recursos de Voz & XP', category: 'Mídia & Voz', icon: '🎙️', description: 'Ganho de XP e recompensas automáticas por tempo em canais de voz.' },
-  { id: 'economy', name: 'Economia & Moedas', category: 'Economia & Jogos', icon: '💰', description: 'Daily, work, crime, slut, rob, banco, transferências e câmbio de moedas.' },
-  { id: 'casino', name: 'Cassino & Apostas', category: 'Economia & Jogos', icon: '🎰', description: 'Roleta, blackjack, coinflip, crash e apostas do servidor.' },
-  { id: 'xp', name: 'XP & Níveis', category: 'Comunidade & Engajamento', icon: '⭐', description: 'Progressão por mensagens, cargos de nível, multiplicadores e placar.' },
-  { id: 'tickets', name: 'Central de Tickets', category: 'Atendimento & Moderação', icon: '🎫', description: 'Canais de suporte privado com transcrição e painéis personalizáveis.' },
-  { id: 'moderation', name: 'Moderação Manual', category: 'Atendimento & Moderação', icon: '🛡️', description: 'Comandos de ban, tempban, kick, warn, timeout e desbanimento.' },
-  { id: 'auto_protection', name: 'Proteção Automática (Anti-Abuso)', category: 'Atendimento & Moderação', icon: '🚨', description: 'Anti-spam, anti-raid, anti-flood e detecção preventiva de golpes.' },
-  { id: 'social', name: 'Sistema Social & Afeto', category: 'Comunidade & Engajamento', icon: '❤️', description: 'Interações como abraçar, beijar, cafuné, tapa e perfil de afeto.' },
-  { id: 'marriages', name: 'Casamentos & Relações', category: 'Comunidade & Engajamento', icon: '💍', description: 'Propostas de casamento, divórcio, certidões e anéis.' },
-  { id: 'reputation', name: 'Reputação (+Rep)', category: 'Comunidade & Engajamento', icon: '🌟', description: 'Reconhecimento entre membros com elogios e pontuação de reputação.' },
-  { id: 'reviews', name: 'Avaliações & Feedback', category: 'Comunidade & Engajamento', icon: '📝', description: 'Envio de notas e comentários de membros com moderação opcional.' },
-  { id: 'quiz', name: 'Quiz Arena', category: 'Economia & Jogos', icon: '🎯', description: 'Competição de perguntas e respostas com prêmios em XP e moedas.' },
-  { id: 'giveaways', name: 'Sorteios', category: 'Comunidade & Engajamento', icon: '🎁', description: 'Criação e sorteio automatizado de prêmios com temporizadores.' },
-  { id: 'polls', name: 'Enquetes & Votações', category: 'Comunidade & Engajamento', icon: '📊', description: 'Votações interativas com contagem de votos transparente.' },
-  { id: 'welcome', name: 'Boas-Vindas', category: 'Comunidade & Engajamento', icon: '👋', description: 'Mensagens e cartões automáticos na entrada de novos membros.' },
-  { id: 'goodbye', name: 'Despedidas', category: 'Comunidade & Engajamento', icon: '🚪', description: 'Notificação automática quando um membro deixa a comunidade.' },
-  { id: 'autorole', name: 'AutoRole', category: 'Comunidade & Engajamento', icon: '🏷️', description: 'Atribuição instantânea de cargos na entrada de novos membros.' },
-  { id: 'starboard', name: 'Starboard (Mural de Estrelas)', category: 'Comunidade & Engajamento', icon: '⭐', description: 'Destaque de mensagens marcadas com estrelas no canal dedicado.' },
-  { id: 'automations', name: 'Automações & Briefings', category: 'IA & Automação', icon: '⏱️', description: 'Tarefas agendadas, resumos diários executivos e rotinas periódicas.' },
-  { id: 'reminders', name: 'Lembretes', category: 'IA & Automação', icon: '🔔', description: 'Notificações e alertas agendados por membros ou moderadores.' },
-  { id: 'fun_commands', name: 'Comandos de Diversão', category: 'Comunidade & Engajamento', icon: '🎉', description: 'Comandos de entretenimento, memes e respostas bem-humoradas.' },
-  { id: 'gifs', name: 'GIFs & Imagens', category: 'Comunidade & Engajamento', icon: '🖼️', description: 'Gerador de imagens e integração com Tenor/Giphy.' }
+  {
+    id: 'ai_chat',
+    name: 'Inteligência Artificial (Chat)',
+    category: 'IA & Automação',
+    icon: '🤖',
+    description: 'Conversas inteligentes, menções ao Jarvis, resumos de chat e respostas automáticas com Gemini.',
+    dependencies: [],
+    configTab: 'tab-identity',
+    requiredPermissions: ['SendMessages', 'ReadMessageHistory', 'EmbedLinks'],
+    commands: ['resumir', 'fofoca', 'modo', 'data', 'hora', 'tempo', 'relogio', 'ai-nome'],
+    events: ['messageCreate'],
+    automations: []
+  },
+  {
+    id: 'ai_memory',
+    name: 'Memória da IA',
+    category: 'IA & Automação',
+    icon: '🧠',
+    description: 'Gravação e recuperação contextual de memórias de curto e longo prazo por usuário e servidor.',
+    dependencies: ['ai_chat'],
+    configTab: 'tab-aimemory',
+    requiredPermissions: ['SendMessages', 'ReadMessageHistory'],
+    commands: ['memoria'],
+    events: ['messageCreate'],
+    automations: ['memory_consolidation']
+  },
+  {
+    id: 'ai_tools',
+    name: 'Ferramentas de IA',
+    category: 'IA & Automação',
+    icon: '⚙️',
+    description: 'Capacidade do Jarvis executar ações administrativas, pesquisas na web e utilitários via IA.',
+    dependencies: ['ai_chat'],
+    configTab: 'tab-identity',
+    requiredPermissions: ['SendMessages', 'EmbedLinks'],
+    commands: [],
+    events: ['messageCreate'],
+    automations: []
+  },
+  {
+    id: 'music',
+    name: 'Música & Player',
+    category: 'Mídia & Voz',
+    icon: '🎵',
+    description: 'Reprodução de músicas, rádio, playlists, cargo de DJ e controles de áudio em canais de voz.',
+    dependencies: [],
+    configTab: 'tab-music',
+    requiredPermissions: ['Connect', 'Speak', 'SendMessages'],
+    commands: ['musica', 'play', 'tocar', 'skip', 'pular', 'stop', 'parar', 'pause', 'pausar', 'resume', 'queue', 'fila', 'volume', 'loop', 'tts'],
+    events: ['voiceStateUpdate', 'interactionCreate'],
+    automations: ['music_inactivity_disconnect']
+  },
+  {
+    id: 'voice_xp',
+    name: 'Recursos de Voz & XP',
+    category: 'Mídia & Voz',
+    icon: '🎙️',
+    description: 'Ganho de XP e recompensas automáticas por tempo de permanência em canais de voz.',
+    dependencies: ['xp'],
+    configTab: 'tab-xp',
+    requiredPermissions: ['Connect', 'ViewChannel'],
+    commands: ['voz'],
+    events: ['voiceStateUpdate'],
+    automations: ['voice_xp_ticker']
+  },
+  {
+    id: 'economy',
+    name: 'Economia & Moedas',
+    category: 'Economia & Jogos',
+    icon: '💰',
+    description: 'Daily, work, crime, slut, rob, banco, transferências, bolsa de valores, empresas e empréstimos.',
+    dependencies: [],
+    configTab: 'tab-economy',
+    requiredPermissions: ['SendMessages', 'EmbedLinks'],
+    commands: ['economia', 'daily', 'work', 'trabalhar', 'crime', 'slut', 'rob', 'roubar', 'banco', 'dep', 'depositar', 'sacar', 'saldo', 'bal', 'pagar', 'pay', 'investir', 'cambio', 'bolsa', 'empresa', 'emprestimo'],
+    events: ['interactionCreate'],
+    automations: ['stock_market_cycle', 'company_production_cycle']
+  },
+  {
+    id: 'casino',
+    name: 'Cassino & Apostas',
+    category: 'Economia & Jogos',
+    icon: '🎰',
+    description: 'Roleta, blackjack, coinflip, slots, dados, bolão e apostas com a moeda do servidor.',
+    dependencies: ['economy'],
+    configTab: 'tab-casino',
+    requiredPermissions: ['SendMessages', 'EmbedLinks'],
+    commands: ['cassino', 'apostar', 'roleta', 'blackjack', 'bj', 'coinflip', 'caraoucoroa', 'crash', 'slots', 'dados', 'bolao'],
+    events: ['interactionCreate'],
+    automations: []
+  },
+  {
+    id: 'xp',
+    name: 'XP & Níveis',
+    category: 'Comunidade & Engajamento',
+    icon: '⭐',
+    description: 'Progressão por mensagens, cartões de rank, cargos de nível, multiplicadores e placar.',
+    dependencies: [],
+    configTab: 'tab-xp',
+    requiredPermissions: ['SendMessages', 'ManageRoles', 'AttachFiles'],
+    commands: ['xp', 'rank', 'nivel', 'level', 'placar', 'leaderboard', 'perfil'],
+    events: ['messageCreate'],
+    automations: []
+  },
+  {
+    id: 'tickets',
+    name: 'Central de Tickets',
+    category: 'Atendimento & Moderação',
+    icon: '🎫',
+    description: 'Canais de suporte privado com abertura por botão, transcrição HTML/TXT e painéis personalizáveis.',
+    dependencies: [],
+    configTab: 'tab-tickets',
+    requiredPermissions: ['ManageChannels', 'ManageRoles', 'SendMessages', 'AttachFiles'],
+    commands: ['ticket', 'tickets'],
+    events: ['interactionCreate'],
+    automations: []
+  },
+  {
+    id: 'moderation',
+    name: 'Moderação Manual',
+    category: 'Atendimento & Moderação',
+    icon: '🛡️',
+    description: 'Comandos de ban, tempban, kick, warn, timeout, limpeza de chat, lock e desbanimento automático.',
+    dependencies: [],
+    configTab: 'tab-moderation',
+    requiredPermissions: ['BanMembers', 'KickMembers', 'ModerateMembers', 'ManageMessages'],
+    commands: ['punir', 'ban', 'tempban', 'kick', 'warn', 'timeout', 'unban', 'untimeout', 'limpar', 'clear', 'slowmode', 'lock', 'unlock'],
+    events: ['interactionCreate'],
+    automations: ['tempban_expiration_worker']
+  },
+  {
+    id: 'auto_protection',
+    name: 'Proteção Automática (Anti-Abuso)',
+    category: 'Atendimento & Moderação',
+    icon: '🚨',
+    description: 'Anti-spam, anti-raid, anti-flood e proteção contra bots de golpes (MrBeast, Nitro falso, phishing).',
+    dependencies: ['moderation'],
+    configTab: 'tab-antibot',
+    requiredPermissions: ['ModerateMembers', 'KickMembers', 'BanMembers', 'ManageMessages'],
+    commands: [],
+    events: ['messageCreate', 'guildMemberAdd'],
+    automations: []
+  },
+  {
+    id: 'social',
+    name: 'Sistema Social & Afeto',
+    category: 'Comunidade & Engajamento',
+    icon: '❤️',
+    description: 'Interações sociais entre membros como abraçar, beijar, cafuné, tapa, ship e contadores.',
+    dependencies: [],
+    configTab: 'tab-social',
+    requiredPermissions: ['SendMessages', 'EmbedLinks'],
+    commands: ['ship', 'shippar', 'abracar', 'hug', 'beijar', 'kiss', 'tapa', 'slap', 'cafune', 'pat'],
+    events: ['interactionCreate'],
+    automations: []
+  },
+  {
+    id: 'marriages',
+    name: 'Casamentos & Relações',
+    category: 'Comunidade & Engajamento',
+    icon: '💍',
+    description: 'Propostas de casamento, divórcio, certidões e alianças entre membros.',
+    dependencies: ['social'],
+    configTab: 'tab-social',
+    requiredPermissions: ['SendMessages', 'EmbedLinks'],
+    commands: ['casar', 'casamento', 'divorcio', 'divorciar'],
+    events: ['interactionCreate'],
+    automations: []
+  },
+  {
+    id: 'reputation',
+    name: 'Reputação (+Rep)',
+    category: 'Comunidade & Engajamento',
+    icon: '🌟',
+    description: 'Reconhecimento público entre membros com elogios e ranking de reputação.',
+    dependencies: [],
+    configTab: 'tab-social',
+    requiredPermissions: ['SendMessages'],
+    commands: ['rep', '+rep'],
+    events: ['messageCreate', 'interactionCreate'],
+    automations: []
+  },
+  {
+    id: 'reviews',
+    name: 'Avaliações & Feedback',
+    category: 'Comunidade & Engajamento',
+    icon: '📝',
+    description: 'Sistema de avaliação de atendimento da equipe com estrelas, comentários e moderação.',
+    dependencies: [],
+    configTab: 'tab-reviews',
+    requiredPermissions: ['SendMessages', 'EmbedLinks'],
+    commands: ['avaliar', 'avaliacao', 'feedback'],
+    events: ['interactionCreate'],
+    automations: []
+  },
+  {
+    id: 'quiz',
+    name: 'Quiz Arena',
+    category: 'Economia & Jogos',
+    icon: '🎯',
+    description: 'Competição interativa de perguntas e respostas com categorias personalizadas e prêmios.',
+    dependencies: [],
+    configTab: 'tab-quiz',
+    requiredPermissions: ['SendMessages', 'EmbedLinks'],
+    commands: ['quiz'],
+    events: ['interactionCreate'],
+    automations: []
+  },
+  {
+    id: 'giveaways',
+    name: 'Sorteios',
+    category: 'Comunidade & Engajamento',
+    icon: '🎁',
+    description: 'Criação, gerenciamento e apuração automatizada de sorteios com múltiplos ganhadores.',
+    dependencies: [],
+    configTab: 'tab-community',
+    requiredPermissions: ['SendMessages', 'EmbedLinks'],
+    commands: ['sorteio'],
+    events: ['interactionCreate'],
+    automations: ['giveaway_ending_worker']
+  },
+  {
+    id: 'polls',
+    name: 'Enquetes & Votações',
+    category: 'Comunidade & Engajamento',
+    icon: '📊',
+    description: 'Votações interativas com botões e barras de progresso em tempo real.',
+    dependencies: [],
+    configTab: 'tab-community',
+    requiredPermissions: ['SendMessages', 'EmbedLinks'],
+    commands: ['enquete', 'poll'],
+    events: ['interactionCreate'],
+    automations: ['poll_closing_worker']
+  },
+  {
+    id: 'welcome',
+    name: 'Boas-Vindas',
+    category: 'Comunidade & Engajamento',
+    icon: '👋',
+    description: 'Mensagens e cartões visuais automáticos na chegada de novos membros ao servidor.',
+    dependencies: [],
+    configTab: 'tab-welcome',
+    requiredPermissions: ['SendMessages', 'AttachFiles'],
+    commands: [],
+    events: ['guildMemberAdd'],
+    automations: []
+  },
+  {
+    id: 'goodbye',
+    name: 'Despedidas',
+    category: 'Comunidade & Engajamento',
+    icon: '🚪',
+    description: 'Notificação automática personalizada quando um membro deixa o servidor.',
+    dependencies: [],
+    configTab: 'tab-welcome',
+    requiredPermissions: ['SendMessages'],
+    commands: [],
+    events: ['guildMemberRemove'],
+    automations: []
+  },
+  {
+    id: 'autorole',
+    name: 'AutoRole',
+    category: 'Comunidade & Engajamento',
+    icon: '🏷️',
+    description: 'Atribuição instantânea de cargos configurados na entrada de novos membros.',
+    dependencies: [],
+    configTab: 'tab-welcome',
+    requiredPermissions: ['ManageRoles'],
+    commands: [],
+    events: ['guildMemberAdd'],
+    automations: []
+  },
+  {
+    id: 'starboard',
+    name: 'Starboard (Mural de Estrelas)',
+    category: 'Comunidade & Engajamento',
+    icon: '⭐',
+    description: 'Destaque automático das melhores mensagens reagidas com estrela em canal dedicado.',
+    dependencies: [],
+    configTab: 'tab-starboard',
+    requiredPermissions: ['SendMessages', 'EmbedLinks', 'ReadMessageHistory'],
+    commands: [],
+    events: ['messageReactionAdd'],
+    automations: []
+  },
+  {
+    id: 'automations',
+    name: 'Automações & Briefings',
+    category: 'IA & Automação',
+    icon: '⏱️',
+    description: 'Tarefas agendadas, relatórios diários executivos, alertas sociais e rotinas periódicas.',
+    dependencies: [],
+    configTab: 'tab-community',
+    requiredPermissions: ['SendMessages', 'EmbedLinks'],
+    commands: ['briefing'],
+    events: [],
+    automations: ['daily_briefing_worker', 'social_alerts_worker']
+  },
+  {
+    id: 'reminders',
+    name: 'Lembretes',
+    category: 'IA & Automação',
+    icon: '🔔',
+    description: 'Notificações e alertas temporizados agendados por membros ou administradores.',
+    dependencies: ['automations'],
+    configTab: 'tab-community',
+    requiredPermissions: ['SendMessages'],
+    commands: ['lembrete', 'lembrar'],
+    events: ['interactionCreate'],
+    automations: ['reminders_worker']
+  },
+  {
+    id: 'fun_commands',
+    name: 'Comandos de Diversão',
+    category: 'Comunidade & Engajamento',
+    icon: '🎉',
+    description: 'Comandos de entretenimento, dados, piadas, memes e jogos rápidos de chat.',
+    dependencies: [],
+    configTab: 'tab-social',
+    requiredPermissions: ['SendMessages'],
+    commands: ['piada', '8ball', 'escolher', 'dado', 'meme'],
+    events: ['messageCreate'],
+    automations: []
+  },
+  {
+    id: 'gifs',
+    name: 'GIFs & Imagens',
+    category: 'Comunidade & Engajamento',
+    icon: '🖼️',
+    description: 'Geração de cartões visuais Canvas e integração de GIFs animados nas interações.',
+    dependencies: [],
+    configTab: 'tab-social',
+    requiredPermissions: ['SendMessages', 'AttachFiles', 'EmbedLinks'],
+    commands: ['gif', 'avatar', 'banner'],
+    events: [],
+    automations: []
+  }
 ];
 
-/**
- * Mapping of command names to required module keys.
- */
-const COMMAND_TO_MODULE_MAP = {
-  // Moderation
-  'punir': 'moderation',
-  'ban': 'moderation',
-  'tempban': 'moderation',
-  'kick': 'moderation',
-  'warn': 'moderation',
-  'timeout': 'moderation',
-  'unban': 'moderation',
-  'untimeout': 'moderation',
-  'limpar': 'moderation',
-  'clear': 'moderation',
-  'slowmode': 'moderation',
-  'lock': 'moderation',
-  'unlock': 'moderation',
-  
-  // Music & Voice
-  'musica': 'music',
-  'play': 'music',
-  'tocar': 'music',
-  'skip': 'music',
-  'pular': 'music',
-  'stop': 'music',
-  'parar': 'music',
-  'pause': 'music',
-  'pausar': 'music',
-  'resume': 'music',
-  'queue': 'music',
-  'fila': 'music',
-  'volume': 'music',
-  'loop': 'music',
-  'tts': 'music',
+// Build fast lookup map & build command/tool maps from Single Source of Truth
+const MODULE_BY_ID = new Map();
+const COMMAND_TO_MODULE_MAP = {};
 
-  // Economy & Games
-  'economia': 'economy',
-  'daily': 'economy',
-  'work': 'economy',
-  'trabalhar': 'economy',
-  'crime': 'economy',
-  'slut': 'economy',
-  'rob': 'economy',
-  'roubar': 'economy',
-  'banco': 'economy',
-  'dep': 'economy',
-  'depositar': 'economy',
-  'sacar': 'economy',
-  'saldo': 'economy',
-  'bal': 'economy',
-  'pagar': 'economy',
-  'pay': 'economy',
-  'investir': 'economy',
-  'cambio': 'economy',
-  'bolsa': 'economy',
-  'empresa': 'economy',
-  'emprestimo': 'economy',
-
-  // Casino
-  'cassino': 'casino',
-  'apostar': 'casino',
-  'roleta': 'casino',
-  'blackjack': 'casino',
-  'bj': 'casino',
-  'coinflip': 'casino',
-  'caraoucoroa': 'casino',
-  'crash': 'casino',
-
-  // XP & Levels
-  'xp': 'xp',
-  'rank': 'xp',
-  'nivel': 'xp',
-  'level': 'xp',
-  'placar': 'xp',
-  'leaderboard': 'xp',
-
-  // Tickets
-  'ticket': 'tickets',
-  'tickets': 'tickets',
-
-  // Social & Marriages
-  'casar': 'marriages',
-  'casamento': 'marriages',
-  'divorcio': 'marriages',
-  'divorciar': 'marriages',
-  'ship': 'social',
-  'shippar': 'social',
-  'abracar': 'social',
-  'hug': 'social',
-  'beijar': 'social',
-  'kiss': 'social',
-  'tapa': 'social',
-  'slap': 'social',
-  'cafune': 'social',
-  'pat': 'social',
-
-  // Reputation
-  'rep': 'reputation',
-  '+rep': 'reputation',
-
-  // Reviews
-  'avaliar': 'reviews',
-  'avaliacao': 'reviews',
-  'feedback': 'reviews',
-
-  // Quiz
-  'quiz': 'quiz',
-
-  // Giveaways & Polls
-  'sorteio': 'giveaways',
-  'enquete': 'polls',
-  'poll': 'polls',
-
-  // Automations & Reminders
-  'lembrete': 'reminders',
-  'lembrar': 'reminders',
-  'briefing': 'automations',
-
-  // Fun & Memes
-  'resumir': 'ai_chat',
-  'fofoca': 'ai_chat',
-  'modo': 'ai_chat',
-  'data': 'ai_chat',
-  'hora': 'ai_chat',
-  'tempo': 'ai_chat',
-  'relogio': 'ai_chat'
-};
+for (const def of MODULE_DEFINITIONS) {
+  if (MODULE_BY_ID.has(def.id)) {
+    throw new Error(`Duplicate module registration detected for ID: ${def.id}`);
+  }
+  MODULE_BY_ID.set(def.id, def);
+  if (Array.isArray(def.commands)) {
+    for (const cmd of def.commands) {
+      COMMAND_TO_MODULE_MAP[cmd.toLowerCase()] = def.id;
+    }
+  }
+}
 
 /**
  * Mapping of AI tool declarations to required module keys.
@@ -206,7 +416,11 @@ const TOOL_TO_MODULE_MAP = {
   'verificar_reputacao': 'reputation',
   'criar_enquete': 'polls',
   'criar_sorteio': 'giveaways',
-  'agendar_lembrete': 'reminders'
+  'agendar_lembrete': 'reminders',
+
+  // Web & AI tools
+  'pesquisar_web': 'ai_tools',
+  'obter_data_hora_atual': 'ai_tools'
 };
 
 class GuildModuleService {
@@ -219,13 +433,141 @@ class GuildModuleService {
     this.auditService = auditService;
     /** @type {Map<string, Map<string, boolean>>} */
     this.cache = new Map();
+    /** @type {Map<string, Array<{ timestamp: string, message: string, guildId: string }>>} */
+    this.errorRegistry = new Map();
+    /** @type {Map<string, object>} */
+    this.customDefinitions = new Map();
   }
 
   /**
-   * Returns list of all defined official modules.
+   * Registers a new module definition, strictly preventing duplicates.
+   * @param {object} moduleDef
    */
-  getAllModuleDefinitions() {
-    return JSON.parse(JSON.stringify(MODULE_DEFINITIONS));
+  registerModule(moduleDef) {
+    if (!moduleDef || !moduleDef.id) {
+      throw new ValidationError('O módulo precisa possuir um identificador único (id).');
+    }
+    const cleanId = String(moduleDef.id).toLowerCase().trim();
+    if (MODULE_BY_ID.has(cleanId) || this.customDefinitions.has(cleanId)) {
+      throw new ValidationError(`Módulo duplicado: o identificador "${cleanId}" já está registrado no sistema.`);
+    }
+    this.customDefinitions.set(cleanId, {
+      ...moduleDef,
+      id: cleanId,
+      dependencies: Array.isArray(moduleDef.dependencies) ? moduleDef.dependencies : [],
+      requiredPermissions: Array.isArray(moduleDef.requiredPermissions) ? moduleDef.requiredPermissions : [],
+      commands: Array.isArray(moduleDef.commands) ? moduleDef.commands : [],
+      events: Array.isArray(moduleDef.events) ? moduleDef.events : [],
+      automations: Array.isArray(moduleDef.automations) ? moduleDef.automations : []
+    });
+    return true;
+  }
+
+  /**
+   * Records an operational error for a specific module without crashing the bot.
+   * @param {string} moduleKey
+   * @param {string} errorMessage
+   * @param {string} [guildId='GLOBAL']
+   */
+  recordModuleError(moduleKey, errorMessage, guildId = 'GLOBAL') {
+    const cleanKey = String(moduleKey || '').toLowerCase().trim();
+    if (!this.errorRegistry.has(cleanKey)) {
+      this.errorRegistry.set(cleanKey, []);
+    }
+    const list = this.errorRegistry.get(cleanKey);
+    list.unshift({
+      timestamp: new Date().toISOString(),
+      message: String(errorMessage),
+      guildId
+    });
+    if (list.length > 20) list.pop();
+  }
+
+  /**
+   * Returns health status and error log for a module.
+   * @param {string} moduleKey
+   * @param {boolean} [isEnabled=true]
+   */
+  getModuleHealth(moduleKey, isEnabled = true) {
+    const errors = this.errorRegistry.get(moduleKey) || [];
+    let healthStatus = 'HEALTHY';
+    if (!isEnabled) {
+      healthStatus = 'DISABLED';
+    } else if (errors.length > 0) {
+      healthStatus = 'DEGRADED';
+    }
+    return {
+      healthStatus,
+      errorCount: errors.length,
+      errorLog: errors
+    };
+  }
+
+  /**
+   * Returns list of all defined official modules with full metadata and health state.
+   * @param {string} [guildId]
+   */
+  getAllModuleDefinitions(guildId = null) {
+    const states = guildId ? this.getGuildModules(guildId) : {};
+    const allDefs = [...MODULE_DEFINITIONS, ...Array.from(this.customDefinitions.values())];
+
+    return allDefs.map(def => {
+      const isEnabled = guildId ? (states[def.id] !== false) : true;
+      const health = this.getModuleHealth(def.id, isEnabled);
+      const dependentModules = allDefs
+        .filter(other => Array.isArray(other.dependencies) && other.dependencies.includes(def.id))
+        .map(other => other.id);
+
+      return {
+        ...JSON.parse(JSON.stringify(def)),
+        dependentModules,
+        isEnabled,
+        healthStatus: health.healthStatus,
+        errorCount: health.errorCount,
+        errorLog: health.errorLog
+      };
+    });
+  }
+
+  /**
+   * Retrieves a single module definition by ID.
+   * @param {string} moduleKey
+   */
+  getModuleDefinition(moduleKey) {
+    const cleanKey = String(moduleKey || '').toLowerCase().trim();
+    return MODULE_BY_ID.get(cleanKey) || this.customDefinitions.get(cleanKey) || null;
+  }
+
+  /**
+   * Validates dependencies for a proposed module state map.
+   * @param {Record<string, boolean>} proposedStates
+   * @returns {{ valid: boolean, inconsistencies: Array<{ moduleId: string, moduleName: string, missingDependencyId: string, missingDependencyName: string, message: string }> }}
+   */
+  validateDependencies(proposedStates = {}) {
+    const inconsistencies = [];
+    for (const def of MODULE_DEFINITIONS) {
+      const isModEnabled = proposedStates[def.id] !== false;
+      if (isModEnabled && Array.isArray(def.dependencies) && def.dependencies.length > 0) {
+        for (const depId of def.dependencies) {
+          const isDepEnabled = proposedStates[depId] !== false;
+          if (!isDepEnabled) {
+            const depDef = MODULE_BY_ID.get(depId);
+            const depName = depDef ? depDef.name : depId;
+            inconsistencies.push({
+              moduleId: def.id,
+              moduleName: def.name,
+              missingDependencyId: depId,
+              missingDependencyName: depName,
+              message: `O módulo "${def.name}" (${def.id}) depende do módulo "${depName}" (${depId}), que está desativado.`
+            });
+          }
+        }
+      }
+    }
+    return {
+      valid: inconsistencies.length === 0,
+      inconsistencies
+    };
   }
 
   /**
@@ -254,12 +596,15 @@ class GuildModuleService {
     for (const mod of MODULE_DEFINITIONS) {
       result[mod.id] = guildMap.has(mod.id) ? guildMap.get(mod.id) : true;
     }
+    for (const [customId] of this.customDefinitions) {
+      result[customId] = guildMap.has(customId) ? guildMap.get(customId) : true;
+    }
     return result;
   }
 
   /**
    * Checks whether a specific module is active for a guild.
-   * Ultra-fast cache lookup (< 0.05ms).
+   * Also checks if all required parent dependencies of that module are active.
    * @param {string} guildId
    * @param {string} moduleKey
    * @returns {boolean}
@@ -274,24 +619,76 @@ class GuildModuleService {
       guildMap = this.cache.get(guildId);
     }
 
-    if (guildMap && guildMap.has(cleanKey)) {
-      return guildMap.get(cleanKey);
+    const directState = (guildMap && guildMap.has(cleanKey)) ? guildMap.get(cleanKey) : true;
+    if (!directState) return false;
+
+    // Verify parent dependencies are also enabled
+    const def = this.getModuleDefinition(cleanKey);
+    if (def && Array.isArray(def.dependencies)) {
+      for (const depId of def.dependencies) {
+        const depState = (guildMap && guildMap.has(depId)) ? guildMap.get(depId) : true;
+        if (!depState) return false;
+      }
     }
 
-    return true; // Default enabled
+    return true;
   }
 
   /**
    * Sets the enabled state of a specific module for a guild.
+   * Preserves all module data when disabled.
+   * When enabling a module, automatically enables its dependencies unless strictDependencies is true.
    * @param {string} guildId
    * @param {string} moduleKey
    * @param {boolean} isEnabled
    * @param {string} [actorId]
+   * @param {object} [options]
+   * @param {boolean} [options.strictDependencies=false]
+   * @param {boolean} [options.autoResolveDependencies=true]
    */
-  setModuleEnabled(guildId, moduleKey, isEnabled, actorId = null) {
+  setModuleEnabled(guildId, moduleKey, isEnabled, actorId = null, options = {}) {
     if (!guildId || !moduleKey) return false;
     const cleanKey = String(moduleKey).toLowerCase().trim();
     const boolVal = Boolean(isEnabled);
+    const def = this.getModuleDefinition(cleanKey);
+
+    const currentStates = this.getGuildModules(guildId);
+
+    // Dependency validation & auto-initialization
+    if (boolVal && def && Array.isArray(def.dependencies) && def.dependencies.length > 0) {
+      for (const depId of def.dependencies) {
+        if (currentStates[depId] === false) {
+          if (options.strictDependencies) {
+            const depDef = this.getModuleDefinition(depId);
+            throw new ValidationError(
+              `Dependência obrigatória: Não é possível ativar "${def.name}" porque "${depDef ? depDef.name : depId}" está desativado.`
+            );
+          } else if (options.autoResolveDependencies !== false) {
+            // Automatically initialize/enable required parent dependency
+            this._persistSingleModule(guildId, depId, true, actorId);
+          }
+        }
+      }
+    }
+
+    // If disabling a parent module while a child module depends on it
+    if (!boolVal && options.strictDependencies) {
+      for (const otherDef of MODULE_DEFINITIONS) {
+        if (Array.isArray(otherDef.dependencies) && otherDef.dependencies.includes(cleanKey)) {
+          if (currentStates[otherDef.id] !== false) {
+            throw new ValidationError(
+              `Conflito de dependência: O módulo "${otherDef.name}" depende de "${def ? def.name : cleanKey}". Desative "${otherDef.name}" primeiro.`
+            );
+          }
+        }
+      }
+    }
+
+    this._persistSingleModule(guildId, cleanKey, boolVal, actorId);
+    return true;
+  }
+
+  _persistSingleModule(guildId, cleanKey, boolVal, actorId = null) {
     const intVal = boolVal ? 1 : 0;
     const now = new Date().toISOString();
 
@@ -320,20 +717,50 @@ class GuildModuleService {
     }
 
     moduleLogger.info(`Module "${cleanKey}" in guild ${guildId} is now ${boolVal ? 'ENABLED' : 'DISABLED'}.`);
-    return true;
   }
 
   /**
-   * Batch updates module states for a guild.
+   * Batch updates module states for a guild with dependency validation.
    * @param {string} guildId
    * @param {Record<string, boolean>} modulesObject
    * @param {string} [actorId]
+   * @param {object} [options]
+   * @param {boolean} [options.strictDependencies=false]
    */
-  setGuildModules(guildId, modulesObject, actorId = null) {
+  setGuildModules(guildId, modulesObject, actorId = null, options = {}) {
     if (!guildId || !modulesObject || typeof modulesObject !== 'object') return {};
 
-    for (const [key, val] of Object.entries(modulesObject)) {
-      this.setModuleEnabled(guildId, key, Boolean(val), actorId);
+    const current = this.getGuildModules(guildId);
+    const merged = { ...current };
+    for (const [k, v] of Object.entries(modulesObject)) {
+      merged[String(k).toLowerCase().trim()] = Boolean(v);
+    }
+
+    // Validate dependencies
+    const depCheck = this.validateDependencies(merged);
+    if (!depCheck.valid) {
+      if (options.strictDependencies) {
+        throw new ValidationError(depCheck.inconsistencies[0].message);
+      }
+      // If a parent is explicitly being disabled in modulesObject, disable its dependent children
+      // Otherwise if a child is explicitly being enabled, enable its parent dependency
+      for (const inc of depCheck.inconsistencies) {
+        const parentExplicitlyFalse = modulesObject[inc.missingDependencyId] === false;
+        const childExplicitlyTrue = modulesObject[inc.moduleId] === true;
+        if (parentExplicitlyFalse && childExplicitlyTrue) {
+          throw new ValidationError(inc.message);
+        } else if (parentExplicitlyFalse) {
+          merged[inc.moduleId] = false;
+        } else {
+          merged[inc.missingDependencyId] = true;
+        }
+      }
+    }
+
+    for (const [key, val] of Object.entries(merged)) {
+      if (MODULE_BY_ID.has(key) || this.customDefinitions.has(key)) {
+        this._persistSingleModule(guildId, key, Boolean(val), actorId);
+      }
     }
 
     return this.getGuildModules(guildId);
@@ -355,7 +782,7 @@ class GuildModuleService {
     }
 
     const isEnabled = this.isModuleEnabled(guildId, moduleKey);
-    const modDef = MODULE_DEFINITIONS.find(m => m.id === moduleKey);
+    const modDef = this.getModuleDefinition(moduleKey);
 
     return {
       allowed: isEnabled,
@@ -373,7 +800,7 @@ class GuildModuleService {
   checkToolAllowed(guildId, toolName) {
     if (!guildId || !toolName) return { allowed: true, moduleKey: null };
 
-    // Check if ai_tools master switch is disabled
+    // Check if ai_tools master switch or ai_chat parent is disabled
     if (!this.isModuleEnabled(guildId, 'ai_tools')) {
       return { allowed: false, moduleKey: 'ai_tools' };
     }
@@ -384,6 +811,28 @@ class GuildModuleService {
     }
 
     return { allowed: true, moduleKey: null };
+  }
+
+  /**
+   * Checks whether a Discord event handler for a specific module should execute.
+   * @param {string} guildId
+   * @param {string} moduleKey
+   * @returns {boolean}
+   */
+  checkEventAllowed(guildId, moduleKey) {
+    if (!guildId || !moduleKey) return true;
+    return this.isModuleEnabled(guildId, moduleKey);
+  }
+
+  /**
+   * Checks whether an automated background task for a specific module should execute in a guild.
+   * @param {string} guildId
+   * @param {string} moduleKey
+   * @returns {boolean}
+   */
+  checkAutomationAllowed(guildId, moduleKey) {
+    if (!guildId || !moduleKey) return true;
+    return this.isModuleEnabled(guildId, moduleKey);
   }
 
   /**

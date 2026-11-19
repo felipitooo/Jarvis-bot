@@ -251,11 +251,22 @@ class WebPanelService {
       },
       starboard: communityRepo ? communityRepo.getStarboardConfig(guildId) : null,
       briefing: automationRepo ? automationRepo.getBriefingConfig(guildId) : null,
-      moderation: {
-        logChannelId: modLogChannel?.channel_id || null,
-        warnRules: modRepo ? modRepo.getEscalationRules(guildId) : [],
-        antiAbuse: modRepo ? modRepo.getAntiAbuseConfig(guildId) : null
-      },
+      moderation: (() => {
+        const ab = modRepo ? modRepo.getAntiAbuseConfig(guildId) : null;
+        const isEnabled = ab
+          ? (ab.antiBotScamEnabled !== undefined ? Boolean(ab.antiBotScamEnabled) : (ab.anti_bot_scam_enabled === 1 || ab.anti_bot_scam_enabled === true))
+          : true;
+        return {
+          logChannelId: modLogChannel?.channel_id || null,
+          warnRules: modRepo ? modRepo.getEscalationRules(guildId) : [],
+          antiAbuse: ab,
+          antiBotScam: {
+            enabled: isEnabled,
+            action: ab?.antiBotScamAction || ab?.anti_bot_scam_action || 'TIMEOUT',
+            timeoutDurationSeconds: ab?.antiBotScamTimeoutSeconds || ab?.anti_bot_scam_timeout_seconds || 86400
+          }
+        };
+      })(),
       audit: { channelId: settings.audit_channel_id || null },
       music: musicVoiceRepo ? musicVoiceRepo.getMusicConfig(guildId) : null,
       economy: economyRepo ? {
@@ -288,7 +299,14 @@ class WebPanelService {
       aiMemories: this.services.memoryRepo ? this.services.memoryRepo.ensureDefaultBotMemories(guildId, botGuild?.name || 'Servidor') : [],
       customEmojis: require('../utils/emojiHelper').getGuildAndExternalEmojis(this.botClient, guildId),
       socialAlerts: this.services.socialAlertRepo ? this.services.socialAlertRepo.listAlerts(guildId) : [],
-      backups: this.services.backupSecurityService ? this.services.backupSecurityService.listBackups(guildId) : []
+      backups: this.services.backupSecurityService ? this.services.backupSecurityService.listBackups(guildId) : [],
+      guildModules: this.services.guildModuleService ? {
+        definitions: this.services.guildModuleService.getAllModuleDefinitions(guildId),
+        settings: this.services.guildModuleService.getGuildModules(guildId)
+      } : { definitions: [], settings: {} },
+      tempbans: modRepo ? modRepo.getActiveTempBans(guildId) : [],
+      channelSummaries: this.listChannelSummaries(session, guildId, 15),
+      multiBotInstances: this.services.multiBotManager ? this.services.multiBotManager.listInstances() : []
     };
 
     const guildIconUrl = botGuild?.iconURL
@@ -463,10 +481,15 @@ class WebPanelService {
       case 'modules': {
         const gms = this.services.guildModuleService;
         return {
-          definitions: gms ? gms.getAllModuleDefinitions() : [],
+          definitions: gms ? gms.getAllModuleDefinitions(guildId) : [],
           settings: gms ? gms.getGuildModules(guildId) : {}
         };
       }
+      case 'summaries':
+      case 'channel_summaries':
+        return {
+          summaries: this.listChannelSummaries(session, guildId, 20)
+        };
       case 'tempbans':
       case 'temp_bans':
         return {
@@ -475,10 +498,13 @@ class WebPanelService {
       case 'anti_bot_scam':
       case 'antibotscam': {
         const ab = modRepo ? (modRepo.getAntiAbuseConfig(guildId) || {}) : {};
+        const isEnabled = ab.antiBotScamEnabled !== undefined
+          ? Boolean(ab.antiBotScamEnabled)
+          : (ab.anti_bot_scam_enabled === 1 || ab.anti_bot_scam_enabled === true);
         return {
-          enabled: ab.anti_bot_scam_enabled === 1 || ab.anti_bot_scam_enabled === true,
-          action: ab.anti_bot_scam_action || 'TIMEOUT',
-          timeoutDurationSeconds: ab.anti_bot_scam_timeout_seconds || 86400
+          enabled: isEnabled,
+          action: ab.antiBotScamAction || ab.anti_bot_scam_action || 'TIMEOUT',
+          timeoutDurationSeconds: ab.antiBotScamTimeoutSeconds || ab.anti_bot_scam_timeout_seconds || 86400
         };
       }
       default:
@@ -1131,10 +1157,23 @@ class WebPanelService {
           antiBotScamTimeoutSeconds: Number(abs.timeoutDurationSeconds) || 86400
         });
         const saved = modRepo.getAntiAbuseConfig(guildId) || {};
+        const isEnabled = saved.antiBotScamEnabled !== undefined
+          ? Boolean(saved.antiBotScamEnabled)
+          : (saved.anti_bot_scam_enabled === 1 || saved.anti_bot_scam_enabled === true);
         updated = {
-          enabled: saved.anti_bot_scam_enabled === 1 || saved.anti_bot_scam_enabled === true,
-          action: saved.anti_bot_scam_action || 'TIMEOUT',
-          timeoutDurationSeconds: saved.anti_bot_scam_timeout_seconds || 86400
+          enabled: isEnabled,
+          action: saved.antiBotScamAction || saved.anti_bot_scam_action || 'TIMEOUT',
+          timeoutDurationSeconds: saved.antiBotScamTimeoutSeconds || saved.anti_bot_scam_timeout_seconds || 86400
+        };
+        break;
+      }
+      case 'summaries':
+      case 'channel_summaries': {
+        if (updates.action === 'DELETE' && updates.id) {
+          this.deleteChannelSummary(session, guildId, updates.id);
+        }
+        updated = {
+          summaries: this.listChannelSummaries(session, guildId, 20)
         };
         break;
       }
@@ -2090,8 +2129,54 @@ class WebPanelService {
     throw new Error('Ação inválida. Utilize APPROVE, REJECT ou DELETE.');
   }
 
+  listChannelSummaries(session, guildId, limit = 20) {
+    this.verifyGuildAccess(session, guildId);
+    const db = this.services?.dbManager || this.services?.modRepo?.db || this.services?.guildRepo?.db;
+    if (!db || typeof db.all !== 'function') return [];
+    try {
+      const rows = db.all(
+        `SELECT * FROM channel_summaries WHERE guild_id = ? ORDER BY id DESC LIMIT ?`,
+        [guildId, Math.max(1, Number(limit) || 20)]
+      );
+      return (rows || []).map(r => {
+        let participants = [];
+        try { participants = r.participants_json ? JSON.parse(r.participants_json) : []; } catch {}
+        return {
+          id: r.id,
+          guildId: r.guild_id,
+          channelId: r.channel_id,
+          channelName: r.channel_name,
+          messageCount: r.message_count,
+          summaryType: r.summary_type,
+          summaryText: r.summary_text,
+          participants,
+          createdBy: r.created_by,
+          createdAt: r.created_at
+        };
+      });
+    } catch {
+      return [];
+    }
+  }
+
+  deleteChannelSummary(session, guildId, summaryId) {
+    this.verifyGuildAccess(session, guildId);
+    const db = this.services?.dbManager || this.services?.modRepo?.db || this.services?.guildRepo?.db;
+    if (!db || typeof db.run !== 'function') return false;
+    try {
+      const res = db.run(
+        `DELETE FROM channel_summaries WHERE id = ? AND guild_id = ?`,
+        [Number(summaryId), guildId]
+      );
+      return res.changes > 0;
+    } catch {
+      return false;
+    }
+  }
+
   async generateChatSummaryForPanel(session, guildId, channelId, limit = 300, type = 'summary', sendToDiscord = false) {
     this.verifyGuildAccess(session, guildId);
+    const startTime = Date.now();
     const client = this.botClient || this.services?.botClient;
     const guild = client?.guilds?.cache?.get(guildId);
     const channel = guild?.channels?.cache?.get(channelId);
@@ -2115,6 +2200,39 @@ class WebPanelService {
       text = await service.generateChatSummary(messages, channel.name);
     }
 
+    // Extract unique human participants
+    const participants = Array.from(new Set(
+      (messages || [])
+        .filter(m => m && !m.author?.bot)
+        .map(m => m.member?.displayName || m.author?.username)
+        .filter(Boolean)
+    ));
+
+    // Persist generated summary in SQLite channel_summaries table
+    let savedId = null;
+    const db = this.services?.dbManager || this.services?.modRepo?.db || this.services?.guildRepo?.db;
+    if (db && typeof db.run === 'function') {
+      try {
+        const now = new Date().toISOString();
+        const result = db.run(
+          `INSERT INTO channel_summaries (guild_id, channel_id, channel_name, message_count, summary_type, summary_text, participants_json, created_by, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            guildId,
+            channelId,
+            channel.name || 'chat',
+            messages.length,
+            type,
+            text,
+            JSON.stringify(participants),
+            session?.userId || 'web_admin',
+            now
+          ]
+        );
+        savedId = Number(result?.lastInsertRowid || Date.now());
+      } catch {}
+    }
+
     if (sendToDiscord && channel.send) {
       const { EmbedBuilder } = require('discord.js');
       const isGossip = type === 'gossip';
@@ -2130,13 +2248,21 @@ class WebPanelService {
       await channel.send({ embeds: [embed] }).catch(() => {});
     }
 
+    const durationMs = Date.now() - startTime;
+    const summariesHistory = this.listChannelSummaries(session, guildId, 15);
+
     return {
       success: true,
+      id: savedId,
       channelId,
       channelName: channel.name,
       messageCount: messages.length,
+      participants,
       type,
-      text
+      summary: text,
+      text,
+      durationMs,
+      summaries: summariesHistory
     };
   }
 }

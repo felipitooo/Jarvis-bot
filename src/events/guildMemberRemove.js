@@ -35,7 +35,7 @@ module.exports = {
     if (!context.communityService) return;
 
     try {
-      await context.communityService.handleMemberLeave(member);
+      await context.communityService.handleMemberLeave(member, context.guildModuleService);
     } catch (err) {
       memberLogger.warn(`Error handling member leave for ${member.id}`, { error: err.message });
     }

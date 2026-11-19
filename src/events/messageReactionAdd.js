@@ -14,6 +14,10 @@ module.exports = {
       if (reaction.partial) {
         await reaction.fetch().catch(() => {});
       }
+      const guildId = reaction?.message?.guild?.id;
+      if (guildId && context.guildModuleService && !context.guildModuleService.isModuleEnabled(guildId, 'starboard')) {
+        return;
+      }
       await context.communityService.handleStarReaction(reaction, user);
     } catch (err) {
       reactionLogger.warn(`Error handling star reaction in message ${reaction?.message?.id}`, { error: err.message });

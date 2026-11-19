@@ -36,11 +36,11 @@ class BackupSecurityService {
       roles.push({
         id: role.id,
         name: role.name,
-        color: role.color,
-        hoist: role.hoist,
-        position: role.position,
-        permissions: role.permissions.bitfield.toString(),
-        mentionable: role.mentionable
+        color: role.color || 0,
+        hoist: Boolean(role.hoist),
+        position: role.position || 0,
+        permissions: role.permissions?.bitfield !== undefined ? role.permissions.bitfield.toString() : '0',
+        mentionable: Boolean(role.mentionable)
       });
     }
 
@@ -48,13 +48,13 @@ class BackupSecurityService {
     const channels = [];
     for (const [, channel] of guild.channels.cache) {
       const overwrites = [];
-      if (channel.permissionOverwrites) {
+      if (channel.permissionOverwrites?.cache) {
         for (const [, ow] of channel.permissionOverwrites.cache) {
           overwrites.push({
             id: ow.id,
             type: ow.type,
-            allow: ow.allow.bitfield.toString(),
-            deny: ow.deny.bitfield.toString()
+            allow: ow.allow?.bitfield !== undefined ? ow.allow.bitfield.toString() : '0',
+            deny: ow.deny?.bitfield !== undefined ? ow.deny.bitfield.toString() : '0'
           });
         }
       }

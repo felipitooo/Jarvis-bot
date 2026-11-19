@@ -11,9 +11,10 @@ const msgLogger = logger.forContext('Event:MessageCreate');
 // High-concurrency in-memory registry caches to avoid blocking SQLite disk writes on every chat message
 const registeredGuilds = new Set();
 const registeredUsers = new Set();
-setInterval(() => {
+const cleanupInterval = setInterval(() => {
   if (registeredUsers.size > 5000) registeredUsers.clear();
 }, 30 * 60 * 1000);
+if (cleanupInterval.unref) cleanupInterval.unref();
 
 // High-speed compiled regex cache for AI trigger names
 let cachedTriggersKey = '';
@@ -60,7 +61,8 @@ module.exports = {
 
     // 0. Real-time Anti-Spam, Anti-Flood & Anti-Bot/Scam Protection Inspection (e.g. MrBeast fake giveaways)
     // Run BEFORE filtering other bots to catch malicious bot spam, webhooks and token grabbers!
-    if (context.protectionService) {
+    const isAutoProtEnabled = !message.guild || !context.guildModuleService || context.guildModuleService.isModuleEnabled(message.guild.id, 'auto_protection');
+    if (context.protectionService && isAutoProtEnabled) {
       try {
         const check = await context.protectionService.inspectMessage(message);
         if (check && check.isViolating) {
@@ -105,7 +107,8 @@ module.exports = {
     }
 
     // Active Quiz Channel Answer Interception (direct chat response like LordBot)
-    if (message.guild && context.quizService && context.quizService.hasActiveQuiz(message.channel.id)) {
+    const isQuizModEnabled = !message.guild || !context.guildModuleService || context.guildModuleService.isModuleEnabled(message.guild.id, 'quiz');
+    if (message.guild && context.quizService && isQuizModEnabled && context.quizService.hasActiveQuiz(message.channel.id)) {
       try {
         const isQuizAnswer = await context.quizService.handleMessageAnswer(message, context);
         if (isQuizAnswer) return;
@@ -117,7 +120,8 @@ module.exports = {
     const client = message.client;
 
     // Process Message Experience & Leveling (if in guild and not bot)
-    if (message.guild && context.experienceService) {
+    const isXpModEnabled = !message.guild || !context.guildModuleService || context.guildModuleService.isModuleEnabled(message.guild.id, 'xp');
+    if (message.guild && context.experienceService && isXpModEnabled) {
       context.experienceService.processMessage(message).catch((xpErr) => {
         msgLogger.error(`Error processing message XP: ${xpErr.message}`);
       });
@@ -176,6 +180,11 @@ module.exports = {
 
     // Only respond if in DM, mentioned, directly replying to the bot, or called by name
     if (!isDirectMessage && !isMentioned && !isReplyToBot && !isNamed) {
+      return;
+    }
+
+    // Check if AI Chat module is enabled for this guild
+    if (message.guild && context.guildModuleService && !context.guildModuleService.isModuleEnabled(message.guild.id, 'ai_chat')) {
       return;
     }
 

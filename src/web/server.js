@@ -667,7 +667,7 @@ class WebServer {
       }
 
       // ==========================================
-      // Multi-Bot Manager API Routes
+      // Multi-Bot Manager API Routes (Isolated Per-Bot Admin)
       // ==========================================
 
       if (pathname === '/api/multi-bot' || pathname === '/api/multi-bot/instances') {
@@ -675,54 +675,111 @@ class WebServer {
           return this._sendError(res, 401, 'Painel bloqueado.');
         }
         const mb = this.webPanelService?.services?.multiBotManager;
+        const gms = this.webPanelService?.services?.guildModuleService;
         if (!mb) return this._sendError(res, 503, 'Serviço Multi-Bot indisponível.');
 
         if (method === 'GET') {
-          return this._sendJson(res, 200, { instances: mb.listInstances() });
+          return this._sendJson(res, 200, {
+            instances: mb.listInstances(),
+            moduleDefinitions: gms ? gms.getAllModuleDefinitions() : []
+          });
         }
         if (method === 'POST') {
           const body = await this._parseBody(req);
           const created = mb.createInstance(body);
+          if (created) delete created.token;
           return this._sendJson(res, 201, { success: true, instance: created });
         }
       }
 
       const mbActionMatch = pathname.match(/^\/api\/multi-bot\/([^/]+)(?:\/([a-zA-Z0-9_-]+))?$/);
-      if (mbActionMatch && method === 'POST') {
+      if (mbActionMatch) {
         if (!this._isPanelUnlocked(req, session)) {
           return this._sendError(res, 401, 'Painel bloqueado.');
         }
         const mb = this.webPanelService?.services?.multiBotManager;
+        const gms = this.webPanelService?.services?.guildModuleService;
         if (!mb) return this._sendError(res, 503, 'Serviço Multi-Bot indisponível.');
 
         const instanceId = mbActionMatch[1];
-        const action = mbActionMatch[2] || 'start';
+        const subAction = mbActionMatch[2] || '';
 
-        try {
-          if (action === 'start') {
-            const out = await mb.startInstance(instanceId);
-            return this._sendJson(res, 200, out);
-          } else if (action === 'stop') {
-            const out = await mb.stopInstance(instanceId);
-            return this._sendJson(res, 200, out);
-          } else if (action === 'restart') {
-            const out = await mb.restartInstance(instanceId);
-            return this._sendJson(res, 200, out);
+        // GET /api/multi-bot/:id -> Full isolated administration data for a single bot
+        if (method === 'GET' && !subAction) {
+          const inst = mb.getInstance(instanceId);
+          if (!inst) return this._sendError(res, 404, 'Instância de bot não encontrada.');
+          delete inst.token;
+          return this._sendJson(res, 200, {
+            instance: inst,
+            memories: mb.listInstanceMemories(instanceId),
+            logs: mb.listInstanceLogs(instanceId, 50),
+            moduleDefinitions: gms ? gms.getAllModuleDefinitions() : []
+          });
+        }
+
+        // GET /api/multi-bot/:id/logs
+        if (method === 'GET' && subAction === 'logs') {
+          return this._sendJson(res, 200, {
+            logs: mb.listInstanceLogs(instanceId, 100)
+          });
+        }
+
+        // PATCH /api/multi-bot/:id or POST /api/multi-bot/:id/config -> Save isolated bot configuration
+        if ((method === 'PATCH' && !subAction) || ((method === 'POST' || method === 'PATCH') && subAction === 'config')) {
+          const body = await this._parseBody(req);
+          const updated = mb.updateInstance(instanceId, body);
+          if (updated) delete updated.token;
+          return this._sendJson(res, 200, {
+            success: true,
+            instance: updated
+          });
+        }
+
+        // POST /api/multi-bot/:id/memories -> Save or delete isolated bot AI memory
+        if (method === 'POST' && subAction === 'memories') {
+          const body = await this._parseBody(req);
+          let memories;
+          if (body.action === 'DELETE') {
+            memories = mb.deleteInstanceMemory(instanceId, body.key, body.guildId || 'GLOBAL');
+          } else {
+            memories = mb.saveInstanceMemory(instanceId, {
+              key: body.key,
+              value: body.value,
+              guildId: body.guildId || 'GLOBAL'
+            });
           }
-        } catch (actErr) {
-          return this._sendError(res, 400, actErr.message);
+          return this._sendJson(res, 200, { success: true, memories });
         }
-      }
 
-      if (mbActionMatch && method === 'DELETE') {
-        if (!this._isPanelUnlocked(req, session)) {
-          return this._sendError(res, 401, 'Painel bloqueado.');
+        // POST /api/multi-bot/:id/clear-logs
+        if (method === 'POST' && subAction === 'clear-logs') {
+          const logs = mb.clearInstanceLogs(instanceId);
+          return this._sendJson(res, 200, { success: true, logs });
         }
-        const mb = this.webPanelService?.services?.multiBotManager;
-        if (!mb) return this._sendError(res, 503, 'Serviço Multi-Bot indisponível.');
-        const instanceId = mbActionMatch[1];
-        await mb.deleteInstance(instanceId);
-        return this._sendJson(res, 200, { success: true, id: instanceId });
+
+        // POST /api/multi-bot/:id/(start|stop|restart)
+        if (method === 'POST' && ['start', 'stop', 'restart'].includes(subAction)) {
+          try {
+            if (subAction === 'start') {
+              const out = await mb.startInstance(instanceId);
+              return this._sendJson(res, 200, out);
+            } else if (subAction === 'stop') {
+              const out = await mb.stopInstance(instanceId);
+              return this._sendJson(res, 200, out);
+            } else if (subAction === 'restart') {
+              const out = await mb.restartInstance(instanceId);
+              return this._sendJson(res, 200, out);
+            }
+          } catch (actErr) {
+            return this._sendError(res, 400, actErr.message);
+          }
+        }
+
+        // DELETE /api/multi-bot/:id
+        if (method === 'DELETE' && !subAction) {
+          await mb.deleteInstance(instanceId);
+          return this._sendJson(res, 200, { success: true, id: instanceId });
+        }
       }
 
       // ==========================================

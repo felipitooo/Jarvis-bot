@@ -390,6 +390,10 @@ function createAppContext(customDbPath = null) {
 
   const { GuildModuleService } = require('./services/guildModuleService');
   const guildModuleService = new GuildModuleService(dbManager, auditService);
+  communityService.guildModuleService = guildModuleService;
+  if (automationService.extraServices) {
+    automationService.extraServices.guildModuleService = guildModuleService;
+  }
 
   const { MultiBotManager } = require('./services/multiBotManager');
   const multiBotManager = new MultiBotManager(dbManager, {
@@ -443,7 +447,8 @@ function createAppContext(customDbPath = null) {
       guildRepo,
       settingsService,
       guildModuleService,
-      multiBotManager
+      multiBotManager,
+      dbManager
     },
     botClient: client
   });
