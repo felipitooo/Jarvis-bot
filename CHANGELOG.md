@@ -5,6 +5,23 @@ Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [9.9.0] - 2026-11-19
+
+### Adicionado
+- **Persistência Total do Bot Ativo via LocalStorage (Sobrevive ao F5):**
+  - O bot ativo selecionado agora é gravado automaticamente no `localStorage` do navegador (`jarvis_active_bot_id`).
+  - Ao recarregar a página (F5) ou reabrir o painel web, a interface **não reseta mais para o Jarvis** e mantém exatamente a instância de bot que você estava editando.
+  - Sincronização inicial instantânea nos 4 seletores (cabeçalho, barra lateral, banner superior universal e aba de módulos), recarregando dados da instância ativa desde o boot.
+- **Compatibilidade Completa nas Seções Restantes da Sidebar:**
+  - **Identidade & Presença:** Status, Tipo de Atividade e Texto de Status salvos e despachados em tempo real na presença do bot ativo selecionado (`applyInstancePresence`).
+  - **Memórias da IA (Gemini):** Normalização e compatibilidade de memórias (`key`, `value`) em instâncias secundárias no painel (`saveInstanceMemory` / `deleteInstanceMemory`).
+  - **Falar pelo Bot (Transmissor):** Auto-seleção da instância ativa e transmissão com avatar/nome correspondentes.
+  - **Comandos Personalizados:** Suporte completo para criar, atualizar e excluir comandos mesmo com bot secundário ativo, sem ocultar a lista do servidor.
+  - **Alertas Sociais (YouTube / Twitch / Reddit):** Visualização e cadastro de monitoramentos sociais mantendo contexto do bot ativo.
+  - **Resumo Inteligente (Chat & Fofoca):** Resumos gerados pelo painel agora enviam no Discord usando a identidade e webhook/cliente da instância ativa selecionada (`X-Bot-Id`).
+  - **Configurações Gerais & Base:** Suporte a edição isolada da instância secundária via `/api/bot/config` com banner contextual indicando qual bot está sendo customizado.
+  - **Multi-Bot Manager:** Adicionado botão de ação rápida "⭐ Ativar / ✅ Ativo" diretamente na tabela de instâncias.
+
 ## [9.8.0] - 2026-11-19
 
 ### Adicionado

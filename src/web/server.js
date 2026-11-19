@@ -564,6 +564,33 @@ class WebServer {
 
       // GET /api/bot/config — Retrieve comprehensive configuration
       if (pathname === '/api/bot/config' && method === 'GET') {
+        const targetBotId = req.headers['x-bot-id'] || parsedUrl.searchParams.get('botId') || null;
+        const mb = this.webPanelService?.services?.multiBotManager;
+        if (targetBotId && targetBotId !== 'PRIMARY' && targetBotId !== 'MAIN' && mb) {
+          const inst = mb.getInstance(targetBotId);
+          if (inst) {
+            const { botConfig } = require('../config/botConfig');
+            const baseConfig = botConfig.getConfig();
+            const isolatedConfig = {
+              ...baseConfig,
+              identity: {
+                ...baseConfig.identity,
+                name: inst.name || inst.config?.aiName || baseConfig.identity?.name,
+                defaultPrefix: inst.config?.prefix || inst.config?.commands?.prefix || '+',
+              },
+              ai: {
+                ...baseConfig.ai,
+                model: inst.config?.aiModel || baseConfig.ai?.model,
+                humorMode: inst.config?.humorMode || baseConfig.ai?.humorMode || 'normal',
+                persona: {
+                  ...baseConfig.ai?.persona,
+                  role: inst.config?.personaRole || baseConfig.ai?.persona?.role
+                }
+              }
+            };
+            return this._sendJson(res, 200, isolatedConfig);
+          }
+        }
         const { botConfig } = require('../config/botConfig');
         return this._sendJson(res, 200, botConfig.getConfig());
       }
@@ -574,6 +601,33 @@ class WebServer {
           return this._sendError(res, 401, 'Painel bloqueado. Insira a senha de acesso para salvar configurações.');
         }
         const body = await this._parseBody(req);
+        const targetBotId = req.headers['x-bot-id'] || parsedUrl.searchParams.get('botId') || body.botId || null;
+        const mb = this.webPanelService?.services?.multiBotManager;
+        if (targetBotId && targetBotId !== 'PRIMARY' && targetBotId !== 'MAIN' && mb) {
+          const inst = mb.getInstance(targetBotId);
+          if (inst) {
+            const cfg = { ...(inst.config || {}) };
+            const updates = {};
+            if (body.identity?.name) {
+              updates.name = String(body.identity.name).trim();
+              cfg.aiName = updates.name;
+            }
+            if (body.identity?.defaultPrefix) {
+              cfg.prefix = String(body.identity.defaultPrefix).trim();
+              cfg.commands = { ...(cfg.commands || {}), prefix: cfg.prefix };
+            }
+            if (body.ai?.model) cfg.aiModel = body.ai.model;
+            if (body.ai?.humorMode) cfg.humorMode = body.ai.humorMode;
+            if (body.ai?.persona?.role) cfg.personaRole = body.ai.persona.role;
+            updates.config = cfg;
+            mb.updateInstance(targetBotId, updates);
+            return this._sendJson(res, 200, {
+              success: true,
+              message: `Configurações da instância "${inst.name}" salvas com sucesso!`,
+              config: body
+            });
+          }
+        }
         const { botConfig } = require('../config/botConfig');
         const updated = botConfig.updateConfig(body);
 
@@ -946,13 +1000,15 @@ class WebServer {
           const limit = Math.min(300, Math.max(10, parseInt(body.limit, 10) || 300));
           const type = body.type === 'gossip' ? 'gossip' : 'summary';
           const sendToDiscord = Boolean(body.sendToDiscord);
+          const targetBotId = req.headers['x-bot-id'] || parsedUrl.searchParams.get('botId') || body.botId || null;
           const summaryResult = await this.webPanelService.generateChatSummaryForPanel(
             session,
             guildId,
             channelId,
             limit,
             type,
-            sendToDiscord
+            sendToDiscord,
+            targetBotId
           );
           return this._sendJson(res, 200, summaryResult);
         }

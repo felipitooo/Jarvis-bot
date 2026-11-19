@@ -413,17 +413,26 @@ class WebPanelService {
             allQuizQuestions: this.services.quizService
               ? this.services.quizService.getAllQuestions(guildId)
               : (this.services.quizRepo ? (new (require('./quizService').QuizService)({ quizRepo: this.services.quizRepo })).getAllQuestions(guildId) : []),
-            customCommands: cfg.commands?.customList || [],
+            customCommands: (this.services.customCommandRepo ? this.services.customCommandRepo.listCommands(guildId) : (cfg.commands?.customList || [])),
             placeholders: this.services.customCommandService ? this.services.customCommandService.getPlaceholdersDocumentation() : [],
             serverPrefix: activePrefix,
             prefixlessMode: Boolean(cfg.commands?.prefixlessMode),
             botPresence: {
+              botStatus: cfg.presenceStatus || 'online',
               status: cfg.presenceStatus || 'online',
               activityType: cfg.presenceActivityType || 'Custom',
+              activityName: cfg.presenceActivityText || '',
               activityText: cfg.presenceActivityText || '',
               activityUrl: cfg.presenceActivityUrl || ''
             },
-            aiMemories: (mb.listInstanceMemories ? mb.listInstanceMemories(botId, guildId) : (typeof mb.getInstanceMemories === 'function' ? mb.getInstanceMemories(botId) : [])) || [],
+            aiMemories: ((mb.listInstanceMemories ? mb.listInstanceMemories(botId, guildId) : (typeof mb.getInstanceMemories === 'function' ? mb.getInstanceMemories(botId) : [])) || []).map(m => ({
+              id: m.id,
+              key: m.key || m.memory_key,
+              value: m.value || m.memory_value,
+              created_by: m.created_by,
+              updated_at: m.updated_at
+            })),
+            socialAlerts: (this.services.socialAlertRepo || this.services.socialAlertsRepo ? (this.services.socialAlertRepo || this.services.socialAlertsRepo).listAlerts(guildId) : []) || [],
             tempbans: this.services.modRepo ? this.services.modRepo.getActiveTempBans(guildId) : [],
             guildModules: {
               definitions: MODULE_DEFINITIONS,
@@ -768,7 +777,42 @@ class WebPanelService {
             return {
               prefix: cfg.prefix || cfg.commands?.prefix || '+',
               prefixless_mode: Boolean(cfg.commands?.prefixlessMode),
-              commands: []
+              commands: (this.services.customCommandRepo ? this.services.customCommandRepo.listCommands(guildId) : []) || []
+            };
+          case 'social_alerts':
+          case 'socialalerts':
+          case 'alerts': {
+            const repo = this.services.socialAlertRepo || this.services.socialAlertsRepo;
+            return {
+              alerts: repo ? repo.listAlerts(guildId) : []
+            };
+          }
+          case 'bot_presence':
+          case 'botpresence':
+          case 'presence':
+            return {
+              botStatus: cfg.presenceStatus || 'online',
+              activityType: cfg.presenceActivityType || 'Custom',
+              activityName: cfg.presenceActivityText || '',
+              activityUrl: cfg.presenceActivityUrl || ''
+            };
+          case 'aimemory':
+          case 'ai_memory':
+          case 'memories': {
+            const rawMems = (mb.listInstanceMemories ? mb.listInstanceMemories(botId, guildId) : (typeof mb.getInstanceMemories === 'function' ? mb.getInstanceMemories(botId) : [])) || [];
+            return {
+              memories: rawMems.map(m => ({
+                id: m.id,
+                key: m.key || m.memory_key,
+                value: m.value || m.memory_value,
+                created_by: m.created_by,
+                updated_at: m.updated_at
+              }))
+            };
+          }
+          case 'tempbans':
+            return {
+              tempbans: this.services.modRepo ? this.services.modRepo.getActiveTempBans(guildId) : []
             };
           case 'anti_bot_scam':
           case 'antibotscam':
@@ -1052,7 +1096,80 @@ class WebPanelService {
               cfg.commands = { ...(cfg.commands || {}), prefixlessMode: Boolean(updates.prefixless_mode) };
             }
             mb.updateInstance(botId, { config: cfg });
-            return { module: 'custom_commands', config: cfg.commands };
+
+            const { customCommandService, customCommandRepo } = this.services;
+            if (customCommandService) {
+              if (updates.action === 'UPDATE' || updates.originalName || updates.update) {
+                const u = updates.update || updates;
+                const origName = u.originalName || u.name;
+                customCommandService.updateCommand(guildId, origName, {
+                  newName: (u.name && u.name !== origName) ? u.name : undefined,
+                  response: u.response,
+                  description: u.description,
+                  actorId: session.userId || 'web_admin',
+                  customPrefix: u.custom_prefix !== undefined ? u.custom_prefix : (u.customPrefix !== undefined ? u.customPrefix : null),
+                  requirePrefix: u.require_prefix !== undefined ? u.require_prefix : (u.requirePrefix !== undefined ? u.requirePrefix : (u.sem_prefixo ? 0 : 1)),
+                  matchMode: u.match_mode || u.matchMode || 'starts_with'
+                });
+              } else if (updates.action === 'CREATE' || updates.create) {
+                const c = updates.create || updates;
+                const cleanName = String(c.name || '').toLowerCase().trim();
+                const existing = customCommandRepo ? customCommandRepo.getCommand(guildId, cleanName) : null;
+                if (existing) {
+                  customCommandService.updateCommand(guildId, cleanName, {
+                    response: c.response,
+                    description: c.description,
+                    actorId: session.userId || 'web_admin',
+                    customPrefix: c.custom_prefix !== undefined ? c.custom_prefix : (c.customPrefix !== undefined ? c.customPrefix : null),
+                    requirePrefix: c.require_prefix !== undefined ? c.require_prefix : (c.requirePrefix !== undefined ? c.requirePrefix : (c.sem_prefixo ? 0 : 1)),
+                    matchMode: c.match_mode || c.matchMode || 'starts_with'
+                  });
+                } else {
+                  customCommandService.createCommand(guildId, {
+                    name: cleanName,
+                    response: c.response,
+                    description: c.description || null,
+                    createdBy: session.userId || 'web_admin',
+                    customPrefix: c.custom_prefix !== undefined ? c.custom_prefix : (c.customPrefix !== undefined ? c.custom_prefix : null),
+                    requirePrefix: c.require_prefix !== undefined ? c.require_prefix : (c.requirePrefix !== undefined ? c.requirePrefix : (c.sem_prefixo ? 0 : 1)),
+                    matchMode: c.match_mode || c.matchMode || 'starts_with'
+                  });
+                }
+              } else if (updates.action === 'DELETE' || updates.delete) {
+                const cmdName = String(updates.name || updates.delete || '').toLowerCase().trim();
+                if (cmdName) {
+                  customCommandService.deleteCommand(guildId, cmdName, session.userId || 'web_admin');
+                }
+              }
+            }
+            return {
+              module: 'custom_commands',
+              config: cfg.commands,
+              commands: customCommandRepo ? customCommandRepo.listCommands(guildId) : []
+            };
+          }
+          case 'social_alerts':
+          case 'socialalerts':
+          case 'alerts': {
+            const { socialAlertService } = this.services;
+            const repo = this.services.socialAlertRepo || this.services.socialAlertsRepo;
+            if (updates.action === 'CREATE' || updates.add) {
+              if (socialAlertService) {
+                socialAlertService.addAlert(guildId, updates.platform, updates.sourceId, updates.channelTargetId, updates.customMessage);
+              } else if (repo) {
+                repo.createAlert({ guildId, platform: updates.platform, sourceId: updates.sourceId, channelTargetId: updates.channelTargetId, customMessage: updates.customMessage });
+              }
+            } else if (updates.action === 'DELETE' || updates.delete) {
+              if (socialAlertService) {
+                socialAlertService.removeAlert(guildId, updates.id || updates.delete);
+              } else if (repo) {
+                repo.deleteAlert(updates.id || updates.delete, guildId);
+              }
+            }
+            return {
+              module: 'social_alerts',
+              alerts: repo ? repo.listAlerts(guildId) : []
+            };
           }
           case 'anti_bot_scam':
           case 'antibotscam': {
@@ -1084,9 +1201,11 @@ class WebPanelService {
           case 'botpresence':
           case 'presence': {
             if (updates.status !== undefined) cfg.presenceStatus = String(updates.status);
+            if (updates.botStatus !== undefined) cfg.presenceStatus = String(updates.botStatus);
             if (updates.presenceStatus !== undefined) cfg.presenceStatus = String(updates.presenceStatus);
             if (updates.activityType !== undefined) cfg.presenceActivityType = String(updates.activityType);
             if (updates.presenceActivityType !== undefined) cfg.presenceActivityType = String(updates.presenceActivityType);
+            if (updates.activityName !== undefined) cfg.presenceActivityText = String(updates.activityName);
             if (updates.activityText !== undefined) cfg.presenceActivityText = String(updates.activityText);
             if (updates.presenceActivityText !== undefined) cfg.presenceActivityText = String(updates.presenceActivityText);
             if (updates.activityUrl !== undefined) cfg.presenceActivityUrl = String(updates.activityUrl);
@@ -1113,7 +1232,14 @@ class WebPanelService {
                 mb.deleteInstanceMemory(botId, key, guildId);
               }
             }
-            const mems = typeof mb.listInstanceMemories === 'function' ? mb.listInstanceMemories(botId, guildId) : [];
+            const rawMems = typeof mb.listInstanceMemories === 'function' ? mb.listInstanceMemories(botId, guildId) : [];
+            const mems = rawMems.map(m => ({
+              id: m.id,
+              key: m.key || m.memory_key,
+              value: m.value || m.memory_value,
+              created_by: m.created_by,
+              updated_at: m.updated_at
+            }));
             return { module: 'aimemory', config: { memories: mems } };
           }
           case 'tempbans': {
@@ -2831,10 +2957,13 @@ class WebPanelService {
     }
   }
 
-  async generateChatSummaryForPanel(session, guildId, channelId, limit = 300, type = 'summary', sendToDiscord = false) {
+  async generateChatSummaryForPanel(session, guildId, channelId, limit = 300, type = 'summary', sendToDiscord = false, botId = null) {
     this.verifyGuildAccess(session, guildId);
     const startTime = Date.now();
-    const client = this.botClient || this.services?.botClient;
+    const mb = this.services?.multiBotManager;
+    const isSecondaryBot = Boolean(botId && botId !== 'PRIMARY' && botId !== 'MAIN');
+    const inst = isSecondaryBot && mb ? mb.getInstance(botId) : null;
+    const client = (inst?.client?.guilds?.cache?.has(guildId) ? inst.client : null) || this.botClient || this.services?.botClient;
     const guild = client?.guilds?.cache?.get(guildId);
     const channel = guild?.channels?.cache?.get(channelId);
     if (!channel || !channel.messages) {
@@ -2848,7 +2977,7 @@ class WebPanelService {
     }
 
     const messages = await service.fetchChannelMessages(channel, limit);
-    const aiName = this.identityService.getDisplayName(guildId);
+    const aiName = (inst?.config?.aiName || inst?.name) || this.identityService.getDisplayName(guildId);
 
     let text = '';
     if (type === 'gossip') {

@@ -6187,7 +6187,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
                 Sintetize conversas reais de canais de texto com IA Gemini, veja participantes, tópicos e acesse o histórico completo salvo no SQLite.
               </p>
             </div>
-            <button type="button" class="primary-btn" onclick="document.querySelector('[data-tab=\'tab-summaries\']')?.click()" style="padding: 0.65rem 1.4rem; font-weight: 700;">
+            <button type="button" class="primary-btn" onclick="document.querySelector('[data-tab=\'tab-summary\']')?.click()" style="padding: 0.65rem 1.4rem; font-weight: 700;">
               Ir para Central de Resumos IA ➔
             </button>
           </div>
@@ -7636,6 +7636,10 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         </div>
       </div>
 
+      <div id="botConfigTargetBotBanner" style="margin-bottom: 1.25rem; padding: 0.65rem 1rem; background: rgba(0,0,0,0.25); border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.88rem; display: flex; align-items: center; justify-content: space-between;">
+        <span>⚙️ Editando configurações de: <strong style="color: #38bdf8;">J.A.R.V.I.S. (Principal)</strong> <span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.4);">Bot Base</span></span>
+      </div>
+
       <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 1.5rem;">
 
         <!-- 0. MODO DE EXIBIÇÃO & IDIOMA DO PAINEL -->
@@ -8105,6 +8109,14 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
     window.csrfToken = csrfToken;
     window.currentCsrfToken = csrfToken;
 
+    // Persistência de Bot Ativo no LocalStorage (F5 mantém o bot selecionado)
+    let initialActiveBotId = 'PRIMARY';
+    try {
+      const stored = localStorage.getItem('jarvis_active_bot_id');
+      if (stored) initialActiveBotId = stored;
+    } catch (e) {}
+    window.currentActiveBotId = initialActiveBotId;
+
     function escapeHtml(str) {
       if (str === null || str === undefined) return '';
       return String(str)
@@ -8117,9 +8129,11 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
 
     function authFetch(url, options = {}) {
       const activeCsrf = window.csrfToken || currentCsrfToken || csrfToken;
+      const targetBot = window.currentActiveBotId || 'PRIMARY';
       const headers = {
         'X-CSRF-Token': activeCsrf,
         'X-Panel-Password': '1598',
+        'X-Bot-Id': targetBot,
         ...(options.headers || {})
       };
       if (options.body && typeof options.body === 'string' && !headers['Content-Type']) {
@@ -14372,10 +14386,20 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
 
     async function loadBotConfigTab() {
       try {
-        const res = await fetch('/api/bot/config', { credentials: 'include' });
+        const targetBot = window.currentActiveBotId || 'PRIMARY';
+        const res = await fetch('/api/bot/config' + (targetBot && targetBot !== 'PRIMARY' ? '?botId=' + encodeURIComponent(targetBot) : ''), {
+          headers: { 'X-Bot-Id': targetBot },
+          credentials: 'include'
+        });
         if (!res.ok) return;
         const cfg = await res.json();
         populateBotConfigForm(cfg);
+        const botName = window.botNamesMap?.[targetBot] || (targetBot === 'PRIMARY' ? 'J.A.R.V.I.S. (Principal)' : targetBot);
+        const bannerEl = document.getElementById('botConfigTargetBotBanner');
+        if (bannerEl) {
+          bannerEl.innerHTML = '<span>⚙️ Editando configurações de: <strong style="color: #38bdf8;">' + escapeHtml(botName) + '</strong> ' +
+            (targetBot !== 'PRIMARY' ? '<span class="badge" style="background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.4);">Instância Isolada</span>' : '<span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.4);">Bot Base</span>') + '</span>';
+        }
       } catch (err) {
         console.error('Erro ao carregar configurações do bot:', err);
       }
@@ -14705,9 +14729,10 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       }
 
       try {
-        const res = await authFetch('/api/bot/config', {
+        const targetBot = window.currentActiveBotId || 'PRIMARY';
+        const res = await authFetch('/api/bot/config' + (targetBot && targetBot !== 'PRIMARY' ? '?botId=' + encodeURIComponent(targetBot) : ''), {
           method: 'POST',
-          body: JSON.stringify(payload)
+          body: JSON.stringify({ ...payload, botId: targetBot })
         });
         const data = await res.json();
         if (data.success) {
@@ -14989,15 +15014,17 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
 
       try {
         const activeCsrf = window.csrfToken || currentCsrfToken || csrfToken;
-        const res = await fetch('/api/guilds/' + currentGuildId + '/summary', {
+        const targetBot = window.currentActiveBotId || document.getElementById('globalBotSelector')?.value || 'PRIMARY';
+        const res = await fetch('/api/guilds/' + currentGuildId + '/summary' + (targetBot && targetBot !== 'PRIMARY' ? '?botId=' + encodeURIComponent(targetBot) : ''), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'X-CSRF-Token': activeCsrf,
-            'X-Panel-Password': '1598'
+            'X-Panel-Password': '1598',
+            'X-Bot-Id': targetBot
           },
           credentials: 'include',
-          body: JSON.stringify({ channelId, limit, type, sendToDiscord })
+          body: JSON.stringify({ channelId, limit, type, sendToDiscord, botId: targetBot })
         });
 
         const data = await res.json();
@@ -15213,6 +15240,10 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
 
     function handleActiveBotSwitch(botId) {
       window.currentActiveBotId = botId;
+      try {
+        localStorage.setItem('jarvis_active_bot_id', botId);
+      } catch (e) {}
+
       const gSel = document.getElementById('globalBotSelector');
       const sSel = document.getElementById('sidebarBotSelector');
       const uSel = document.getElementById('universalBannerBotSelect');
@@ -15248,6 +15279,9 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       if (curTab === 'tab-audit') fetchAuditLogs();
       if (curTab === 'tab-tempbans') loadTempbans();
       if (curTab === 'tab-health') fetchHealthMetrics();
+      if (curTab === 'tab-settings' && typeof loadBotConfigTab === 'function') loadBotConfigTab();
+      if (curTab === 'tab-summary' && typeof loadChannelSummaries === 'function') loadChannelSummaries();
+      if (curTab === 'tab-multibot' && typeof loadMultiBotInstances === 'function') loadMultiBotInstances();
     }
 
     document.getElementById('globalBotSelector')?.addEventListener('change', (e) => {
@@ -15346,18 +15380,22 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           const badgeBg = isOnline ? 'rgba(16, 185, 129, 0.15)' : (isError ? 'rgba(239, 68, 68, 0.15)' : 'rgba(148, 163, 184, 0.15)');
           const activeModsCnt = inst.databaseStats?.activeModulesCount ?? Object.values(inst.config?.modules || {}).filter(Boolean).length;
 
+          const isActiveBot = inst.id === window.currentActiveBotId;
           return '<tr>' +
             '<td><span style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 999px; font-size: 0.74rem; font-weight: 700; color: ' + badgeColor + '; background: ' + badgeBg + '; border: 1px solid ' + badgeColor + ';"><span style="width: 6px; height: 6px; border-radius: 50%; background: ' + badgeColor + ';"></span> ' + escapeHtml(inst.status) + '</span></td>' +
-            '<td><a href="javascript:void(0)" class="mb-open-admin-link" data-instid="' + escapeHtml(inst.id) + '" style="color: #38bdf8; font-weight: 700; text-decoration: none;">🤖 ' + escapeHtml(inst.name) + '</a><div style="font-size: 0.72rem; color: var(--text-muted);">Prefixo: <code>' + escapeHtml(inst.config?.prefix || '+') + '</code> • IA: ' + escapeHtml(inst.config?.aiName || inst.name) + '</div></td>' +
+            '<td><a href="javascript:void(0)" class="mb-open-admin-link" data-instid="' + escapeHtml(inst.id) + '" style="color: #38bdf8; font-weight: 700; text-decoration: none;">🤖 ' + escapeHtml(inst.name) + '</a>' +
+            (isActiveBot ? ' <span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.4); font-size: 0.7rem; padding: 2px 6px;">Ativo no Painel</span>' : '') +
+            '<div style="font-size: 0.72rem; color: var(--text-muted);">Prefixo: <code>' + escapeHtml(inst.config?.prefix || '+') + '</code> • IA: ' + escapeHtml(inst.config?.aiName || inst.name) + '</div></td>' +
             '<td><code style="background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px;">' + escapeHtml(inst.maskedToken) + '</code></td>' +
             '<td><span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10B981;">' + activeModsCnt + ' / 26 ativos</span></td>' +
             '<td>' + (inst.memoryMb ? inst.memoryMb + ' MB' : '0 MB') + '</td>' +
             '<td>' +
               '<div style="display: flex; gap: 5px; flex-wrap: wrap;">' +
-                '<button type="button" class="primary-btn mb-manage-btn" data-instid="' + escapeHtml(inst.id) + '" style="padding: 0.28rem 0.65rem; font-size: 0.75rem; background: linear-gradient(135deg, #a855f7, #7e22ce);">⚙️ Gerenciar Bot</button>' +
+                '<button type="button" class="secondary-btn mb-activate-bot-btn" data-instid="' + escapeHtml(inst.id) + '" style="padding: 0.28rem 0.55rem; font-size: 0.74rem; border-color: ' + (isActiveBot ? '#10B981; color: #10B981;' : '#38bdf8; color: #38bdf8;') + '">' + (isActiveBot ? '✅ Ativo' : '⭐ Ativar') + '</button>' +
+                '<button type="button" class="primary-btn mb-manage-btn" data-instid="' + escapeHtml(inst.id) + '" style="padding: 0.28rem 0.65rem; font-size: 0.75rem; background: linear-gradient(135deg, #a855f7, #7e22ce);">⚙️ Gerenciar</button>' +
                 (isOnline ?
-                  '<button type="button" class="secondary-btn mb-stop-btn" data-instid="' + escapeHtml(inst.id) + '" style="padding: 0.28rem 0.55rem; font-size: 0.74rem;">⏹️ Parar</button>' :
-                  '<button type="button" class="primary-btn mb-start-btn" data-instid="' + escapeHtml(inst.id) + '" style="padding: 0.28rem 0.55rem; font-size: 0.74rem; background: #10B981;">▶️ Iniciar</button>'
+                  '<button type="button" class="secondary-btn mb-stop-btn" data-instid="' + escapeHtml(inst.id) + '" style="padding: 0.28rem 0.55rem; font-size: 0.74rem;">⏹️</button>' :
+                  '<button type="button" class="primary-btn mb-start-btn" data-instid="' + escapeHtml(inst.id) + '" style="padding: 0.28rem 0.55rem; font-size: 0.74rem; background: #10B981;">▶️</button>'
                 ) +
                 '<button type="button" class="secondary-btn mb-restart-btn" data-instid="' + escapeHtml(inst.id) + '" style="padding: 0.28rem 0.5rem; font-size: 0.74rem;">🔄</button>' +
                 '<button type="button" class="danger-btn mb-delete-btn" data-instid="' + escapeHtml(inst.id) + '" style="padding: 0.28rem 0.5rem; font-size: 0.74rem;">🗑️</button>' +
@@ -15368,6 +15406,13 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
 
         tbody.querySelectorAll('.mb-manage-btn, .mb-open-admin-link').forEach(btn => {
           btn.addEventListener('click', () => openMultiBotAdminPage(btn.getAttribute('data-instid')));
+        });
+        tbody.querySelectorAll('.mb-activate-bot-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const instId = btn.getAttribute('data-instid');
+            handleActiveBotSwitch(instId);
+            loadMultiBotInstances();
+          });
         });
         tbody.querySelectorAll('.mb-start-btn').forEach(btn => {
           btn.addEventListener('click', () => handleMultiBotAction(btn.getAttribute('data-instid'), 'start'));

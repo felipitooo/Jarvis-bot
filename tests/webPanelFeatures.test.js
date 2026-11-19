@@ -73,7 +73,9 @@ describe('Web Panel Speak & AI Forced Memories Features', () => {
     };
 
     const { MultiBotManager } = require('../src/services/multiBotManager');
+    const { SocialAlertRepository } = require('../src/database/repositories/socialAlertRepository');
     const multiBotManager = new MultiBotManager(db, auditService);
+    const socialAlertsRepo = new SocialAlertRepository(db);
 
     webPanelService = new WebPanelService({
       webSessionRepo,
@@ -82,7 +84,8 @@ describe('Web Panel Speak & AI Forced Memories Features', () => {
       auditService,
       services: {
         memoryRepo,
-        multiBotManager
+        multiBotManager,
+        socialAlertsRepo
       },
       botClient: mockBotClient
     });
@@ -295,9 +298,21 @@ describe('Web Panel Speak & AI Forced Memories Features', () => {
       inst.id
     );
     assert.equal(memRes.module, 'aimemory');
-    assert.ok(memRes.config.memories.some(m => m.memory_key === 'criador'));
+    assert.ok(memRes.config.memories.some(m => (m.key === 'criador' || m.memory_key === 'criador')));
 
-    // 4. Verify getGuildOverview returns full module map for the secondary bot
+    // 4. Test Social Alerts for secondary bot
+    const alertRes = await webPanelService.updateModuleConfig(
+      session,
+      'guild_test_1',
+      'social_alerts',
+      { action: 'CREATE', platform: 'TWITCH', sourceId: 'lipe_stream', channelTargetId: 'channel_chat_1', customMessage: 'Live on!' },
+      session.csrfToken,
+      inst.id
+    );
+    assert.equal(alertRes.module, 'social_alerts');
+    assert.ok(alertRes.alerts.some(a => a.source_id === 'lipe_stream'));
+
+    // 5. Verify getGuildOverview returns full module map for the secondary bot
     const overview = webPanelService.getGuildOverview(session, 'guild_test_1', null, inst.id);
     assert.equal(overview.activeBotId, inst.id);
     assert.equal(overview.aiDisplayName, 'Nala');
@@ -311,5 +326,9 @@ describe('Web Panel Speak & AI Forced Memories Features', () => {
     assert.ok(overview.modules.moderation.antiBotScam);
     assert.ok(overview.modules.botPresence);
     assert.equal(overview.modules.botPresence.status, 'idle');
+    assert.ok(Array.isArray(overview.modules.socialAlerts));
+    assert.ok(overview.modules.socialAlerts.some(a => a.source_id === 'lipe_stream'));
+    assert.ok(Array.isArray(overview.modules.aiMemories));
+    assert.ok(overview.modules.aiMemories.some(m => m.key === 'criador'));
   });
 });
