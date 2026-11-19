@@ -5,6 +5,26 @@ Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [9.8.0] - 2026-11-19
+
+### Adicionado
+- **Compatibilidade Total de Todos os Módulos com a Opção "Bot Ativo" no Painel Web:**
+  - Suporte completo e isolamento de contexto para todas as abas e módulos da sidebar (Dashboard & Saúde, Segurança & Membros, Economia & Suporte, IA e Personalização) ao selecionar um bot secundário ativo.
+  - **Módulos Suportados por Instância Secundária:**
+    - **Dashboard & Saúde:** Visão Geral com métricas dedicadas da instância, Métricas & Saúde em tempo real do bot selecionado, Histórico de Auditoria filtrado por bot (`botId`).
+    - **Segurança & Membros:** Ações administrativas em Membros & Usuários (kick, ban, mute, warn) executadas com a identidade do bot ativo (`sendMemberAction`), Moderação & Anti-Spam com Anti-Bot Scam isolado, Gestão de TempBans com remoção associada à instância ativa, Boas-Vindas & AutoRole, Starboard.
+    - **Economia & Suporte:** Economia & Banco com moedas de câmbio e taxas de empréstimo isoladas, Cassino & Apostas, Central de Tickets, Avaliações da Equipe.
+    - **Inteligência Artificial & Customização:** XP & Níveis, Quiz & Perguntas, Presença do Bot em tempo real (`bot_presence` com `applyInstancePresence`), Memórias da IA (`aimemory` com `saveInstanceMemory` / `deleteInstanceMemory`), e Comandos Customizados.
+  - **Sincronização Global do Bot Ativo na Interface:**
+    - Adicionado seletor de Bot Ativo na Barra Lateral (`sidebarBotSelector`) diretamente abaixo de "SERVIDOR CONECTADO", garantindo visibilidade permanente.
+    - Adicionado banner superior universal de Bot Ativo (`universalActiveBotBanner`) acima de todo o conteúdo das abas, exibindo o bot em foco com alternador rápido.
+    - Sincronização automática e bidirecional de todos os 4 seletores de bot (`globalBotSelector`, `sidebarBotSelector`, `universalBannerBotSelect`, `moduleTargetBotSelect` e `speakBotInstanceSelect`), recarregando métricas, auditoria, configurações e módulos sem necessidade de recarregar a página inteira.
+  - **Endpoints e Serviços Atualizados:**
+    - `WebPanelService.getGuildOverview`: agora retorna o dicionário completo de módulos (`tickets`, `moderation`, `antiBotScam`, `audit`, `welcome`, `autorole`, `starboard`, `music`, `economy`, `casino`, `social`, `reviews`, `briefing`, `xp`, `quiz`, `botPresence`, `aiMemories`, `tempbans`) para qualquer bot secundário ativo.
+    - `WebPanelService.updateModuleConfig`: suporte a `xp`, `bot_presence`, `aimemory`, `tempbans` e `bot_speak` isolados por instância.
+    - `WebPanelService.getGuildAuditLogs`: suporte a filtro prioritário por `botId`.
+    - Rotas da API (`/api/guilds/:guildId/audit`, `/api/guilds/:guildId/members/:userId/action`): agora extraem e respeitam `X-Bot-Id` e `botId`.
+
 ## [9.7.0] - 2026-11-19
 
 ### Corrigido

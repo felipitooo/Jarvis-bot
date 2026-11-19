@@ -245,4 +245,71 @@ describe('Web Panel Speak & AI Forced Memories Features', () => {
     // CRITICAL: Primary bot's display name in guild settings remains J.A.R.V.I.S and was NOT contaminated
     assert.equal(webPanelService.identityService.getDisplayName('guild_test_1'), 'J.A.R.V.I.S');
   });
+
+  test('getGuildOverview and updateModuleConfig support all modules for active secondary bot', async () => {
+    const session = webPanelService.createOAuthSession(
+      { id: 'user_admin', username: 'Stark' },
+      [{ id: 'guild_test_1', name: 'Test Guild', permissions: '32', owner: false }]
+    );
+
+    const mb = webPanelService.services.multiBotManager;
+    const inst = mb.createInstance({
+      name: 'Nala',
+      token: 'OTk5OTk5OTk5OTk5OTk5OTk5.Gxxxxx.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      assignedModules: ['economy', 'casino', 'xp', 'reviews'],
+      allowedGuilds: ['guild_test_1']
+    });
+
+    // 1. Update Casino config for secondary bot
+    const casinoRes = await webPanelService.updateModuleConfig(
+      session,
+      'guild_test_1',
+      'casino',
+      { blackjackMin: 50, slotsMultiplier3x: 10 },
+      session.csrfToken,
+      inst.id
+    );
+    assert.equal(casinoRes.module, 'casino');
+    assert.equal(casinoRes.config.blackjackMin, 50);
+
+    // 2. Update Bot Presence for secondary bot
+    const presRes = await webPanelService.updateModuleConfig(
+      session,
+      'guild_test_1',
+      'bot_presence',
+      { status: 'idle', activityType: 'Playing', activityText: 'Nala Mini Game' },
+      session.csrfToken,
+      inst.id
+    );
+    assert.equal(presRes.module, 'bot_presence');
+    assert.equal(presRes.config.presenceStatus, 'idle');
+    assert.equal(presRes.config.presenceActivityText, 'Nala Mini Game');
+
+    // 3. Save AI Memory for secondary bot
+    const memRes = await webPanelService.updateModuleConfig(
+      session,
+      'guild_test_1',
+      'aimemory',
+      { action: 'SAVE', key: 'criador', value: 'Desenvolvida pelo Lipe' },
+      session.csrfToken,
+      inst.id
+    );
+    assert.equal(memRes.module, 'aimemory');
+    assert.ok(memRes.config.memories.some(m => m.memory_key === 'criador'));
+
+    // 4. Verify getGuildOverview returns full module map for the secondary bot
+    const overview = webPanelService.getGuildOverview(session, 'guild_test_1', null, inst.id);
+    assert.equal(overview.activeBotId, inst.id);
+    assert.equal(overview.aiDisplayName, 'Nala');
+    assert.ok(overview.modules.casino);
+    assert.equal(overview.modules.casino.blackjackMin, 50);
+    assert.ok(overview.modules.social);
+    assert.ok(overview.modules.reviews);
+    assert.ok(overview.modules.briefing);
+    assert.ok(overview.modules.xp);
+    assert.ok(overview.modules.quiz);
+    assert.ok(overview.modules.moderation.antiBotScam);
+    assert.ok(overview.modules.botPresence);
+    assert.equal(overview.modules.botPresence.status, 'idle');
+  });
 });

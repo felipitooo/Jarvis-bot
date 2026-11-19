@@ -2594,6 +2594,20 @@ function renderDashboardHtml({
       </div>
     </div>
 
+    <!-- BOT ATIVO NA SIDEBAR (COMPATIBILIDADE MULTI-BOT TOTAL) -->
+    <div class="sidebar-server-box" id="sidebarBotBox" style="margin-top: 0.4rem; border-color: rgba(168, 85, 247, 0.4); background: rgba(168, 85, 247, 0.08);" title="Alterne entre o Bot Principal e instâncias Multi-Bot para configurar qualquer módulo com isolamento total">
+      <div class="sidebar-server-label" style="color: #c084fc; display: flex; justify-content: space-between; align-items: center;">
+        <span>BOT ATIVO</span>
+        <span id="sidebarBotBadgeStatus" style="font-size: 0.65rem; background: rgba(168,85,247,0.25); color: #d8b4fe; padding: 1px 6px; border-radius: 4px; font-weight: 700;">Ativo</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 4px;">
+        <span style="font-size: 1.15rem;">🤖</span>
+        <select id="sidebarBotSelector" style="width: 100%; background: #0c0f18; color: #c084fc; font-weight: 700; border: 1px solid rgba(168, 85, 247, 0.35); border-radius: 6px; padding: 0.3rem 0.5rem; font-size: 0.82rem; cursor: pointer;">
+          <option value="PRIMARY">🤖 J.A.R.V.I.S. (Principal)</option>
+        </select>
+      </div>
+    </div>
+
     <nav class="sidebar-nav" id="sidebarNav">
       <!-- HUB 1: DASHBOARD & SAÚDE -->
       <div class="menu-group-title">DASHBOARD & SAÚDE</div>
@@ -2815,6 +2829,28 @@ function renderDashboardHtml({
     <!-- Hidden legacy elements for JS script compatibility -->
     <div style="display: none;" id="activeTabTitle"></div>
 <main class="container">
+    <!-- UNIVERSAL ACTIVE BOT BARRIER & INDICATOR (SYNCS ACROSS ALL TABS) -->
+    <div id="universalActiveBotBanner" style="background: linear-gradient(90deg, rgba(168, 85, 247, 0.12) 0%, rgba(0, 229, 255, 0.05) 100%); border: 1px solid rgba(168, 85, 247, 0.35); border-radius: 8px; padding: 0.65rem 1rem; margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <span style="font-size: 1.4rem;">🤖</span>
+        <div>
+          <div style="font-size: 0.88rem; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 8px;">
+            <span>Bot Ativo em Edição:</span>
+            <span id="universalBannerBotName" style="color: #c084fc; background: rgba(168, 85, 247, 0.18); padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(168, 85, 247, 0.4);">J.A.R.V.I.S. (Principal)</span>
+          </div>
+          <div style="font-size: 0.76rem; color: #94a3b8; margin-top: 2px;">
+            Todos os módulos, formulários e comandos são configurados de forma 100% isolada para este bot.
+          </div>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <span style="font-size: 0.8rem; color: #cbd5e1; font-weight: 600;">Alternar Bot:</span>
+        <select id="universalBannerBotSelect" style="background: #0f121d; color: #c084fc; font-weight: 700; border: 1px solid rgba(168, 85, 247, 0.5); border-radius: 6px; padding: 0.35rem 0.65rem; font-size: 0.82rem; cursor: pointer;">
+          <option value="PRIMARY">🤖 J.A.R.V.I.S. (Principal)</option>
+        </select>
+      </div>
+    </div>
+
     <!-- TAB 1: VISÃO GERAL -->
     <div id="tab-overview" class="tab-content active">
       <!-- Server Executive Header Banner -->
@@ -12486,7 +12522,10 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
     async function fetchAuditLogs() {
       if (!currentGuildId) return;
       try {
-        const res = await fetch('/api/guilds/' + currentGuildId + '/audit');
+        const targetBot = window.currentActiveBotId || document.getElementById('globalBotSelector')?.value || 'PRIMARY';
+        const res = await fetch('/api/guilds/' + currentGuildId + '/audit' + (targetBot && targetBot !== 'PRIMARY' ? '?botId=' + encodeURIComponent(targetBot) : ''), {
+          headers: { 'X-Bot-Id': targetBot }
+        });
         if (!res.ok) return;
         const data = await res.json();
 
@@ -13137,14 +13176,16 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
 
     async function sendMemberAction(payload) {
       if (!currentGuildId || !selectedMember) throw new Error('Nenhum membro selecionado.');
+      const targetBot = window.currentActiveBotId || document.getElementById('globalBotSelector')?.value || 'PRIMARY';
       const res = await fetch('/api/guilds/' + currentGuildId + '/members/' + selectedMember.id + '/action', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRF-Token': csrfToken
+          'X-CSRF-Token': csrfToken,
+          'X-Bot-Id': targetBot
         },
         credentials: 'same-origin',
-        body: JSON.stringify({ ...payload, csrfToken })
+        body: JSON.stringify({ ...payload, csrfToken, botId: targetBot })
       });
       const data = await res.json();
       if (!res.ok) {
@@ -14784,8 +14825,9 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       }
 
       try {
-        const res = await fetch('/api/guilds/' + currentGuildId + '/modules/tempbans', {
-          headers: { 'X-Panel-Password': '1598' },
+        const targetBot = window.currentActiveBotId || document.getElementById('globalBotSelector')?.value || 'PRIMARY';
+        const res = await fetch('/api/guilds/' + currentGuildId + '/modules/tempbans' + (targetBot && targetBot !== 'PRIMARY' ? '?botId=' + encodeURIComponent(targetBot) : ''), {
+          headers: { 'X-Panel-Password': '1598', 'X-Bot-Id': targetBot },
           credentials: 'include'
         });
         if (!res.ok) throw new Error('Falha ao consultar banimentos');
@@ -15172,22 +15214,51 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
     function handleActiveBotSwitch(botId) {
       window.currentActiveBotId = botId;
       const gSel = document.getElementById('globalBotSelector');
+      const sSel = document.getElementById('sidebarBotSelector');
+      const uSel = document.getElementById('universalBannerBotSelect');
       const mSel = document.getElementById('moduleTargetBotSelect');
-      if (gSel && gSel.value !== botId) gSel.value = botId;
-      if (mSel && mSel.value !== botId) mSel.value = botId;
+      const spkSel = document.getElementById('speakBotInstanceSelect');
 
-      const botName = window.botNamesMap?.[botId] || (botId === 'PRIMARY' ? 'J.A.R.V.I.S.' : botId);
+      [gSel, sSel, uSel, mSel].forEach(s => {
+        if (s && s.value !== botId) s.value = botId;
+      });
+      if (spkSel) {
+        const targetSpkVal = (botId === 'PRIMARY' ? 'MAIN' : botId);
+        if (spkSel.value !== targetSpkVal && [...spkSel.options].some(o => o.value === targetSpkVal)) {
+          spkSel.value = targetSpkVal;
+        }
+      }
+
+      const botName = window.botNamesMap?.[botId] || (botId === 'PRIMARY' ? 'J.A.R.V.I.S. (Principal)' : botId);
+      const uBannerName = document.getElementById('universalBannerBotName');
+      if (uBannerName) {
+        uBannerName.innerText = botName;
+      }
+
       if (botId === 'PRIMARY') {
         showToast('Alternado para Bot Principal (${aiDisplayName}). As alterações afetam a configuração base do servidor.', 'info', 'Bot Principal Selecionado');
       } else {
-        showToast('Alternado para a instância "' + botName + '". Módulos e configurações agora são 100% isolados para este bot!', 'info', 'Instância Ativa');
+        showToast('Alternado para a instância "' + botName + '". Todos os módulos e telas agora operam 100% isolados para este bot!', 'info', 'Bot Ativo: ' + botName);
       }
 
       if (currentGuildId) loadGuildDetails(currentGuildId, botId);
       loadGuildModules();
+
+      const curTab = document.querySelector('.tab-content.active')?.id;
+      if (curTab === 'tab-audit') fetchAuditLogs();
+      if (curTab === 'tab-tempbans') loadTempbans();
+      if (curTab === 'tab-health') fetchHealthMetrics();
     }
 
     document.getElementById('globalBotSelector')?.addEventListener('change', (e) => {
+      handleActiveBotSwitch(e.target.value);
+    });
+
+    document.getElementById('sidebarBotSelector')?.addEventListener('change', (e) => {
+      handleActiveBotSwitch(e.target.value);
+    });
+
+    document.getElementById('universalBannerBotSelect')?.addEventListener('change', (e) => {
       handleActiveBotSwitch(e.target.value);
     });
 
@@ -15224,8 +15295,10 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           window.botNamesMap[inst.id] = inst.name;
         }
 
-        // Populate #globalBotSelector and #moduleTargetBotSelect
+        // Populate all 4 Bot Selectors (Top Header, Sidebar, Universal Tab Banner, Modules Hub)
         const globalBotSel = document.getElementById('globalBotSelector');
+        const sidebarBotSel = document.getElementById('sidebarBotSelector');
+        const universalBotSel = document.getElementById('universalBannerBotSelect');
         const modTargetSel = document.getElementById('moduleTargetBotSelect');
         const prevTargetVal = window.currentActiveBotId || globalBotSel?.value || 'PRIMARY';
 
@@ -15234,18 +15307,18 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           botOptionsHtml += '<option value="' + escapeHtml(inst.id) + '">🤖 ' + escapeHtml(inst.name) + ' (' + escapeHtml(inst.status) + ')</option>';
         }
 
-        if (globalBotSel) {
-          globalBotSel.innerHTML = botOptionsHtml;
-          if ([...globalBotSel.options].some(o => o.value === prevTargetVal)) {
-            globalBotSel.value = prevTargetVal;
+        [globalBotSel, sidebarBotSel, universalBotSel, modTargetSel].forEach(sel => {
+          if (sel) {
+            sel.innerHTML = botOptionsHtml;
+            if ([...sel.options].some(o => o.value === prevTargetVal)) {
+              sel.value = prevTargetVal;
+            }
           }
-        }
-        if (modTargetSel) {
-          modTargetSel.innerHTML = botOptionsHtml;
-          if ([...modTargetSel.options].some(o => o.value === prevTargetVal)) {
-            modTargetSel.value = prevTargetVal;
-          }
-        }
+        });
+
+        const activeBotName = window.botNamesMap?.[prevTargetVal] || (prevTargetVal === 'PRIMARY' ? 'J.A.R.V.I.S. (Principal)' : prevTargetVal);
+        const uBannerName = document.getElementById('universalBannerBotName');
+        if (uBannerName) uBannerName.innerText = activeBotName;
 
         // Populate #speakBotInstanceSelect in main "Falar pelo Bot" tab
         const speakBotSel = document.getElementById('speakBotInstanceSelect');

@@ -890,6 +890,8 @@ class WebServer {
           const targetUserId = memberActionMatch[1];
           const body = await this._parseBody(req);
           const csrf = req.headers['x-csrf-token'] || body.csrfToken;
+          const targetBotId = req.headers['x-bot-id'] || body.botId || parsedUrl.searchParams.get('botId') || null;
+          if (targetBotId && !body.botId) body.botId = targetBotId;
           const result = await this.webPanelService.executeMemberAction(session, guildId, targetUserId, body, csrf, botGuild);
           return this._sendJson(res, 200, result);
         }
@@ -957,8 +959,9 @@ class WebServer {
 
         // GET /api/guilds/:guildId/audit
         if (subPath === '/audit' && method === 'GET') {
-          const logs = this.webPanelService.getGuildAuditLogs(session, guildId, 20);
-          return this._sendJson(res, 200, { auditLogs: logs });
+          const targetBotId = req.headers['x-bot-id'] || parsedUrl.searchParams.get('botId') || null;
+          const logs = this.webPanelService.getGuildAuditLogs(session, guildId, 50, targetBotId);
+          return this._sendJson(res, 200, { auditLogs: logs, botId: targetBotId || 'PRIMARY' });
         }
 
         // GET /api/guilds/:guildId/emojis - List current guild and external custom emojis

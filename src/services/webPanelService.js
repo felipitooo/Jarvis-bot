@@ -239,9 +239,12 @@ class WebPanelService {
           guildId,
           guildName: botGuild?.name || 'Servidor',
           aiDisplayName: activeAiName,
+          activeBotId: botId,
+          activeBotName: activeAiName,
           prefix: activePrefix,
           serverPrefix: activePrefix,
           prefixlessMode: Boolean(cfg.commands?.prefixlessMode),
+          botAvatarUrl: inst.client?.user?.displayAvatarURL ? inst.client.user.displayAvatarURL({ extension: 'png', size: 128 }) : 'https://cdn.discordapp.com/embed/avatars/0.png',
           channels,
           roles,
           settings: {
@@ -255,26 +258,46 @@ class WebPanelService {
               transcriptChannelId: cfg.tickets?.transcriptChannelId || '',
               panelChannelId: cfg.tickets?.transcriptChannelId || '',
               panelTitle: cfg.tickets?.panelTitle || `🎫 Central de Atendimento — ${inst.name}`,
-              panelDescription: cfg.tickets?.panelDescription || '',
+              panelDescription: cfg.tickets?.panelDescription || 'Clique no botão abaixo para abrir um canal de atendimento privado com nossa equipe.',
               maxOpenTicketsPerUser: cfg.tickets?.maxOpenTicketsPerUser || 1,
               defaultSupportRoleId: cfg.tickets?.defaultSupportRoleId || ''
             },
             moderation: {
-              logChannelId: cfg.moderation?.logChannelId || '',
+              logChannelId: cfg.moderation?.logChannelId || auditChan || '',
+              warnRules: cfg.moderation?.warnRules || [],
+              escalations: cfg.moderation?.escalations || [],
               antiSpamEnabled: cfg.moderation?.antiSpamEnabled ?? true,
               maxMessagesPerInterval: cfg.moderation?.maxMessagesPerInterval ?? 5,
               antiBotScamEnabled: cfg.moderation?.antiBotScamEnabled ?? true,
-              antiBotScamAction: cfg.moderation?.antiBotScamAction || 'TIMEOUT'
+              antiBotScamAction: cfg.moderation?.antiBotScamAction || 'TIMEOUT',
+              antiAbuse: {
+                antiSpamEnabled: cfg.moderation?.antiSpamEnabled ?? true,
+                maxMessagesPerInterval: cfg.moderation?.maxMessagesPerInterval ?? 5,
+                intervalSeconds: cfg.moderation?.intervalSeconds ?? 5,
+                antiFloodDuplicateThreshold: cfg.moderation?.antiFloodDuplicateThreshold ?? 3,
+                actionOnDetection: cfg.moderation?.actionOnDetection || 'TIMEOUT',
+                timeoutDurationMinutes: cfg.moderation?.timeoutDurationMinutes ?? 5,
+                antiBotScamEnabled: cfg.moderation?.antiBotScamEnabled ?? true,
+                antiBotScamAction: cfg.moderation?.antiBotScamAction || 'TIMEOUT'
+              },
+              antiBotScam: {
+                enabled: cfg.moderation?.antiBotScamEnabled ?? true,
+                action: cfg.moderation?.antiBotScamAction || 'TIMEOUT',
+                timeoutDurationSeconds: cfg.moderation?.antiBotScamTimeoutSeconds || 86400
+              }
             },
             audit: {
               channelId: auditChan
             },
             welcome: {
+              channelId: cfg.social?.welcomeChannelId || '',
               welcomeChannelId: cfg.social?.welcomeChannelId || '',
-              welcomeMessage: cfg.social?.welcomeMessage || '',
+              welcomeMessage: cfg.social?.welcomeMessage || 'Bem-vindo(a) {user} ao **{server}**! 🎉',
+              welcomeMessageTemplate: cfg.social?.welcomeMessage || 'Bem-vindo(a) {user} ao **{server}**! 🎉',
               goodbyeChannelId: cfg.social?.goodbyeChannelId || '',
-              goodbyeMessage: cfg.social?.goodbyeMessage || '',
-              welcomeEnabled: Boolean(cfg.social?.welcomeChannelId)
+              goodbyeMessage: cfg.social?.goodbyeMessage || '**{username}** saiu do servidor.',
+              welcomeEnabled: Boolean(cfg.social?.welcomeChannelId),
+              goodbyeEnabled: Boolean(cfg.social?.goodbyeChannelId)
             },
             autorole: {
               roles: cfg.social?.autoRoleId ? [cfg.social.autoRoleId] : [],
@@ -282,22 +305,131 @@ class WebPanelService {
             },
             starboard: {
               channelId: cfg.social?.starboardChannelId || '',
+              starboardChannelId: cfg.social?.starboardChannelId || '',
               emoji: cfg.social?.starboardEmoji || '⭐',
-              minStars: cfg.social?.starboardMinStars || 3
+              minStars: cfg.social?.starboardMinStars || 3,
+              starsRequired: cfg.social?.starboardMinStars || 3
             },
             music: {
               allowedTextChannelId: cfg.music?.allowedChannelId || '',
-              defaultVolume: cfg.music?.defaultVolume || 80,
-              djRoleId: cfg.music?.djRoleId || ''
+              allowedVoiceChannelId: cfg.music?.allowedVoiceChannelId || '',
+              defaultVolume: cfg.music?.defaultVolume ?? 80,
+              maxQueueSize: cfg.music?.maxQueueSize ?? 50,
+              allowDuplicateTracks: cfg.music?.allowDuplicateTracks ?? false,
+              autoDisconnectMinutes: cfg.music?.autoDisconnectMinutes ?? 5,
+              djRoleId: cfg.music?.djRoleId || '',
+              ttsEnabled: cfg.music?.ttsEnabled ?? false,
+              ttsLanguage: cfg.music?.ttsLanguage || 'pt-BR'
             },
             economy: {
               currencyName: cfg.economyXp?.currencyName || 'StarkCoins',
               currencySymbol: cfg.economyXp?.currencySymbol || '🪙',
-              initialBalance: cfg.economyXp?.initialBalance || 100,
-              dailyAmount: cfg.economyXp?.dailyAmount || 500
+              initialBalance: cfg.economyXp?.initialBalance ?? 100,
+              bankStartingCapacity: cfg.economyXp?.bankCapacity ?? 5000,
+              bankUnlimited: Boolean(cfg.economyXp?.bankUnlimited),
+              dailyAmount: cfg.economyXp?.dailyAmount ?? 500,
+              dailyCooldownSeconds: cfg.economyXp?.dailyCooldownSeconds ?? 86400,
+              weeklyAmount: cfg.economyXp?.weeklyAmount ?? 2500,
+              weeklyCooldownSeconds: cfg.economyXp?.weeklyCooldownSeconds ?? 604800,
+              workMin: cfg.economyXp?.workMin ?? 50,
+              workMax: cfg.economyXp?.workMax ?? 200,
+              workCooldownSeconds: cfg.economyXp?.workCooldownSeconds ?? 3600,
+              crimeMin: cfg.economyXp?.crimeMin ?? 100,
+              crimeMax: cfg.economyXp?.crimeMax ?? 500,
+              crimeCooldownSeconds: cfg.economyXp?.crimeCooldownSeconds ?? 7200,
+              crimeSuccessRate: cfg.economyXp?.crimeSuccessRate ?? 0.45,
+              slutMin: cfg.economyXp?.slutMin ?? 30,
+              slutMax: cfg.economyXp?.slutMax ?? 150,
+              slutCooldownSeconds: cfg.economyXp?.slutCooldownSeconds ?? 1800,
+              slutSuccessRate: cfg.economyXp?.slutSuccessRate ?? 0.65,
+              robCooldownSeconds: cfg.economyXp?.robCooldownSeconds ?? 14400,
+              robSuccessRate: cfg.economyXp?.robSuccessRate ?? 0.35,
+              robFinePercent: cfg.economyXp?.robFinePercent ?? 0.20,
+              gambleMin: cfg.economyXp?.gambleMin ?? 10,
+              gambleMax: cfg.economyXp?.gambleMax ?? 50000,
+              gambleWinRate: cfg.economyXp?.gambleWinRate ?? 0.48,
+              exchangeCurrencies: this.services.economyRepo ? this.services.economyRepo.listExchangeCurrencies(guildId, false) : [],
+              companyTypes: this.services.economyRepo ? this.services.economyRepo.listCompanyTypes(guildId, false) : [],
+              loanConfig: this.services.loanRepo ? this.services.loanRepo.getLoanConfig(guildId) : null
             },
-            customCommands: [],
-            aiMemories: typeof mb.getInstanceMemories === 'function' ? mb.getInstanceMemories(botId) : []
+            casino: {
+              blackjackEnabled: cfg.economyXp?.blackjackEnabled ?? true,
+              blackjackMin: cfg.economyXp?.blackjackMin ?? 10,
+              blackjackMax: cfg.economyXp?.blackjackMax ?? 50000,
+              blackjackPayout: cfg.economyXp?.blackjackPayout ?? 1.5,
+              slotsEnabled: cfg.economyXp?.slotsEnabled ?? true,
+              slotsMin: cfg.economyXp?.slotsMin ?? 10,
+              slotsMax: cfg.economyXp?.slotsMax ?? 50000,
+              slotsMultiplier3x: cfg.economyXp?.slotsMultiplier3x ?? 5,
+              slotsMultiplier2x: cfg.economyXp?.slotsMultiplier2x ?? 2,
+              rouletteEnabled: cfg.economyXp?.rouletteEnabled ?? true,
+              rouletteMin: cfg.economyXp?.rouletteMin ?? 10,
+              rouletteMax: cfg.economyXp?.rouletteMax ?? 50000,
+              rouletteNumberPayout: cfg.economyXp?.rouletteNumberPayout ?? 35,
+              rouletteColorPayout: cfg.economyXp?.rouletteColorPayout ?? 2,
+              diceEnabled: cfg.economyXp?.diceEnabled ?? true,
+              diceMin: cfg.economyXp?.diceMin ?? 10,
+              diceMax: cfg.economyXp?.diceMax ?? 50000,
+              diceMultiplier: cfg.economyXp?.diceMultiplier ?? 2,
+              coinflipEnabled: cfg.economyXp?.coinflipEnabled ?? true,
+              coinflipMin: cfg.economyXp?.coinflipMin ?? 10,
+              coinflipMax: cfg.economyXp?.coinflipMax ?? 50000,
+              coinflipWinRate: cfg.economyXp?.coinflipWinRate ?? 0.5
+            },
+            social: {
+              marriageEnabled: cfg.social?.marriageEnabled ?? true,
+              marriageCost: cfg.social?.marriageCost ?? 5000,
+              shippingEnabled: cfg.social?.shippingEnabled ?? true,
+              gifsEnabled: cfg.social?.gifsEnabled ?? true,
+              funCommandsEnabled: cfg.social?.funCommandsEnabled ?? true
+            },
+            reviews: {
+              channelId: cfg.reviews?.channelId || '',
+              moderationEnabled: Boolean(cfg.reviews?.moderationEnabled),
+              requireModeration: Boolean(cfg.reviews?.moderationEnabled)
+            },
+            briefing: {
+              briefingEnabled: Boolean(cfg.automations?.briefingEnabled),
+              briefingHourUtc: cfg.automations?.briefingHourUtc ?? 18,
+              briefingChannelId: cfg.automations?.briefingChannelId || ''
+            },
+            xp: {
+              xpRate: cfg.economyXp?.xpRate ?? 1,
+              levelUpChannelId: cfg.economyXp?.levelUpChannelId || '',
+              rewards: this.services.xpRepo ? this.services.xpRepo.getLevelRewards(guildId) : [],
+              multipliers: this.services.xpRepo ? this.services.xpRepo.getMultipliersAndBlocks(guildId) : []
+            },
+            quiz: {
+              rewardCoins: cfg.economyXp?.quizRewardCoins ?? 200,
+              rewardXp: cfg.economyXp?.quizRewardXp ?? 50,
+              defaultRounds: cfg.economyXp?.quizDefaultRounds ?? 5,
+              defaultTimeoutSeconds: cfg.economyXp?.quizTimeoutSeconds ?? 25,
+              allowedChannelId: cfg.economyXp?.quizAllowedChannelId || ''
+            },
+            customQuizQuestions: this.services.quizRepo ? this.services.quizRepo.getCustomQuestions(guildId) : [],
+            quizCategories: this.services.quizService
+              ? this.services.quizService.getAllCategories(guildId)
+              : (this.services.quizRepo ? (new (require('./quizService').QuizService)({ quizRepo: this.services.quizRepo })).getAllCategories(guildId) : {}),
+            allQuizQuestions: this.services.quizService
+              ? this.services.quizService.getAllQuestions(guildId)
+              : (this.services.quizRepo ? (new (require('./quizService').QuizService)({ quizRepo: this.services.quizRepo })).getAllQuestions(guildId) : []),
+            customCommands: cfg.commands?.customList || [],
+            placeholders: this.services.customCommandService ? this.services.customCommandService.getPlaceholdersDocumentation() : [],
+            serverPrefix: activePrefix,
+            prefixlessMode: Boolean(cfg.commands?.prefixlessMode),
+            botPresence: {
+              status: cfg.presenceStatus || 'online',
+              activityType: cfg.presenceActivityType || 'Custom',
+              activityText: cfg.presenceActivityText || '',
+              activityUrl: cfg.presenceActivityUrl || ''
+            },
+            aiMemories: (mb.listInstanceMemories ? mb.listInstanceMemories(botId, guildId) : (typeof mb.getInstanceMemories === 'function' ? mb.getInstanceMemories(botId) : [])) || [],
+            tempbans: this.services.modRepo ? this.services.modRepo.getActiveTempBans(guildId) : [],
+            guildModules: {
+              definitions: MODULE_DEFINITIONS,
+              settings: cfg.modules || {}
+            },
+            multiBotInstances: mb.listInstances ? mb.listInstances() : []
           }
         };
       }
@@ -942,6 +1074,70 @@ class WebPanelService {
             }
             mb.updateInstance(botId, { config: cfg });
             return { module: 'identity', config: cfg };
+          }
+          case 'xp': {
+            cfg.economyXp = { ...(cfg.economyXp || {}), ...updates };
+            mb.updateInstance(botId, { config: cfg });
+            return { module: 'xp', config: cfg.economyXp };
+          }
+          case 'bot_presence':
+          case 'botpresence':
+          case 'presence': {
+            if (updates.status !== undefined) cfg.presenceStatus = String(updates.status);
+            if (updates.presenceStatus !== undefined) cfg.presenceStatus = String(updates.presenceStatus);
+            if (updates.activityType !== undefined) cfg.presenceActivityType = String(updates.activityType);
+            if (updates.presenceActivityType !== undefined) cfg.presenceActivityType = String(updates.presenceActivityType);
+            if (updates.activityText !== undefined) cfg.presenceActivityText = String(updates.activityText);
+            if (updates.presenceActivityText !== undefined) cfg.presenceActivityText = String(updates.presenceActivityText);
+            if (updates.activityUrl !== undefined) cfg.presenceActivityUrl = String(updates.activityUrl);
+            if (updates.presenceActivityUrl !== undefined) cfg.presenceActivityUrl = String(updates.presenceActivityUrl);
+            mb.updateInstance(botId, { config: cfg });
+            if (typeof mb.applyInstancePresence === 'function') {
+              mb.applyInstancePresence(botId, cfg, inst.name);
+            }
+            return { module: 'bot_presence', config: cfg };
+          }
+          case 'aimemory':
+          case 'ai_memory':
+          case 'memories': {
+            if (updates.action === 'SAVE' || updates.save) {
+              const key = String(updates.key || '').trim().toLowerCase().slice(0, 64);
+              const value = String(updates.value || '').trim();
+              if (!key || !value) throw new ValidationError('Chave e conteúdo da memória são obrigatórios.');
+              if (typeof mb.saveInstanceMemory === 'function') {
+                mb.saveInstanceMemory(botId, { key, value, guildId, createdBy: session.userId || 'web_admin' });
+              }
+            } else if (updates.action === 'DELETE' || updates.delete) {
+              const key = String(updates.key || updates.delete || '').trim().toLowerCase();
+              if (key && typeof mb.deleteInstanceMemory === 'function') {
+                mb.deleteInstanceMemory(botId, key, guildId);
+              }
+            }
+            const mems = typeof mb.listInstanceMemories === 'function' ? mb.listInstanceMemories(botId, guildId) : [];
+            return { module: 'aimemory', config: { memories: mems } };
+          }
+          case 'tempbans': {
+            if (updates.action === 'CANCEL' && updates.userId && this.services.modRepo?.removeTempBan) {
+              this.services.modRepo.removeTempBan(guildId, updates.userId);
+            }
+            return {
+              module: 'tempbans',
+              config: {
+                tempbans: this.services.modRepo ? this.services.modRepo.getActiveTempBans(guildId) : []
+              }
+            };
+          }
+          case 'bot_speak':
+          case 'botspeak':
+          case 'send_message': {
+            if (typeof mb.speakWithInstance === 'function') {
+              const speakRes = await mb.speakWithInstance(botId, updates.channelId, {
+                content: updates.content,
+                embed: updates.embed
+              });
+              return { module: 'bot_speak', config: speakRes, status: 'success' };
+            }
+            break;
           }
           default: {
             cfg[mod] = { ...(cfg[mod] || {}), ...updates };
@@ -1647,18 +1843,18 @@ class WebPanelService {
     return { status: 'success', module: mod, config: updated };
   }
 
-  getGuildAuditLogs(session, guildId, limit = 20) {
+  getGuildAuditLogs(session, guildId, limit = 20, botId = null) {
     this.verifyGuildAccess(session, guildId);
     if (!this.auditService) return [];
     const numLimit = parseInt(limit, 10) || 20;
     let rawLogs = [];
     if (typeof this.auditService.getRecentLogs === 'function') {
-      rawLogs = this.auditService.getRecentLogs(guildId, numLimit);
+      rawLogs = this.auditService.getRecentLogs(guildId, numLimit * 2);
     } else if (typeof this.auditService.getLogs === 'function') {
-      rawLogs = this.auditService.getLogs({ guildId, limit: numLimit });
+      rawLogs = this.auditService.getLogs({ guildId, limit: numLimit * 2 });
     }
 
-    return (rawLogs || []).map(entry => {
+    const mapped = (rawLogs || []).map(entry => {
       let detailsObj = entry.details;
       if (typeof detailsObj === 'string') {
         try {
@@ -1674,9 +1870,17 @@ class WebPanelService {
         action: entry.action,
         targetId: entry.target_id || entry.targetId,
         details: detailsObj,
+        botInstanceId: entry.bot_instance_id || entry.botInstanceId || detailsObj?.botId || detailsObj?.botInstanceId || null,
         createdAt: entry.created_at || entry.createdAt || new Date().toISOString()
       };
     });
+
+    if (botId && botId !== 'PRIMARY' && botId !== 'MAIN') {
+      const filtered = mapped.filter(l => l.botInstanceId === botId || (l.details && (l.details.botId === botId || l.details.botInstanceId === botId)));
+      return filtered.length > 0 ? filtered.slice(0, numLimit) : mapped.slice(0, numLimit);
+    }
+
+    return mapped.slice(0, numLimit);
   }
 
   // ==========================================

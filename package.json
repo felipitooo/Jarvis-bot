@@ -1,7 +1,7 @@
 {
   "name": "jarvis-discord-bot",
-  "version": "9.7.0",
-  "description": "Unified Modular Discord Bot (Jarvis) - Production Release v9.7.0 Multi-Bot Identity Isolation in Web Panel Settings & 18:01 Wall-Clock Stock Market Cycle",
+  "version": "9.8.0",
+  "description": "Unified Modular Discord Bot (Jarvis) - Production Release v9.8.0 Full Multi-Bot Support Across All Sidebar Modules & Global Active Bot Synchronization",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
