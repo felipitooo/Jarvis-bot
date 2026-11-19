@@ -905,14 +905,16 @@ class WebServer {
 
         // GET/PATCH /api/guilds/:guildId/settings
         if (subPath === '/settings') {
+          const targetBotId = req.headers['x-bot-id'] || parsedUrl.searchParams.get('botId') || null;
           if (method === 'GET') {
-            const overview = this.webPanelService.getGuildOverview(session, guildId, botGuild);
-            return this._sendJson(res, 200, { settings: overview.settings, aiDisplayName: overview.aiDisplayName });
+            const overview = this.webPanelService.getGuildOverview(session, guildId, botGuild, targetBotId);
+            return this._sendJson(res, 200, { settings: overview.settings, aiDisplayName: overview.aiDisplayName, prefix: overview.prefix, prefixlessMode: overview.prefixlessMode });
           }
           if (method === 'PATCH' || method === 'POST') {
             const body = await this._parseBody(req);
             const csrf = req.headers['x-csrf-token'] || body.csrfToken;
-            const updated = this.webPanelService.updateGuildSettings(session, guildId, body, csrf);
+            const botId = req.headers['x-bot-id'] || body.botId || parsedUrl.searchParams.get('botId') || null;
+            const updated = this.webPanelService.updateGuildSettings(session, guildId, body, csrf, botId);
             return this._sendJson(res, 200, updated);
           }
         }

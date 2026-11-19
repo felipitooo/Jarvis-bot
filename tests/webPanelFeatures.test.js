@@ -72,13 +72,17 @@ describe('Web Panel Speak & AI Forced Memories Features', () => {
       }
     };
 
+    const { MultiBotManager } = require('../src/services/multiBotManager');
+    const multiBotManager = new MultiBotManager(db, auditService);
+
     webPanelService = new WebPanelService({
       webSessionRepo,
       identityService,
       settingsService,
       auditService,
       services: {
-        memoryRepo
+        memoryRepo,
+        multiBotManager
       },
       botClient: mockBotClient
     });
@@ -201,5 +205,44 @@ describe('Web Panel Speak & AI Forced Memories Features', () => {
       },
       /A mensagem precisa conter um texto ou uma embed/
     );
+  });
+
+  test('updateGuildSettings: isolates secondary bot name from primary bot identity', async () => {
+    const session = webPanelService.createOAuthSession(
+      { id: 'user_admin', username: 'Stark' },
+      [{ id: 'guild_test_1', name: 'Test Guild', permissions: '32', owner: false }]
+    );
+
+    const mb = webPanelService.services.multiBotManager;
+    const inst = mb.createInstance({
+      name: 'Nala',
+      token: 'OTk5OTk5OTk5OTk5OTk5OTk5.Gxxxxx.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      assignedModules: ['economy'],
+      allowedGuilds: ['guild_test_1']
+    });
+
+    // Primary bot starts as J.A.R.V.I.S
+    assert.equal(webPanelService.identityService.getDisplayName('guild_test_1'), 'J.A.R.V.I.S');
+
+    // Update settings targeting the secondary bot Nala
+    const res = webPanelService.updateGuildSettings(
+      session,
+      'guild_test_1',
+      { aiDisplayName: 'N.A.L.A', prefix: '!', prefixlessMode: true },
+      session.csrfToken,
+      inst.id
+    );
+
+    assert.equal(res.status, 'success');
+    assert.equal(res.aiDisplayName, 'N.A.L.A');
+
+    // Secondary bot's instance name and config were updated
+    const updatedInst = mb.getInstance(inst.id);
+    assert.equal(updatedInst.name, 'N.A.L.A');
+    assert.equal(updatedInst.config.aiName, 'N.A.L.A');
+    assert.equal(updatedInst.config.prefix, '!');
+
+    // CRITICAL: Primary bot's display name in guild settings remains J.A.R.V.I.S and was NOT contaminated
+    assert.equal(webPanelService.identityService.getDisplayName('guild_test_1'), 'J.A.R.V.I.S');
   });
 });

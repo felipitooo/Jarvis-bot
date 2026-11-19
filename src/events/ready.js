@@ -57,8 +57,8 @@ module.exports = {
 
     // Automatic Daily Stock Market Cycle for dynamic currencies (Bolsa Stark - primary bot only)
     if (!context?.botInstanceId && context?.economyService && !client._stockMarketCycle) {
-      client._stockMarketCycle = context.economyService.startStockMarketDailyCycle(client, 24);
-      readyLogger.info('Stark Stock Market automatic daily cycle worker started (every 24h).');
+      client._stockMarketCycle = context.economyService.startStockMarketDailyCycle(client, 18, 1);
+      readyLogger.info('Stark Stock Market automatic daily cycle worker started (daily at 18:01).');
     }
 
     // Company bankruptcy watchdog: warns owners of companies without stock, forces bankruptcy after the grace period (primary bot only)

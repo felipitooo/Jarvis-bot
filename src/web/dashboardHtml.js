@@ -4099,7 +4099,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
             <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
               <span style="font-size: 0.8rem; background: rgba(0, 245, 155, 0.1); border: 1px solid rgba(0, 245, 155, 0.3); color: #00F59B; padding: 0.45rem 0.75rem; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px;">
                 <span style="width: 8px; height: 8px; background: #00F59B; border-radius: 50%; box-shadow: 0 0 6px #00F59B;"></span>
-                Ciclo Diário Automático: <strong>Ativo (24h)</strong>
+                Ciclo Diário Automático: <strong>Ativo (18:01)</strong>
               </span>
               <button type="button" class="secondary-btn" id="simulateStockMarketBtn" style="background: rgba(0, 245, 155, 0.14); border: 1px solid rgba(0, 245, 155, 0.4); color: #00F59B; font-weight: 600; padding: 0.5rem 0.95rem; border-radius: 6px; cursor: pointer;">📈 Rodar Ciclo Agora</button>
               <button type="button" class="primary-btn" id="openCreateCurrencyBtn" style="white-space: nowrap;">➕ Nova Moeda de Câmbio</button>
@@ -12213,27 +12213,38 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       const newName = document.getElementById('aiNameInput')?.value?.trim();
       const newPrefix = document.getElementById('serverPrefixInput')?.value?.trim() || '+';
       const isPrefixless = Boolean(document.getElementById('prefixlessModeCheckbox')?.checked);
+      const targetBot = window.currentActiveBotId || document.getElementById('globalBotSelector')?.value || 'PRIMARY';
       if (!newName) return showToast('Digite um nome para a IA!', 'warning');
       try {
         const activeCsrf = window.csrfToken || currentCsrfToken || csrfToken;
-        const res = await fetch('/api/guilds/' + currentGuildId + '/settings', {
+        const res = await fetch('/api/guilds/' + currentGuildId + '/settings' + (targetBot && targetBot !== 'PRIMARY' ? '?botId=' + encodeURIComponent(targetBot) : ''), {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
             'X-CSRF-Token': activeCsrf,
-            'X-Panel-Password': '1598'
+            'X-Panel-Password': '1598',
+            'X-Bot-Id': targetBot
           },
           credentials: 'same-origin',
-          body: JSON.stringify({ aiDisplayName: newName, prefix: newPrefix, prefixlessMode: isPrefixless })
+          body: JSON.stringify({ aiDisplayName: newName, prefix: newPrefix, prefixlessMode: isPrefixless, botId: targetBot })
         });
         if (res.ok) {
-          showToast('Nome da IA atualizado para: ' + newName + ' (Prefixo: ' + newPrefix + ')', 'success');
-          document.getElementById('headerAiName').innerText = newName;
-          document.getElementById('overviewAiName').value = newName;
+          const resData = await res.json().catch(() => ({}));
+          const savedName = resData.aiDisplayName || newName;
+          showToast('Nome da IA atualizado para: ' + savedName + ' (Prefixo: ' + newPrefix + ')', 'success');
+          document.getElementById('headerAiName').innerText = savedName;
+          document.getElementById('overviewAiName').value = savedName;
+          if (targetBot && targetBot !== 'PRIMARY') {
+            if (!window.botNamesMap) window.botNamesMap = {};
+            window.botNamesMap[targetBot] = savedName;
+            document.querySelectorAll('option[value="' + targetBot + '"]').forEach(opt => {
+              opt.textContent = '🤖 ' + savedName;
+            });
+          }
           const pb = document.getElementById('previewBotName');
-          if (pb) pb.innerText = newName;
+          if (pb) pb.innerText = savedName;
           const pwb = document.getElementById('previewWelcomeBotName');
-          if (pwb) pwb.innerText = newName;
+          if (pwb) pwb.innerText = savedName;
         } else {
           const err = await res.json().catch(() => ({}));
           showToast('Erro ao salvar nome: ' + (err.error || 'Erro desconhecido'), 'error');
@@ -12246,17 +12257,19 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
     document.getElementById('saveAiChannelBtn')?.addEventListener('click', async () => {
       if (!currentGuildId) currentGuildId = document.getElementById('guildSelector')?.value || '${initialServerId || ''}';
       const chan = document.getElementById('aiChannelSelect').value;
+      const targetBot = window.currentActiveBotId || document.getElementById('globalBotSelector')?.value || 'PRIMARY';
       try {
         const activeCsrf = window.csrfToken || currentCsrfToken || csrfToken;
-        const res = await fetch('/api/guilds/' + currentGuildId + '/settings', {
+        const res = await fetch('/api/guilds/' + currentGuildId + '/settings' + (targetBot && targetBot !== 'PRIMARY' ? '?botId=' + encodeURIComponent(targetBot) : ''), {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
             'X-CSRF-Token': activeCsrf,
-            'X-Panel-Password': '1598'
+            'X-Panel-Password': '1598',
+            'X-Bot-Id': targetBot
           },
           credentials: 'same-origin',
-          body: JSON.stringify({ aiChannelId: chan })
+          body: JSON.stringify({ aiChannelId: chan, botId: targetBot })
         });
         if (res.ok) {
           showToast('Canal da IA configurado com sucesso!', 'success');

@@ -553,7 +553,9 @@ class MultiBotManager {
 
     if (incomingCfg.commands && typeof incomingCfg.commands === 'object') {
       newConfig.commands = { ...newConfig.commands, ...incomingCfg.commands };
-      if (incomingCfg.commands.prefix) newConfig.prefix = incomingCfg.commands.prefix;
+      if (incomingCfg.commands.prefix && incomingCfg.prefix === undefined) {
+        newConfig.prefix = incomingCfg.commands.prefix;
+      }
     }
     if (incomingCfg.moderation && typeof incomingCfg.moderation === 'object') {
       newConfig.moderation = { ...newConfig.moderation, ...incomingCfg.moderation };

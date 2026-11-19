@@ -5,6 +5,21 @@ Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [9.7.0] - 2026-11-19
+
+### Corrigido
+- **Isolamento de Identidade Multi-Bot no Painel Web (`/api/guilds/:guildId/settings`):**
+  - Corrigido o bug onde salvar configurações gerais ou o nome de um bot secundário (ex: Nala) no Painel Web alterava o nome global do Jarvis (`ai_display_name` em `guild_settings`) e não alterava a instância secundária.
+  - A rota `/api/guilds/:guildId/settings` agora recebe e respeita o cabeçalho `X-Bot-Id` e os parâmetros de `botId`.
+  - Ao atualizar as configurações com um bot secundário selecionado, `WebPanelService.updateGuildSettings` atualiza a instância específica no `MultiBotManager` (`inst.name` e `inst.config.aiName`) sem contaminar as configurações base do servidor do Jarvis.
+  - Corrigida a propagação de prefixo e comandos em `MultiBotManager.updateInstance`, garantindo que atualizações de prefixo em instâncias secundárias sejam devidamente aplicadas.
+  - O painel web agora propaga o `targetBot` ativo ao salvar nome e canais de IA, atualizando o mapa e as opções da interface em tempo real.
+
+### Adicionado
+- **Ciclo Diário Automático da Bolsa Stark às 18:01:**
+  - O agendador automático do ciclo da Bolsa Stark (`startStockMarketDailyCycle`) agora opera com base no relógio civil diário às **18:01** (com recálculo contínuo para eliminação total de drift temporal), em vez de um intervalo fixo.
+  - Atualizado o status do ciclo (`getStockMarketCycleStatus`) e o indicador no Painel Web para exibir `Ativo (18:01)`.
+
 ## [9.6.0] - 2026-11-19
 
 ### Adicionado

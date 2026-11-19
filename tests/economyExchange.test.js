@@ -228,5 +228,25 @@ describe('Economy System: Compact Number Formatter & Currency Exchange', () => {
       assert.equal(withAll.walletUnits, 5);
       assert.equal(withAll.bankUnits, 0);
     });
+
+    test('startStockMarketDailyCycle schedules daily run at exact 18:01 without drift', () => {
+      const mockClient = {
+        guilds: {
+          cache: new Map([
+            [guildId, { id: guildId }]
+          ])
+        }
+      };
+
+      const timer = ecoService.startStockMarketDailyCycle(mockClient, 18, 1);
+      assert.ok(timer);
+      const status = ecoService.getStockMarketCycleStatus();
+      assert.equal(status.active, true);
+      assert.equal(status.scheduledTime, '18:01');
+      assert.equal(status.targetHour, 18);
+      assert.equal(status.targetMinute, 1);
+
+      ecoService.stopStockMarketDailyCycle();
+    });
   });
 });

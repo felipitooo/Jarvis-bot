@@ -1,7 +1,7 @@
 {
   "name": "jarvis-discord-bot",
-  "version": "9.6.0",
-  "description": "Unified Modular Discord Bot (Jarvis) - Production Release v9.6.0 Multi-Currency Bank Storage: Bank Vault Support for Foreign Exchange & Prestige Currencies (+dep, +sac, +cambio, +saldo)",
+  "version": "9.7.0",
+  "description": "Unified Modular Discord Bot (Jarvis) - Production Release v9.7.0 Multi-Bot Identity Isolation in Web Panel Settings & 18:01 Wall-Clock Stock Market Cycle",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",

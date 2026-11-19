@@ -246,6 +246,7 @@ class WebPanelService {
           roles,
           settings: {
             ai_display_name: activeAiName,
+            ai_channel_id: cfg.ai?.channelId || '',
             prefix: activePrefix,
             audit_channel_id: auditChan
           },
@@ -417,9 +418,68 @@ class WebPanelService {
     };
   }
 
-  updateGuildSettings(session, guildId, updates, csrfToken) {
+  updateGuildSettings(session, guildId, updates, csrfToken, botId = null) {
     this.verifyGuildAccess(session, guildId);
     this.verifyCsrf(session.token, csrfToken, session);
+
+    const mb = this.services.multiBotManager;
+    const isSecondaryBot = Boolean(botId && botId !== 'PRIMARY' && botId !== 'MAIN');
+
+    if (isSecondaryBot && mb) {
+      const inst = mb.getInstance(botId);
+      if (inst) {
+        const cfg = { ...(inst.config || {}) };
+        let instanceName = inst.name;
+
+        if (updates.aiDisplayName !== undefined || updates.name !== undefined) {
+          const cleanName = String(updates.aiDisplayName ?? updates.name).trim();
+          if (cleanName) {
+            instanceName = cleanName;
+            cfg.aiName = cleanName;
+          }
+        }
+
+        if (updates.prefix !== undefined) {
+          cfg.prefix = String(updates.prefix).trim() || '+';
+          if (!cfg.commands) cfg.commands = {};
+          cfg.commands.prefix = cfg.prefix;
+        }
+
+        if (updates.prefixlessMode !== undefined) {
+          if (!cfg.commands) cfg.commands = {};
+          cfg.commands.prefixlessMode = Boolean(updates.prefixlessMode);
+        }
+
+        if (updates.aiChannelId !== undefined) {
+          if (!cfg.ai) cfg.ai = {};
+          cfg.ai.channelId = updates.aiChannelId || '';
+        }
+
+        mb.updateInstance(botId, { name: instanceName, config: cfg });
+
+        if (this.auditService) {
+          this.auditService.logAction({
+            guildId,
+            userId: session.userId,
+            action: 'WEB_PANEL_SETTINGS_UPDATE',
+            targetId: guildId,
+            details: { ...updates, botId, botName: instanceName }
+          });
+        }
+
+        return {
+          status: 'success',
+          botId,
+          aiDisplayName: cfg.aiName || instanceName,
+          settings: {
+            ai_display_name: cfg.aiName || instanceName,
+            ai_channel_id: cfg.ai?.channelId || '',
+            prefix: cfg.prefix || '+',
+            prefixless_mode: cfg.commands?.prefixlessMode ? 'true' : 'false'
+          }
+        };
+      }
+    }
 
     if (updates.aiDisplayName !== undefined) {
       const cleanName = String(updates.aiDisplayName).trim();

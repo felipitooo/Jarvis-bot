@@ -3102,36 +3102,83 @@ class EconomyService {
     return this._companyHealthInterval;
   }
 
-  startStockMarketDailyCycle(client, intervalHours = 24) {
+  startStockMarketDailyCycle(client, targetHour = 18, targetMinute = 1) {
+    if (this._stockMarketTimeout) {
+      clearTimeout(this._stockMarketTimeout);
+      this._stockMarketTimeout = null;
+    }
     if (this._stockMarketInterval) {
       clearInterval(this._stockMarketInterval);
+      this._stockMarketInterval = null;
     }
-    const intervalMs = Math.max(1, Number(intervalHours) || 24) * 60 * 60 * 1000;
+
+    let hour = 18;
+    let minute = 1;
+    if (typeof targetHour === 'object' && targetHour !== null) {
+      hour = Number(targetHour.hour ?? 18);
+      minute = Number(targetHour.minute ?? 1);
+    } else if (Number.isFinite(Number(targetHour)) && Number(targetHour) >= 0 && Number(targetHour) < 24) {
+      hour = Number(targetHour);
+      minute = targetMinute !== undefined ? (Number(targetMinute) || 0) : 1;
+    }
+
+    this._stockMarketTargetHour = hour;
+    this._stockMarketTargetMinute = minute;
+
+    const computeDelayToNextRun = (h, m) => {
+      const now = new Date();
+      const next = new Date(now);
+      next.setHours(h, m, 0, 0);
+      if (next.getTime() <= now.getTime()) {
+        next.setDate(next.getDate() + 1);
+      }
+      return next.getTime() - now.getTime();
+    };
 
     const runDailyCycle = () => {
       try {
-        if (!client?.guilds?.cache) return;
-        for (const [guildId] of client.guilds.cache) {
-          try {
-            const dynamicCurrencies = this.listExchangeCurrencies(guildId, true).filter(c => c.isDynamic);
-            if (dynamicCurrencies.length > 0) {
-              this.simulateMarketCycle(guildId, null, null, 'Oscilação do Ciclo Diário Automático da Bolsa Stark');
-            }
-          } catch {}
+        if (client?.guilds?.cache) {
+          for (const [guildId] of client.guilds.cache) {
+            try {
+              const dynamicCurrencies = this.listExchangeCurrencies(guildId, true).filter(c => c.isDynamic);
+              if (dynamicCurrencies.length > 0) {
+                this.simulateMarketCycle(guildId, null, null, `Oscilação do Ciclo Diário Automático da Bolsa Stark (${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')})`);
+              }
+            } catch {}
+          }
         }
       } catch {}
+
+      // Re-schedule for the next day at exactly targetHour:targetMinute:00 (drift-free)
+      const nextDelayMs = computeDelayToNextRun(hour, minute);
+      this._stockMarketTimeout = setTimeout(runDailyCycle, nextDelayMs);
     };
 
-    this._stockMarketInterval = setInterval(runDailyCycle, intervalMs);
-    this._stockMarketIntervalHours = intervalHours;
-    return this._stockMarketInterval;
+    const firstDelayMs = computeDelayToNextRun(hour, minute);
+    this._stockMarketTimeout = setTimeout(runDailyCycle, firstDelayMs);
+    return this._stockMarketTimeout;
+  }
+
+  stopStockMarketDailyCycle() {
+    if (this._stockMarketTimeout) {
+      clearTimeout(this._stockMarketTimeout);
+      this._stockMarketTimeout = null;
+    }
+    if (this._stockMarketInterval) {
+      clearInterval(this._stockMarketInterval);
+      this._stockMarketInterval = null;
+    }
   }
 
   getStockMarketCycleStatus() {
+    const h = String(this._stockMarketTargetHour ?? 18).padStart(2, '0');
+    const m = String(this._stockMarketTargetMinute ?? 1).padStart(2, '0');
     return {
       active: true,
-      intervalHours: this._stockMarketIntervalHours || 24,
-      description: `Roda automaticamente a cada ${this._stockMarketIntervalHours || 24} horas para todas as moedas dinâmicas da Bolsa.`
+      targetHour: this._stockMarketTargetHour ?? 18,
+      targetMinute: this._stockMarketTargetMinute ?? 1,
+      scheduledTime: `${h}:${m}`,
+      description: `Roda automaticamente todos os dias às ${h}:${m} para todas as moedas dinâmicas da Bolsa Stark.`
     };
   }
 
