@@ -20,7 +20,10 @@ class WebPanelService {
     this.identityService = identityService;
     this.settingsService = settingsService;
     this.auditService = auditService;
-    this.services = services; // ticketService, reviewService, communityService, etc.
+    this.services = {
+      ...services,
+      settingsService: services.settingsService || settingsService
+    }; // ticketService, reviewService, communityService, etc.
     this.botClient = botClient;
   }
 
@@ -107,6 +110,20 @@ class WebPanelService {
   verifyGuildAccess(session, guildId) {
     if (!this.canUserManageGuild(session, guildId)) {
       throw new PermissionDeniedError('Você não possui permissão de gerenciamento (Manage Server) neste servidor.');
+    }
+    // Automatically ensure the guild exists in the guilds table to avoid FOREIGN KEY constraint failed
+    const guildName = this.botClient?.guilds?.cache?.get(guildId)?.name || 'Servidor';
+    if (this.services?.guildRepo) {
+      try {
+        this.services.guildRepo.upsertGuild({ id: guildId, name: guildName });
+      } catch {}
+    } else if (this.webSessionRepo?.db) {
+      try {
+        this.webSessionRepo.db.run(
+          `INSERT OR IGNORE INTO guilds (id, name, joined_at) VALUES (?, ?, CURRENT_TIMESTAMP)`,
+          [guildId, guildName]
+        );
+      } catch {}
     }
   }
 
@@ -632,6 +649,16 @@ class WebPanelService {
             antiBotScamEnabled: ab.antiBotScamEnabled !== undefined ? Boolean(ab.antiBotScamEnabled) : true,
             antiBotScamAction: ab.antiBotScamAction || 'TIMEOUT',
             antiBotScamTimeoutSeconds: ab.antiBotScamTimeoutMinutes ? Number(ab.antiBotScamTimeoutMinutes) * 60 : (Number(ab.antiBotScamTimeoutSeconds) || 86400)
+          });
+        }
+        if (updates.antiBotScam) {
+          const currentAb = modRepo.getAntiAbuseConfig(guildId) || {};
+          const abs = updates.antiBotScam;
+          modRepo.saveAntiAbuseConfig(guildId, {
+            ...currentAb,
+            antiBotScamEnabled: abs.enabled !== undefined ? Boolean(abs.enabled) : true,
+            antiBotScamAction: abs.action || 'TIMEOUT',
+            antiBotScamTimeoutSeconds: Number(abs.timeoutDurationSeconds) || 86400
           });
         }
         updated = {

@@ -906,8 +906,8 @@ class WebServer {
       if (err instanceof ValidationError) {
         return this._sendError(res, 400, err.message);
       }
-      serverLogger.error('Internal server error processing HTTP request', { error: err.message, path: pathname });
-      return this._sendError(res, 500, 'Erro interno do servidor.');
+      serverLogger.error('Internal server error processing HTTP request', { error: err.message, stack: err.stack, path: pathname });
+      return this._sendError(res, 500, err.message || 'Erro interno do servidor.');
     }
   }
 

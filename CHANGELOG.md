@@ -5,6 +5,16 @@ Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [7.4.0] - 2026-11-18
+
+### Corrigido
+- **Correção Geral de Salvamentos & Resolução de HTTP 500 no Painel Web:**
+  - **Injeção de Dependências Faltantes no WebPanelService (`src/index.js`):** Injetadas as instâncias de `backupSecurityService`, `backupRepo`, `guildRepo` e `settingsService` dentro do objeto `services` do `WebPanelService`. Anteriormente, ao salvar ou criar snapshots/backups de servidor (`saveModule('backup')`), o painel disparava `Error: Serviço de backups indisponível.`.
+  - **Prevenção de Falhas de Chave Estrangeira em Bancos SQLite (`src/services/webPanelService.js`):** Implementada garantia automática de registro de servidores na tabela `guilds` em `verifyGuildAccess`. Agora, qualquer requisição de configuração (`settings`, `tickets`, `welcome`, `autorole`, `music`) para servidores recém-adicionados ou servidores locais cria automaticamente o registro mestre na tabela `guilds`, eliminando o erro `FOREIGN KEY constraint failed`.
+  - **Suporte ao Payload de Anti-Bot Scam (`src/services/webPanelService.js`):** Adicionada captura e persistência de `updates.antiBotScam` no módulo de moderação, salvando adequadamente as regras de bloqueio contra bots maliciosos (MrBeast, links falsos, airdrops) com ação punitiva e duração configuradas.
+  - **Transparência e Tratamento de Erros no Servidor HTTP (`src/web/server.js`):** Atualizado o capturador global de exceções da API para retornar a mensagem de erro específica (`err.message`) e logar o stack trace em erros 500, eliminando toasts opacos com mensagens genéricas de "Erro interno do servidor.".
+
+
 ## [7.3.0] - 2026-11-18
 
 ### Corrigido

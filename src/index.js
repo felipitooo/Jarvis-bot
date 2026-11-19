@@ -425,7 +425,11 @@ function createAppContext(customDbPath = null) {
       predictionService,
       gossipService,
       socialAlertRepo,
-      socialAlertService
+      socialAlertService,
+      backupSecurityService,
+      backupRepo,
+      guildRepo,
+      settingsService
     },
     botClient: client
   });
