@@ -865,7 +865,8 @@ class WebServer {
 
         // GET /api/guilds/:guildId - Overview
         if (subPath === '' && method === 'GET') {
-          const overview = this.webPanelService.getGuildOverview(session, guildId, botGuild);
+          const targetBotId = req.headers['x-bot-id'] || parsedUrl.searchParams.get('botId') || null;
+          const overview = this.webPanelService.getGuildOverview(session, guildId, botGuild, targetBotId);
           return this._sendJson(res, 200, overview);
         }
 

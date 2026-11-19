@@ -53,6 +53,14 @@ function buildDefaultInstanceConfig(name = 'J.A.R.V.I.S.', assignedModules = nul
       antiBotIgnoredChannels: [],
       tempBanWorkerEnabled: true
     },
+    audit: {
+      channelId: '',
+      logMessageDelete: true,
+      logMessageEdit: true,
+      logVoiceChannels: true,
+      logMemberJoinLeave: true,
+      logPunishments: true
+    },
     economyXp: {
       currencyName: 'StarkCoins',
       currencySymbol: '🪙',
@@ -315,6 +323,11 @@ class MultiBotManager {
       modules: mergedModules,
       commands: { ...defaults.commands, ...safeJsonParse(cfgRow.commands_config_json, {}) },
       moderation: { ...defaults.moderation, ...safeJsonParse(cfgRow.moderation_config_json, {}) },
+      audit: {
+        ...defaults.audit,
+        ...(safeJsonParse(cfgRow.advanced_config_json, {}).audit || {}),
+        ...(safeJsonParse(cfgRow.moderation_config_json, {}).logChannelId ? { channelId: safeJsonParse(cfgRow.moderation_config_json, {}).logChannelId } : {})
+      },
       economyXp: { ...defaults.economyXp, ...safeJsonParse(cfgRow.economy_xp_config_json, {}) },
       music: { ...defaults.music, ...safeJsonParse(cfgRow.music_config_json, {}) },
       tickets: { ...defaults.tickets, ...safeJsonParse(cfgRow.tickets_config_json, {}) },
@@ -405,7 +418,7 @@ class MultiBotManager {
       embeds_config_json: JSON.stringify(cfg.embeds || {}),
       permissions_config_json: JSON.stringify(cfg.permissions || {}),
       integrations_config_json: JSON.stringify(cfg.integrations || {}),
-      advanced_config_json: JSON.stringify(cfg.advanced || {}),
+      advanced_config_json: JSON.stringify({ ...(cfg.advanced || {}), audit: cfg.audit || {} }),
       updated_at: now
     };
 
@@ -1133,6 +1146,19 @@ class MultiBotManager {
         childContext.botInstanceToken = inst.token;
         childContext.botInstanceConfig = inst.config;
         childContext.multiBotManager = this;
+        childContext.client = client;
+
+        if (childContext.auditService) {
+          childContext.auditService.botClient = client;
+          childContext.auditService.botInstanceId = id;
+          childContext.auditService.multiBotManager = this;
+        }
+
+        if (childContext.moderationService) {
+          childContext.moderationService.botInstanceId = id;
+          childContext.moderationService.botInstanceName = inst.config.aiName || inst.name;
+          childContext.moderationService.botInstanceConfig = inst.config;
+        }
 
         if (childContext.identityService) {
           childContext.identityService.forcedInstanceName = inst.config.aiName || inst.name;

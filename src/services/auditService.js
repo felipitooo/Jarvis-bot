@@ -12,7 +12,7 @@ class AuditService {
   /**
    * Logs an administrative or critical system action.
    */
-  logAction({ guildId = null, actorId = null, userId = null, action, targetId = null, details = null }) {
+  logAction({ guildId = null, actorId = null, userId = null, action, targetId = null, details = null, botInstanceId = null, client = null }) {
     if (!action) {
       throw new Error('Action is required for audit logging.');
     }
@@ -32,28 +32,59 @@ class AuditService {
         guildId,
         actorId: finalActorId,
         targetId,
-        action
+        action,
+        botInstanceId
       });
 
-      // Dispatch to Discord audit channel if configured
-      if (this.botClient && this.settingsService && guildId) {
+      // Dispatch to Discord audit channel if configured and enabled
+      let targetClient = client || this.botClient;
+      let targetAuditChanId = null;
+      let activeBotName = 'Jarvis';
+      let activeBotAvatar = null;
+      let shouldDispatch = false;
+
+      if (botInstanceId && this.multiBotManager) {
+        // Multi-Bot Secondary Bot Instance
+        const isAuditEnabled = this.multiBotManager.isModuleEnabledForInstance(botInstanceId, 'audit');
+        if (isAuditEnabled) {
+          const live = this.multiBotManager.activeInstances.get(botInstanceId);
+          const instCfg = live?.config || this.multiBotManager.getInstance(botInstanceId)?.config;
+          targetAuditChanId = instCfg?.audit?.channelId || instCfg?.moderation?.logChannelId || instCfg?.auditChannelId;
+          targetClient = client || live?.client || targetClient;
+          activeBotName = instCfg?.aiName || live?.name || 'Bot';
+          activeBotAvatar = targetClient?.user?.displayAvatarURL ? targetClient.user.displayAvatarURL({ extension: 'png', size: 128 }) : null;
+          shouldDispatch = Boolean(targetAuditChanId && targetClient);
+        }
+      } else if (this.botClient && this.settingsService && guildId) {
+        // Primary Bot (Jarvis): check if audit module is enabled for guild
+        const isPrimaryAuditEnabled = !this.guildModuleService || this.guildModuleService.isModuleEnabled(guildId, 'audit');
+        if (isPrimaryAuditEnabled) {
+          targetAuditChanId = this.settingsService.getSetting(guildId, 'audit_channel_id');
+          targetClient = this.botClient;
+          activeBotName = this.botClient?.user?.username || 'Jarvis';
+          activeBotAvatar = this.botClient?.user?.displayAvatarURL ? this.botClient.user.displayAvatarURL({ extension: 'png', size: 128 }) : null;
+          shouldDispatch = Boolean(targetAuditChanId && targetClient);
+        }
+      }
+
+      if (shouldDispatch && targetClient && targetAuditChanId && guildId) {
         try {
-          const auditChannelId = this.settingsService.getSetting(guildId, 'audit_channel_id');
-          if (auditChannelId) {
-            const guild = this.botClient.guilds?.cache?.get(guildId);
-            const chan = guild?.channels?.cache?.get(auditChannelId);
-            if (chan && chan.send) {
-              this.dispatchDiscordAudit({
-                chan,
-                guild,
-                action,
-                actorId: finalActorId,
-                targetId,
-                details
-              }).catch(err => {
-                this.logger.debug(`Could not dispatch audit embed to discord: ${err.message}`);
-              });
-            }
+          const guild = targetClient.guilds?.cache?.get(guildId);
+          const chan = guild?.channels?.cache?.get(targetAuditChanId);
+          if (chan && chan.send) {
+            this.dispatchDiscordAudit({
+              chan,
+              guild,
+              action,
+              actorId: finalActorId,
+              targetId,
+              details,
+              botClient: targetClient,
+              botName: activeBotName,
+              botAvatarUrl: activeBotAvatar
+            }).catch(err => {
+              this.logger.debug(`Could not dispatch audit embed to discord: ${err.message}`);
+            });
           }
         } catch (dispatchErr) {
           this.logger.debug(`Could not dispatch audit embed to discord: ${dispatchErr.message}`);
@@ -71,13 +102,18 @@ class AuditService {
   /**
    * Asynchronously dispatches rich embed and optional Loritta-style proof canvas to Discord.
    */
-  async dispatchDiscordAudit({ chan, guild, action, actorId, targetId, details }) {
+  async dispatchDiscordAudit({ chan, guild, action, actorId, targetId, details, botClient = null, botName = null, botAvatarUrl = null }) {
     const { AttachmentBuilder, EmbedBuilder } = require('discord.js');
+    const activeClient = botClient || this.botClient;
+    const finalBotName = botName || activeClient?.user?.username || 'Jarvis';
+    const finalBotAvatar = botAvatarUrl || (activeClient?.user?.displayAvatarURL ? activeClient.user.displayAvatarURL({ extension: 'png', size: 128 }) : null);
+
     const embed = this.buildDiscordAuditEmbed({
       action,
       actorId,
       targetId,
-      details
+      details,
+      botName: finalBotName
     });
 
     const files = [];
@@ -102,8 +138,8 @@ class AuditService {
           channelId: details.channelId || chan.id,
           messageId: targetId || 'N/A',
           timestamp: details.createdAt || new Date(),
-          botName: this.botClient?.user?.username || 'Jarvis',
-          botAvatarUrl: this.botClient?.user?.displayAvatarURL ? this.botClient.user.displayAvatarURL({ extension: 'png', size: 128 }) : null,
+          botName: finalBotName,
+          botAvatarUrl: finalBotAvatar,
           guild: guild || chan?.guild || null
         });
 
@@ -129,7 +165,7 @@ class AuditService {
     }
   }
 
-  buildDiscordAuditEmbed({ action, actorId, targetId, details }) {
+  buildDiscordAuditEmbed({ action, actorId, targetId, details, botName = 'Jarvis' }) {
     const { EmbedBuilder } = require('discord.js');
     const embed = new EmbedBuilder().setTimestamp();
     const d = details && typeof details === 'object' ? details : {};
@@ -397,7 +433,7 @@ class AuditService {
             { name: '🎯 Alvo', value: targetId ? String(targetId) : 'N/A', inline: true },
             { name: '⚙️ Ação', value: action, inline: true }
           )
-          .setFooter({ text: 'Sistema de Auditoria & Segurança' });
+          .setFooter({ text: `${botName} • Sistema de Auditoria & Segurança` });
 
         if (details && typeof details === 'object') {
           const summary = Object.entries(details)

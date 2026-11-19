@@ -13,14 +13,18 @@ class LogDispatchService {
     this.identityService = identityService;
   }
 
-  async dispatchEmbed(guild, category, embed) {
+  async dispatchEmbed(guild, category, embed, overrideChannelId = null) {
     if (!guild || !embed) return;
 
     try {
-      const channelRow = this.modRepo.getLogChannel(guild.id, category);
-      if (!channelRow || !channelRow.channel_id) return;
+      let targetChanId = overrideChannelId;
+      if (!targetChanId) {
+        const channelRow = this.modRepo ? this.modRepo.getLogChannel(guild.id, category) : null;
+        targetChanId = channelRow?.channel_id;
+      }
+      if (!targetChanId) return;
 
-      const logChannel = guild.channels.cache.get(channelRow.channel_id);
+      const logChannel = guild.channels?.cache?.get(targetChanId);
       if (!logChannel || !logChannel.isTextBased()) return;
 
       await logChannel.send({ embeds: [embed] }).catch((sendErr) => {
@@ -31,8 +35,8 @@ class LogDispatchService {
     }
   }
 
-  async logPunishment(guild, punishment, targetUser, actorUser) {
-    const aiName = this.identityService.getDisplayName(guild.id);
+  async logPunishment(guild, punishment, targetUser, actorUser, overrideBotName = null, overrideChannelId = null) {
+    const aiName = overrideBotName || (this.identityService ? this.identityService.getDisplayName(guild.id) : 'Jarvis');
     const colors = {
       BAN: 0xED4245,
       KICK: 0xE67E22,
@@ -60,7 +64,7 @@ class LogDispatchService {
     }
 
     embed.setFooter({ text: `${aiName} • Auditoria de Moderação` });
-    await this.dispatchEmbed(guild, 'PUNISHMENTS', embed);
+    await this.dispatchEmbed(guild, 'PUNISHMENTS', embed, overrideChannelId);
   }
 }
 

@@ -1104,6 +1104,7 @@ describe('OPERAÇÃO DE CORREÇÃO TOTAL V8.5.0 — Persistência Real, Isolamen
 
       const dumbChildContext = {
         ...context,
+        identityService: Object.create(context.identityService),
         botInstanceId: dumbInst.id,
         botInstanceName: 'Dumb',
         botInstanceConfig: dumbInst.config,
@@ -1164,6 +1165,70 @@ describe('OPERAÇÃO DE CORREÇÃO TOTAL V8.5.0 — Persistência Real, Isolamen
       const lastSent = channelGeneral._sentPayloads[channelGeneral._sentPayloads.length - 1];
       assert.ok(lastSent.content.includes('Stark Tower Alpha'));
       assert.equal(lastSent.embeds.length, 1);
+    });
+
+    test('Regressão V9.4.0: Isolamento 100% de Auditoria & Módulos — Configurar Dumb não desconfigura Jarvis e auditoria é despachada pelo bot correto', async () => {
+      const headers = { Cookie: authCookie, 'X-CSRF-Token': csrfToken };
+
+      // 1. Desativar auditoria e moderação no bot principal (Jarvis)
+      context.guildModuleService.setModuleEnabled(guildA.id, 'moderation', false, 'admin_local');
+      context.guildModuleService.setModuleEnabled(guildA.id, 'audit', false, 'admin_local');
+
+      // Garantir que a configuração global do Jarvis no servidor está com audit_channel_id vazio
+      context.settingsService.setSetting(guildA.id, 'audit_channel_id', '', 'admin_local');
+
+      // 2. Criar ou obter instância secundária Dumb
+      let dumbInst = context.multiBotManager.listInstances().find(i => i.name === 'Dumb');
+      if (!dumbInst) {
+        dumbInst = context.multiBotManager.createInstance({
+          name: 'Dumb',
+          token: 'MTAwMDAwMDAwMDAwMDAwMDAwMA.Gxyz12.secondary_bot_token_test_123',
+          assignedModules: ['moderation', 'audit']
+        });
+      }
+
+      // Configurar Dumb com canal de auditoria via web panel
+      const auditChannelTarget = channelGeneral.id;
+      const updateAuditRes = await httpRequest(
+        serverPort,
+        'PATCH',
+        `/api/guilds/${guildA.id}/modules/audit?botId=${dumbInst.id}`,
+        { channelId: auditChannelTarget },
+        headers
+      );
+      assert.equal(updateAuditRes.status, 200);
+
+      // VERIFICAÇÃO CRÍTICA: Jarvis NÃO teve seu audit_channel_id modificado! Permanece vazio!
+      const jarvisAuditSetting = context.settingsService.getSetting(guildA.id, 'audit_channel_id');
+      assert.equal(jarvisAuditSetting, '', 'Configuring audit on secondary bot MUST NOT overwrite Jarvis global audit setting');
+
+      // VERIFICAÇÃO CRÍTICA: Dumb possui o canal de auditoria configurado isoladamente
+      const dumbConfig = context.multiBotManager.getInstanceConfig(dumbInst.id);
+      assert.equal(dumbConfig.audit.channelId, auditChannelTarget);
+
+      // 3. Testar GET /api/guilds/:guildId?botId=dumbInst.id retorna overview de Dumb
+      const dumbOverviewRes = await httpRequest(
+        serverPort,
+        'GET',
+        `/api/guilds/${guildA.id}?botId=${dumbInst.id}`,
+        null,
+        headers
+      );
+      assert.equal(dumbOverviewRes.status, 200);
+      assert.equal(dumbOverviewRes.json.aiDisplayName, 'Dumb');
+      assert.equal(dumbOverviewRes.json.settings.audit_channel_id, auditChannelTarget);
+
+      // GET /api/guilds/:guildId sem botId retorna Jarvis
+      const jarvisOverviewRes = await httpRequest(
+        serverPort,
+        'GET',
+        `/api/guilds/${guildA.id}`,
+        null,
+        headers
+      );
+      assert.equal(jarvisOverviewRes.status, 200);
+      assert.ok(jarvisOverviewRes.json.aiDisplayName.includes('J.A.R.V.I.S') || jarvisOverviewRes.json.aiDisplayName === 'Jarvis');
+      assert.equal(jarvisOverviewRes.json.settings.audit_channel_id, '');
     });
   });
 });

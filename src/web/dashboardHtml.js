@@ -8853,9 +8853,14 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
     });
 
     // Load Guild Details
-    async function loadGuildDetails(guildId) {
+    async function loadGuildDetails(guildId, targetBotParam = null) {
       try {
-        const res = await fetch('/api/guilds/' + guildId, { credentials: 'same-origin' });
+        const targetBot = targetBotParam || window.currentActiveBotId || document.getElementById('globalBotSelector')?.value || 'PRIMARY';
+        const url = '/api/guilds/' + guildId + (targetBot && targetBot !== 'PRIMARY' ? '?botId=' + encodeURIComponent(targetBot) : '');
+        const res = await fetch(url, {
+          headers: { 'X-Bot-Id': targetBot },
+          credentials: 'same-origin'
+        });
         if (!res.ok) {
           console.error('Failed to load guild details:', res.status);
           return;
@@ -9151,10 +9156,14 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         }
 
         // Moderation, Audit & Warns
-        if (mods.moderation?.logChannelId) document.getElementById('modChannelSelect').value = mods.moderation.logChannelId;
+        if (document.getElementById('modChannelSelect')) {
+          document.getElementById('modChannelSelect').value = mods.moderation?.logChannelId || '';
+        }
         renderWarnRules(mods.moderation?.warnRules || []);
         const auditChan = mods.audit?.channelId || data.settings?.audit_channel_id || '';
-        if (auditChan) document.getElementById('auditChannelSelect').value = auditChan;
+        if (document.getElementById('auditChannelSelect')) {
+          document.getElementById('auditChannelSelect').value = auditChan || '';
+        }
 
         // Anti-Spam & Anti-Flood
         if (mods.moderation?.antiAbuse) {
@@ -15191,6 +15200,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         showToast('Alternado para a instância "' + botName + '". Módulos e configurações agora são 100% isolados para este bot!', 'info', 'Instância Ativa');
       }
 
+      if (currentGuildId) loadGuildDetails(currentGuildId, botId);
       loadGuildModules();
     }
 

@@ -30,10 +30,33 @@ module.exports = {
 
       const channelId = message.channelId || message.channel?.id || cached?.channelId || null;
 
-      // 2. Never log message deletions that occur inside the audit log channel itself
-      if (context.settingsService && guildId) {
-        const auditChannelId = context.settingsService.getSetting(guildId, 'audit_channel_id');
-        if (auditChannelId && channelId === auditChannelId) {
+      // 2. Multi-Bot & Modular Audit Gating
+      const isSecondary = Boolean(context.botInstanceId && context.multiBotManager);
+
+      if (isSecondary) {
+        // Secondary bot instance: check if audit is enabled on this instance
+        const isAuditEnabled = context.multiBotManager.isModuleEnabledForInstance(context.botInstanceId, 'audit');
+        if (!isAuditEnabled) {
+          messageCache.delete(message.id);
+          return;
+        }
+
+        const live = context.multiBotManager.activeInstances?.get(context.botInstanceId);
+        const instCfg = live?.config || context.botInstanceConfig || context.multiBotManager.getInstance(context.botInstanceId)?.config;
+        const targetAuditChan = instCfg?.audit?.channelId || instCfg?.moderation?.logChannelId || instCfg?.auditChannelId;
+        if (targetAuditChan && channelId === targetAuditChan) {
+          messageCache.delete(message.id);
+          return;
+        }
+      } else {
+        // Primary Bot (Jarvis): check if audit module is enabled for guild
+        if (context.guildModuleService && !context.guildModuleService.isModuleEnabled(guildId, 'audit')) {
+          messageCache.delete(message.id);
+          return;
+        }
+
+        const targetAuditChan = context.settingsService?.getSetting(guildId, 'audit_channel_id');
+        if (targetAuditChan && channelId === targetAuditChan) {
           messageCache.delete(message.id);
           return;
         }
@@ -85,6 +108,8 @@ module.exports = {
         actorId: authorId,
         action: 'MESSAGE_DELETE',
         targetId: message.id,
+        botInstanceId: context.botInstanceId || null,
+        client: message.client || context.client || null,
         details: {
           channelId,
           channelName,

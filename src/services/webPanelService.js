@@ -3,6 +3,7 @@ const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('
 const { logger } = require('../utils/logger');
 const { ValidationError, PermissionDeniedError } = require('../utils/errorHandler');
 const { dmTracker } = require('../utils/dmTracker');
+const { MODULE_DEFINITIONS } = require('./guildModuleService');
 
 const panelLogger = logger.forContext('WebPanelService');
 
@@ -184,16 +185,10 @@ class WebPanelService {
       }));
   }
 
-  getGuildOverview(session, guildId, botGuild = null) {
-    this.verifyGuildAccess(session, guildId);
-
-    const aiName = this.identityService.getDisplayName(guildId);
-    const settings = this.settingsService.getSettings(guildId);
-
+  _extractChannels(botGuild) {
     const channels = [];
     if (botGuild && botGuild.channels?.cache) {
       for (const [, ch] of botGuild.channels.cache) {
-        // Text channels (0) and announcement channels (5)
         if (ch.type === 0 || ch.type === 5) {
           channels.push({
             id: ch.id,
@@ -204,7 +199,10 @@ class WebPanelService {
       }
       channels.sort((a, b) => a.name.localeCompare(b.name));
     }
+    return channels;
+  }
 
+  _extractRoles(botGuild) {
     const roles = [];
     if (botGuild && botGuild.roles?.cache) {
       for (const [, r] of botGuild.roles.cache) {
@@ -218,6 +216,97 @@ class WebPanelService {
       }
       roles.sort((a, b) => a.name.localeCompare(b.name));
     }
+    return roles;
+  }
+
+  getGuildOverview(session, guildId, botGuild = null, botId = null) {
+    this.verifyGuildAccess(session, guildId);
+
+    const mb = this.services.multiBotManager;
+    const isSecondaryBot = Boolean(botId && botId !== 'PRIMARY' && botId !== 'MAIN');
+
+    if (isSecondaryBot && mb) {
+      const inst = mb.getInstance(botId);
+      if (inst) {
+        const cfg = inst.config || {};
+        const channels = this._extractChannels(botGuild);
+        const roles = this._extractRoles(botGuild);
+        const activeAiName = cfg.aiName || inst.name;
+        const activePrefix = cfg.prefix || '+';
+        const auditChan = cfg.audit?.channelId || cfg.moderation?.logChannelId || '';
+
+        return {
+          guildId,
+          guildName: botGuild?.name || 'Servidor',
+          aiDisplayName: activeAiName,
+          prefix: activePrefix,
+          serverPrefix: activePrefix,
+          prefixlessMode: Boolean(cfg.commands?.prefixlessMode),
+          channels,
+          roles,
+          settings: {
+            ai_display_name: activeAiName,
+            prefix: activePrefix,
+            audit_channel_id: auditChan
+          },
+          modules: {
+            tickets: {
+              transcriptChannelId: cfg.tickets?.transcriptChannelId || '',
+              panelChannelId: cfg.tickets?.transcriptChannelId || '',
+              panelTitle: cfg.tickets?.panelTitle || `🎫 Central de Atendimento — ${inst.name}`,
+              panelDescription: cfg.tickets?.panelDescription || '',
+              maxOpenTicketsPerUser: cfg.tickets?.maxOpenTicketsPerUser || 1,
+              defaultSupportRoleId: cfg.tickets?.defaultSupportRoleId || ''
+            },
+            moderation: {
+              logChannelId: cfg.moderation?.logChannelId || '',
+              antiSpamEnabled: cfg.moderation?.antiSpamEnabled ?? true,
+              maxMessagesPerInterval: cfg.moderation?.maxMessagesPerInterval ?? 5,
+              antiBotScamEnabled: cfg.moderation?.antiBotScamEnabled ?? true,
+              antiBotScamAction: cfg.moderation?.antiBotScamAction || 'TIMEOUT'
+            },
+            audit: {
+              channelId: auditChan
+            },
+            welcome: {
+              welcomeChannelId: cfg.social?.welcomeChannelId || '',
+              welcomeMessage: cfg.social?.welcomeMessage || '',
+              goodbyeChannelId: cfg.social?.goodbyeChannelId || '',
+              goodbyeMessage: cfg.social?.goodbyeMessage || '',
+              welcomeEnabled: Boolean(cfg.social?.welcomeChannelId)
+            },
+            autorole: {
+              roles: cfg.social?.autoRoleId ? [cfg.social.autoRoleId] : [],
+              roleId: cfg.social?.autoRoleId || ''
+            },
+            starboard: {
+              channelId: cfg.social?.starboardChannelId || '',
+              emoji: cfg.social?.starboardEmoji || '⭐',
+              minStars: cfg.social?.starboardMinStars || 3
+            },
+            music: {
+              allowedTextChannelId: cfg.music?.allowedChannelId || '',
+              defaultVolume: cfg.music?.defaultVolume || 80,
+              djRoleId: cfg.music?.djRoleId || ''
+            },
+            economy: {
+              currencyName: cfg.economyXp?.currencyName || 'StarkCoins',
+              currencySymbol: cfg.economyXp?.currencySymbol || '🪙',
+              initialBalance: cfg.economyXp?.initialBalance || 100,
+              dailyAmount: cfg.economyXp?.dailyAmount || 500
+            },
+            customCommands: [],
+            aiMemories: typeof mb.getInstanceMemories === 'function' ? mb.getInstanceMemories(botId) : []
+          }
+        };
+      }
+    }
+
+    const aiName = this.identityService.getDisplayName(guildId);
+    const settings = this.settingsService.getSettings(guildId);
+
+    const channels = this._extractChannels(botGuild);
+    const roles = this._extractRoles(botGuild);
 
     const {
       modRepo,
@@ -392,7 +481,10 @@ class WebPanelService {
           case 'guild_modules':
           case 'modular_configs':
           case 'modules':
-            return cfg.modules || {};
+            return {
+              definitions: MODULE_DEFINITIONS,
+              settings: cfg.modules || {}
+            };
           case 'moderation':
           case 'warns':
             return {
@@ -406,10 +498,20 @@ class WebPanelService {
                 antiBotScamAction: cfg.moderation?.antiBotScamAction || 'TIMEOUT'
               }
             };
+          case 'audit':
+            return {
+              channelId: cfg.audit?.channelId || cfg.moderation?.logChannelId || null
+            };
           case 'welcome':
             return {
               channelId: cfg.social?.welcomeChannelId || null,
+              welcomeChannelId: cfg.social?.welcomeChannelId || null,
               message: cfg.social?.welcomeMessage || 'Bem-vindo(a) {user} ao **{server}**! 🎉',
+              welcomeMessage: cfg.social?.welcomeMessage || 'Bem-vindo(a) {user} ao **{server}**! 🎉',
+              goodbyeChannelId: cfg.social?.goodbyeChannelId || null,
+              goodbyeMessage: cfg.social?.goodbyeMessage || '**{username}** saiu do servidor.',
+              welcomeEnabled: Boolean(cfg.social?.welcomeChannelId),
+              goodbyeEnabled: Boolean(cfg.social?.goodbyeChannelId),
               embedEnabled: true,
               dmWelcomeEnabled: false
             };
@@ -423,6 +525,7 @@ class WebPanelService {
               panelTitle: cfg.tickets?.panelTitle || `🎫 Central de Atendimento — ${inst.name}`,
               panelDescription: cfg.tickets?.panelDescription || 'Clique no botão abaixo para abrir um ticket privado com a equipe.',
               transcriptChannelId: cfg.tickets?.transcriptChannelId || null,
+              panelChannelId: cfg.tickets?.transcriptChannelId || null,
               defaultSupportRoleId: cfg.tickets?.defaultSupportRoleId || null,
               maxOpenTicketsPerUser: cfg.tickets?.maxOpenTicketsPerUser || 1
             };
@@ -432,12 +535,56 @@ class WebPanelService {
               emoji: cfg.social?.starboardEmoji || '⭐',
               minStars: cfg.social?.starboardMinStars || 3
             };
+          case 'music':
+            return {
+              allowedTextChannelId: cfg.music?.allowedChannelId || null,
+              defaultVolume: cfg.music?.defaultVolume || 80,
+              djRoleId: cfg.music?.djRoleId || null
+            };
           case 'economy':
             return {
               currencyName: cfg.economyXp?.currencyName || 'StarkCoins',
               currencySymbol: cfg.economyXp?.currencySymbol || '🪙',
               initialBalance: cfg.economyXp?.initialBalance || 100,
               dailyAmount: cfg.economyXp?.dailyAmount || 500
+            };
+          case 'casino':
+          case 'apostas':
+            return {
+              minBet: cfg.economyXp?.casinoMinBet || 10,
+              maxBet: cfg.economyXp?.casinoMaxBet || 100000
+            };
+          case 'quiz':
+            return {
+              rewardCoins: cfg.economyXp?.quizRewardCoins || 200,
+              rewardXp: cfg.economyXp?.quizRewardXp || 50,
+              defaultRounds: cfg.economyXp?.quizDefaultRounds || 5,
+              defaultTimeoutSeconds: cfg.economyXp?.quizTimeoutSeconds || 25
+            };
+          case 'briefing':
+            return {
+              briefingEnabled: Boolean(cfg.automations?.briefingEnabled),
+              briefingHourUtc: cfg.automations?.briefingHourUtc || 18,
+              briefingChannelId: cfg.automations?.briefingChannelId || null
+            };
+          case 'custom_commands':
+          case 'customcommands':
+            return {
+              prefix: cfg.prefix || cfg.commands?.prefix || '+',
+              prefixless_mode: Boolean(cfg.commands?.prefixlessMode),
+              commands: []
+            };
+          case 'anti_bot_scam':
+          case 'antibotscam':
+            return {
+              enabled: cfg.moderation?.antiBotScamEnabled ?? true,
+              action: cfg.moderation?.antiBotScamAction || 'TIMEOUT',
+              timeoutDurationSeconds: cfg.moderation?.antiBotScamTimeoutSeconds || 86400
+            };
+          case 'reviews':
+            return {
+              channelId: cfg.reviews?.channelId || null,
+              moderationEnabled: Boolean(cfg.reviews?.moderationEnabled)
             };
           case 'identity':
             return {
@@ -652,6 +799,76 @@ class WebPanelService {
             mb.updateInstance(botId, { config: cfg });
             return { module: 'economy', config: cfg.economyXp };
           }
+          case 'audit': {
+            const targetChannel = updates.channelId || updates.auditChannelId || '';
+            cfg.audit = { ...(cfg.audit || {}), channelId: targetChannel };
+            cfg.moderation = { ...(cfg.moderation || {}), logChannelId: targetChannel };
+            mb.updateInstance(botId, { config: cfg });
+            if (this.auditService) {
+              this.auditService.logAction({
+                guildId,
+                userId: session.userId,
+                action: 'WEB_PANEL_MODULE_UPDATE_AUDIT',
+                targetId: guildId,
+                details: updates,
+                botInstanceId: botId
+              });
+            }
+            return { module: 'audit', config: { channelId: targetChannel } };
+          }
+          case 'music': {
+            cfg.music = { ...(cfg.music || {}), ...updates };
+            if (updates.allowedTextChannelId !== undefined) cfg.music.allowedChannelId = updates.allowedTextChannelId;
+            if (updates.channelId !== undefined) cfg.music.allowedChannelId = updates.channelId;
+            mb.updateInstance(botId, { config: cfg });
+            return { module: 'music', config: cfg.music };
+          }
+          case 'social':
+          case 'marriage': {
+            cfg.social = { ...(cfg.social || {}), ...updates };
+            mb.updateInstance(botId, { config: cfg });
+            return { module: 'social', config: cfg.social };
+          }
+          case 'quiz': {
+            cfg.economyXp = { ...(cfg.economyXp || {}), ...updates };
+            mb.updateInstance(botId, { config: cfg });
+            return { module: 'quiz', config: cfg.economyXp };
+          }
+          case 'casino':
+          case 'apostas': {
+            cfg.economyXp = { ...(cfg.economyXp || {}), ...updates };
+            mb.updateInstance(botId, { config: cfg });
+            return { module: 'casino', config: cfg.economyXp };
+          }
+          case 'briefing': {
+            cfg.automations = { ...(cfg.automations || {}), ...updates };
+            if (updates.channelId !== undefined) cfg.automations.briefingChannelId = updates.channelId;
+            mb.updateInstance(botId, { config: cfg });
+            return { module: 'briefing', config: cfg.automations };
+          }
+          case 'custom_commands':
+          case 'customcommands': {
+            if (updates.prefix) {
+              cfg.prefix = updates.prefix;
+              cfg.commands = { ...(cfg.commands || {}), prefix: updates.prefix };
+            }
+            if (updates.prefixless_mode !== undefined) {
+              cfg.commands = { ...(cfg.commands || {}), prefixlessMode: Boolean(updates.prefixless_mode) };
+            }
+            mb.updateInstance(botId, { config: cfg });
+            return { module: 'custom_commands', config: cfg.commands };
+          }
+          case 'anti_bot_scam':
+          case 'antibotscam': {
+            cfg.moderation = { ...(cfg.moderation || {}), ...updates };
+            mb.updateInstance(botId, { config: cfg });
+            return { module: 'anti_bot_scam', config: cfg.moderation };
+          }
+          case 'reviews': {
+            cfg.reviews = { ...(cfg.reviews || {}), ...updates };
+            mb.updateInstance(botId, { config: cfg });
+            return { module: 'reviews', config: cfg.reviews };
+          }
           case 'identity': {
             if (updates.aiName) cfg.aiName = updates.aiName;
             if (updates.aiModel) cfg.aiModel = updates.aiModel;
@@ -661,6 +878,11 @@ class WebPanelService {
             }
             mb.updateInstance(botId, { config: cfg });
             return { module: 'identity', config: cfg };
+          }
+          default: {
+            cfg[mod] = { ...(cfg[mod] || {}), ...updates };
+            mb.updateInstance(botId, { config: cfg });
+            return { module: mod, config: cfg[mod] };
           }
         }
       }

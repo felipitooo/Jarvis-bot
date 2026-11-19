@@ -32,6 +32,29 @@ module.exports = {
         : cached?.authorAvatarUrl || null;
 
       const channelId = newMessage.channel?.id || cached?.channelId || 'N/A';
+
+      // Isolated Multi-Bot Instance Guard & Audit Module Gating
+      const isSecondary = Boolean(context.botInstanceId && context.multiBotManager);
+
+      if (isSecondary) {
+        // Secondary bot instance: check if audit is enabled on this instance
+        const isAuditEnabled = context.multiBotManager.isModuleEnabledForInstance(context.botInstanceId, 'audit');
+        if (!isAuditEnabled) return;
+
+        const live = context.multiBotManager.activeInstances?.get(context.botInstanceId);
+        const instCfg = live?.config || context.botInstanceConfig || context.multiBotManager.getInstance(context.botInstanceId)?.config;
+        const targetAuditChan = instCfg?.audit?.channelId || instCfg?.moderation?.logChannelId || instCfg?.auditChannelId;
+        if (targetAuditChan && channelId === targetAuditChan) return;
+      } else {
+        // Primary Bot (Jarvis): check if audit module is enabled for guild
+        if (context.guildModuleService && !context.guildModuleService.isModuleEnabled(guildId, 'audit')) {
+          return;
+        }
+
+        const targetAuditChan = context.settingsService?.getSetting(guildId, 'audit_channel_id');
+        if (targetAuditChan && channelId === targetAuditChan) return;
+      }
+
       const channelName = newMessage.channel?.name || cached?.channelName || 'desconhecido';
       const serverName = newMessage.guild?.name || cached?.guildName || 'Servidor';
       const serverIconUrl = newMessage.guild?.iconURL
@@ -50,6 +73,8 @@ module.exports = {
         actorId: authorId,
         action: 'MESSAGE_EDIT',
         targetId: newMessage.id,
+        botInstanceId: context.botInstanceId || null,
+        client: newMessage.client || context.client || null,
         details: {
           channelId,
           channelName,

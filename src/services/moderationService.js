@@ -62,12 +62,16 @@ class ModerationService {
         actorId: modMember.id,
         action: 'MEMBER_WARNED',
         targetId: targetMember.id,
+        botInstanceId: this.botInstanceId || null,
+        client: botMember.client || null,
         details: { reason, punishmentId: punishment.id }
       });
     }
 
     if (this.logDispatcher) {
-      await this.logDispatcher.logPunishment(guild, punishment, targetMember.user, modMember.user || modMember);
+      const activeBotName = this.botInstanceName || botMember.user?.username || null;
+      const logChanId = this.botInstanceConfig?.moderation?.logChannelId || null;
+      await this.logDispatcher.logPunishment(guild, punishment, targetMember.user, modMember.user || modMember, activeBotName, logChanId);
     }
 
     // Trigger warn escalation check
@@ -123,12 +127,16 @@ class ModerationService {
         actorId: modMember.id,
         action: 'MEMBER_TIMEOUT',
         targetId: targetMember.id,
+        botInstanceId: this.botInstanceId || null,
+        client: botMember.client || null,
         details: { durationSeconds, reason }
       });
     }
 
     if (this.logDispatcher) {
-      await this.logDispatcher.logPunishment(guild, punishment, targetMember.user, modMember.user || modMember);
+      const activeBotName = this.botInstanceName || botMember.user?.username || null;
+      const logChanId = this.botInstanceConfig?.moderation?.logChannelId || null;
+      await this.logDispatcher.logPunishment(guild, punishment, targetMember.user, modMember.user || modMember, activeBotName, logChanId);
     }
 
     return { status: 'sucesso', punishment };
@@ -191,12 +199,16 @@ class ModerationService {
         actorId: modMember.id,
         action: 'MEMBER_KICKED',
         targetId: targetMember.id,
+        botInstanceId: this.botInstanceId || null,
+        client: botMember.client || null,
         details: { reason }
       });
     }
 
     if (this.logDispatcher) {
-      await this.logDispatcher.logPunishment(guild, punishment, targetMember.user, modMember.user || modMember);
+      const activeBotName = this.botInstanceName || botMember.user?.username || null;
+      const logChanId = this.botInstanceConfig?.moderation?.logChannelId || null;
+      await this.logDispatcher.logPunishment(guild, punishment, targetMember.user, modMember.user || modMember, activeBotName, logChanId);
     }
 
     return { status: 'sucesso', punishment };
@@ -236,12 +248,16 @@ class ModerationService {
         actorId: modMember.id,
         action: 'MEMBER_BANNED',
         targetId: targetUser.id,
+        botInstanceId: this.botInstanceId || null,
+        client: botMember.client || null,
         details: { reason }
       });
     }
 
     if (this.logDispatcher) {
-      await this.logDispatcher.logPunishment(guild, punishment, targetUser, modMember.user || modMember);
+      const activeBotName = this.botInstanceName || botMember.user?.username || null;
+      const logChanId = this.botInstanceConfig?.moderation?.logChannelId || null;
+      await this.logDispatcher.logPunishment(guild, punishment, targetUser, modMember.user || modMember, activeBotName, logChanId);
     }
 
     return { status: 'sucesso', punishment };
@@ -308,12 +324,16 @@ class ModerationService {
         actorId: modMember.id,
         action: 'MEMBER_TEMPBANNED',
         targetId: targetUser.id,
+        botInstanceId: this.botInstanceId || null,
+        client: botMember.client || null,
         details: { reason, durationSeconds: durationSec, expiresAt, formattedExpires }
       });
     }
 
     if (this.logDispatcher) {
-      await this.logDispatcher.logPunishment(guild, punishment, targetUser, modMember.user || modMember);
+      const activeBotName = this.botInstanceName || botMember.user?.username || null;
+      const logChanId = this.botInstanceConfig?.moderation?.logChannelId || null;
+      await this.logDispatcher.logPunishment(guild, punishment, targetUser, modMember.user || modMember, activeBotName, logChanId);
     }
 
     return { status: 'sucesso', punishment, tempBan, expiresAt, formattedExpires };

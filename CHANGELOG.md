@@ -5,6 +5,22 @@ Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [9.4.0] - 2026-11-19
+
+### Adicionado
+- **Isolamento Completo de Auditoria Multi-Bot (`AuditService` & Eventos Discord):**
+  - Implementado suporte nativo a `botInstanceId` e `client` em `AuditService.logAction` e `AuditService.dispatchDiscordAudit`.
+  - Quando um bot secundário (ex: `Dumb`) é configurado para auditoria ou executa uma ação, o envio do embed de auditoria para o canal configurado (`#administração`) é realizado **exclusivamente pelo cliente Discord daquele bot**, com seu próprio nome e avatar.
+  - O gerador de provas visuais (`generateMessageProof`) agora estampa o avatar e o nome da instância responsável (ex: `Dumb`), sem interferência do Jarvis.
+  - Eventos de exclusão e edição de mensagem (`messageDelete.js` e `messageUpdate.js`) agora filtram com precisão as instâncias: se `audit` estiver desativado no Jarvis, Jarvis **permanece em silêncio absoluto** e não envia embeds de auditoria no canal configurado para o bot secundário.
+
+### Corrigido
+- **Correção da Desconfiguração Cruzada entre Bot Principal e Bot Secundário no Painel Web:**
+  - Corrigido o bug em `src/services/webPanelService.js` onde configurar o canal de auditoria de um bot secundário sobrescrevia a configuração global `audit_channel_id` do Jarvis.
+  - `getGuildOverview` e `getModuleConfig` agora recebem `botId` e retornam fielmente as configurações isoladas da instância selecionada no seletor global (`#globalBotSelector`).
+  - Todas as abas do painel (`audit`, `moderation`, `welcome`, `autorole`, `tickets`, `starboard`, `music`, `economy`, `casino`, `quiz`, `briefing`, `custom_commands`, `anti_bot_scam`, `reviews`) agora salvam diretamente na configuração isolada da instância (`inst.config`) sem poluir nem desconfigurar o bot principal.
+  - Restaurado o valor de `audit_channel_id` do Jarvis no banco de dados para evitar qualquer emissão indevida de logs de auditoria por parte do bot principal.
+
 ## [9.3.0] - 2026-11-19
 
 ### Adicionado
