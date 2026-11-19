@@ -1,6 +1,7 @@
 if (!process.env.LOG_FORMAT) process.env.LOG_FORMAT = 'pretty';
 const { Client, GatewayIntentBits, Partials } = require('discord.js');
 const { config } = require('./config/env');
+const { botConfig } = require('./config/botConfig');
 const { logger } = require('./utils/logger');
 const { setupGlobalErrorHandlers } = require('./utils/errorHandler');
 const { dbManager } = require('./database/connection');

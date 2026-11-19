@@ -5,6 +5,12 @@ Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [7.3.0] - 2026-11-18
+
+### Corrigido
+- **Correção de Escopo de Importação no Bootstrap (`src/index.js`):**
+  - Importação do módulo `botConfig` promovida para o escopo global no topo de `src/index.js`, sanando o `ReferenceError: botConfig is not defined` que ocorria na inicialização do `bootstrap()` ao registrar o listener de sincronização dinâmica `botConfig.onConfigChange`.
+
 ## [7.2.0] - 2026-11-18
 
 ### Corrigido
