@@ -5,6 +5,20 @@ Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [9.6.0] - 2026-11-19
+
+### Adicionado
+- **Armazenamento de Moedas de Câmbio no Banco (Cofre Bancário Stark):**
+  - Adicionada a migração `037_currency_bank_support.sql`, introduzindo a coluna `bank_amount` na tabela `economy_user_currencies`.
+  - Moedas de câmbio e de prestígio (ouro, platina, diamantes, btc) agora podem ser depositadas no cofre do banco e sacadas para a carteira a qualquer momento.
+  - No cofre do banco, as moedas de câmbio ficam **100% protegidas contra roubos e assaltos (`+rob` / `+crime`)**, garantindo a segurança do patrimônio dos usuários.
+  - Implementados métodos dedicados `depositExchangeCurrency`, `withdrawExchangeCurrency`, `transferUserCurrencyToBank` e `transferUserCurrencyFromBank` em `EconomyRepository` e `EconomyService`.
+  - Suporte completo no comando `+dep`: `+dep <quantia> [moeda]` (ex: `+dep 2 ouro` ou `+dep all ouro`), com suporte à ordem invertida flexível (`+dep ouro 2`).
+  - Suporte completo no comando `+sac` / `+sacar` / `+with`: `+sac <quantia> [moeda]` (ex: `+sac 2 ouro` ou `+sac all ouro`), com suporte à ordem invertida flexível (`+sac ouro 2`).
+  - Novos subcomandos em `+cambio`: `+cambio dep <moeda> [quantidade|tudo]` e `+cambio sac <moeda> [quantidade|tudo]`.
+  - Exibição transparente nos comandos de saldo (`+saldo`, `+banco`, `+bal`, `/balance`): detalhamento separado do saldo em carteira (`👛 Carteira`) e guardado no cofre (`🏦 Banco`) de cada moeda de câmbio, além do cálculo unificado do patrimônio total (`💎 Patrimônio Total`).
+  - Comandos de barra `/depositar` e `/sacar` atualizados com o parâmetro opcional `moeda` para operações de câmbio.
+
 ## [9.5.0] - 2026-11-19
 
 ### Adicionado

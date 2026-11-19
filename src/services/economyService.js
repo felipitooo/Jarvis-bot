@@ -195,8 +195,11 @@ class EconomyService {
     const userCurrencies = this.economyRepo.getUserExchangeCurrencies
       ? this.economyRepo.getUserExchangeCurrencies(guildId, userId)
       : [];
-    const exchangeAssetsValue = userCurrencies.reduce((sum, c) => sum + (c.totalValue || 0), 0);
-    const effectiveWalletBalance = account.walletBalance + exchangeAssetsValue;
+    const walletExchangeAssetsValue = userCurrencies.reduce((sum, c) => sum + (c.walletValue || (c.amount * c.rate) || 0), 0);
+    const bankExchangeAssetsValue = userCurrencies.reduce((sum, c) => sum + (c.bankValue || ((c.bankAmount || 0) * c.rate) || 0), 0);
+    const exchangeAssetsValue = walletExchangeAssetsValue + bankExchangeAssetsValue;
+    const effectiveWalletBalance = account.walletBalance + walletExchangeAssetsValue;
+    const effectiveBankBalance = account.bankBalance + bankExchangeAssetsValue;
     const totalNetWorth = account.totalBalance + exchangeAssetsValue;
 
     const isBankUnlimited = Boolean(config.bankUnlimited) || config.bankStartingCapacity <= 0;
@@ -209,7 +212,10 @@ class EconomyService {
       debtAmount,
       userCurrencies,
       exchangeAssetsValue,
+      walletExchangeAssetsValue,
+      bankExchangeAssetsValue,
       effectiveWalletBalance,
+      effectiveBankBalance,
       totalNetWorth,
       isBankUnlimited,
       formattedWallet: this.formatCurrency(account.walletBalance, config),
@@ -218,6 +224,8 @@ class EconomyService {
       formattedCompactEffectiveWallet: this.formatCompactCurrency(effectiveWalletBalance, config),
       formattedBank: this.formatCurrency(account.bankBalance, config),
       formattedCompactBank: this.formatCompactCurrency(account.bankBalance, config),
+      formattedEffectiveBank: this.formatCurrency(effectiveBankBalance, config),
+      formattedCompactEffectiveBank: this.formatCompactCurrency(effectiveBankBalance, config),
       formattedTotal: this.formatCurrency(account.totalBalance, config),
       formattedCompactTotal: this.formatCompactCurrency(account.totalBalance, config),
       formattedNetWorth: this.formatCurrency(totalNetWorth, config),
@@ -226,12 +234,15 @@ class EconomyService {
     };
   }
 
-  deposit(guildId, userId, amountInput) {
+  deposit(guildId, userId, amountInput, currencyCode = null) {
+    if (currencyCode) {
+      return this.depositExchangeCurrency(guildId, userId, currencyCode, amountInput);
+    }
+
     return this.economyRepo.db.transaction(() => {
       const config = this.economyRepo.getGuildConfig(guildId);
       let account = this.economyRepo.getOrCreateAccount(guildId, userId, config.bankStartingCapacity);
       const isBankUnlimited = Boolean(config.bankUnlimited) || config.bankStartingCapacity <= 0;
-
       const availableCapacity = isBankUnlimited ? Infinity : Math.max(0, account.bankCapacity - account.bankBalance);
 
       let depositAmount;
@@ -291,7 +302,73 @@ class EconomyService {
     });
   }
 
-  withdraw(guildId, userId, amountInput) {
+  depositExchangeCurrency(guildId, userId, codeOrId, quantityInput) {
+    const currency = this.getExchangeCurrency(guildId, codeOrId);
+    if (!currency) {
+      throw new Error(`Moeda de câmbio "${codeOrId}" não encontrada.`);
+    }
+
+    return this.economyRepo.db.transaction(() => {
+      const config = this.economyRepo.getGuildConfig(guildId);
+      const account = this.economyRepo.getOrCreateAccount(guildId, userId, config.bankStartingCapacity);
+      const walletUnits = this.economyRepo.getUserCurrencyBalance(guildId, userId, currency.id);
+      let depositUnits;
+      const isAll = typeof quantityInput === 'string' && ['all', 'tudo', 'max', 'todos', 'todas'].includes(quantityInput.toLowerCase());
+
+      if (isAll) {
+        if (walletUnits <= 0) {
+          throw new Error(`Você não possui unidades de ${currency.name} na carteira para depositar.`);
+        }
+        depositUnits = walletUnits;
+      } else {
+        depositUnits = parseInt(quantityInput, 10);
+      }
+
+      if (isNaN(depositUnits) || depositUnits <= 0) {
+        throw new Error('A quantia de depósito da moeda deve ser um número positivo ou "all".');
+      }
+
+      if (walletUnits < depositUnits) {
+        const { formatCompactNumber } = require('../utils/numberFormatter');
+        throw new Error(`Saldo insuficiente de ${currency.name} na carteira. Você possui apenas ${formatCompactNumber(walletUnits)}x ${currency.symbol} ${currency.name}.`);
+      }
+
+      const totalValue = depositUnits * currency.rate;
+      const { newWallet, newBank } = this.economyRepo.transferUserCurrencyToBank(guildId, userId, currency.id, depositUnits);
+      const { formatCompactNumber } = require('../utils/numberFormatter');
+
+      this.economyRepo.recordTransaction({
+        guildId,
+        userId,
+        type: 'CURRENCY_DEPOSIT',
+        amount: totalValue,
+        walletAfter: account.walletBalance,
+        bankAfter: account.bankBalance,
+        description: `Depósito bancário de ${depositUnits}x ${currency.symbol} ${currency.name} (${this.formatCurrency(totalValue, config)})`
+      });
+
+      return {
+        isCurrency: true,
+        currency,
+        amount: depositUnits,
+        totalValue,
+        walletUnits: newWallet,
+        bankUnits: newBank,
+        walletBalance: account.walletBalance,
+        bankBalance: account.bankBalance,
+        formattedAmount: `${formatCompactNumber(depositUnits)}x ${currency.symbol} ${currency.name}`,
+        formattedEquivalent: this.formatCurrency(totalValue, config),
+        formattedWallet: `${formatCompactNumber(newWallet)}x ${currency.symbol} ${currency.name}`,
+        formattedBank: `${formatCompactNumber(newBank)}x ${currency.symbol} ${currency.name}`
+      };
+    });
+  }
+
+  withdraw(guildId, userId, amountInput, currencyCode = null) {
+    if (currencyCode) {
+      return this.withdrawExchangeCurrency(guildId, userId, currencyCode, amountInput);
+    }
+
     return this.economyRepo.db.transaction(() => {
       const config = this.economyRepo.getGuildConfig(guildId);
       const account = this.economyRepo.getOrCreateAccount(guildId, userId, config.bankStartingCapacity);
@@ -337,6 +414,69 @@ class EconomyService {
         formattedAmount: this.formatCurrency(withdrawAmount, config),
         formattedWallet: this.formatCurrency(updated.walletBalance, config),
         formattedBank: this.formatCurrency(updated.bankBalance, config)
+      };
+    });
+  }
+
+  withdrawExchangeCurrency(guildId, userId, codeOrId, quantityInput) {
+    const currency = this.getExchangeCurrency(guildId, codeOrId);
+    if (!currency) {
+      throw new Error(`Moeda de câmbio "${codeOrId}" não encontrada.`);
+    }
+
+    return this.economyRepo.db.transaction(() => {
+      const config = this.economyRepo.getGuildConfig(guildId);
+      const account = this.economyRepo.getOrCreateAccount(guildId, userId, config.bankStartingCapacity);
+      const bankUnits = this.economyRepo.getUserCurrencyBankBalance(guildId, userId, currency.id);
+
+      let withdrawUnits;
+      const isAll = typeof quantityInput === 'string' && ['all', 'tudo', 'max', 'todos', 'todas'].includes(quantityInput.toLowerCase());
+
+      if (isAll) {
+        if (bankUnits <= 0) {
+          throw new Error(`Você não possui unidades de ${currency.name} guardadas no banco para sacar.`);
+        }
+        withdrawUnits = bankUnits;
+      } else {
+        withdrawUnits = parseInt(quantityInput, 10);
+      }
+
+      if (isNaN(withdrawUnits) || withdrawUnits <= 0) {
+        throw new Error('A quantia de saque da moeda deve ser um número positivo ou "all".');
+      }
+
+      if (bankUnits < withdrawUnits) {
+        const { formatCompactNumber } = require('../utils/numberFormatter');
+        throw new Error(`Saldo insuficiente de ${currency.name} no banco. Você possui apenas ${formatCompactNumber(bankUnits)}x ${currency.symbol} ${currency.name} guardados.`);
+      }
+
+      const totalValue = withdrawUnits * currency.rate;
+      const { newWallet, newBank } = this.economyRepo.transferUserCurrencyFromBank(guildId, userId, currency.id, withdrawUnits);
+      const { formatCompactNumber } = require('../utils/numberFormatter');
+
+      this.economyRepo.recordTransaction({
+        guildId,
+        userId,
+        type: 'CURRENCY_WITHDRAW',
+        amount: totalValue,
+        walletAfter: account.walletBalance,
+        bankAfter: account.bankBalance,
+        description: `Saque bancário de ${withdrawUnits}x ${currency.symbol} ${currency.name} (${this.formatCurrency(totalValue, config)})`
+      });
+
+      return {
+        isCurrency: true,
+        currency,
+        amount: withdrawUnits,
+        totalValue,
+        walletUnits: newWallet,
+        bankUnits: newBank,
+        walletBalance: account.walletBalance,
+        bankBalance: account.bankBalance,
+        formattedAmount: `${formatCompactNumber(withdrawUnits)}x ${currency.symbol} ${currency.name}`,
+        formattedEquivalent: this.formatCurrency(totalValue, config),
+        formattedWallet: `${formatCompactNumber(newWallet)}x ${currency.symbol} ${currency.name}`,
+        formattedBank: `${formatCompactNumber(newBank)}x ${currency.symbol} ${currency.name}`
       };
     });
   }

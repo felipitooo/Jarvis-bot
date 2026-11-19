@@ -359,17 +359,17 @@ class EconomyRepository {
          ea.wallet_balance,
          ea.bank_balance,
          COALESCE((
-           SELECT SUM(uc.amount * c.rate)
+           SELECT SUM((uc.amount + COALESCE(uc.bank_amount, 0)) * c.rate)
            FROM economy_user_currencies uc
            JOIN economy_currencies c ON c.id = uc.currency_id
-           WHERE uc.guild_id = ea.guild_id AND uc.user_id = ea.user_id AND uc.amount > 0
+           WHERE uc.guild_id = ea.guild_id AND uc.user_id = ea.user_id AND (uc.amount > 0 OR uc.bank_amount > 0)
          ), 0) AS exchange_balance,
          (
            ea.wallet_balance + ea.bank_balance + COALESCE((
-             SELECT SUM(uc.amount * c.rate)
+             SELECT SUM((uc.amount + COALESCE(uc.bank_amount, 0)) * c.rate)
              FROM economy_user_currencies uc
              JOIN economy_currencies c ON c.id = uc.currency_id
-             WHERE uc.guild_id = ea.guild_id AND uc.user_id = ea.user_id AND uc.amount > 0
+             WHERE uc.guild_id = ea.guild_id AND uc.user_id = ea.user_id AND (uc.amount > 0 OR uc.bank_amount > 0)
            ), 0)
          ) AS total_balance
        FROM economy_accounts ea
@@ -395,10 +395,10 @@ class EconomyRepository {
     if (!target) return null;
 
     const exchangeRow = this.db.get(
-      `SELECT COALESCE(SUM(uc.amount * c.rate), 0) AS exchange_val
+      `SELECT COALESCE(SUM((uc.amount + COALESCE(uc.bank_amount, 0)) * c.rate), 0) AS exchange_val
        FROM economy_user_currencies uc
        JOIN economy_currencies c ON c.id = uc.currency_id
-       WHERE uc.guild_id = ? AND uc.user_id = ? AND uc.amount > 0`,
+       WHERE uc.guild_id = ? AND uc.user_id = ? AND (uc.amount > 0 OR uc.bank_amount > 0)`,
       [guildId, userId]
     );
     const targetTotal = target.totalBalance + Number(exchangeRow?.exchange_val || 0);
@@ -408,10 +408,10 @@ class EconomyRepository {
        FROM economy_accounts ea
        WHERE ea.guild_id = ? AND (
          ea.wallet_balance + ea.bank_balance + COALESCE((
-           SELECT SUM(uc.amount * c.rate)
+           SELECT SUM((uc.amount + COALESCE(uc.bank_amount, 0)) * c.rate)
            FROM economy_user_currencies uc
            JOIN economy_currencies c ON c.id = uc.currency_id
-           WHERE uc.guild_id = ea.guild_id AND uc.user_id = ea.user_id AND uc.amount > 0
+           WHERE uc.guild_id = ea.guild_id AND uc.user_id = ea.user_id AND (uc.amount > 0 OR uc.bank_amount > 0)
          ), 0)
        ) > ?`,
       [guildId, targetTotal]
@@ -781,31 +781,56 @@ class EconomyRepository {
 
   getUserExchangeCurrencies(guildId, userId) {
     const rows = this.db.all(
-      `SELECT c.id, c.name, c.code, c.symbol, c.rate, c.description, uc.amount
+      `SELECT c.id, c.name, c.code, c.symbol, c.rate, c.description, uc.amount, COALESCE(uc.bank_amount, 0) AS bank_amount
        FROM economy_user_currencies uc
        JOIN economy_currencies c ON c.id = uc.currency_id
-       WHERE uc.guild_id = ? AND uc.user_id = ? AND uc.amount > 0
+       WHERE uc.guild_id = ? AND uc.user_id = ? AND (uc.amount > 0 OR uc.bank_amount > 0)
        ORDER BY c.rate DESC`,
       [guildId, userId]
     );
 
-    return rows.map(r => ({
-      currencyId: r.id,
-      name: r.name,
-      code: r.code,
-      symbol: r.symbol,
-      rate: Number(r.rate),
-      amount: Number(r.amount),
-      totalValue: Number(r.amount) * Number(r.rate)
-    }));
+    return rows.map(r => {
+      const amount = Number(r.amount) || 0;
+      const bankAmount = Number(r.bank_amount) || 0;
+      const rate = Number(r.rate) || 0;
+      return {
+        currencyId: r.id,
+        name: r.name,
+        code: r.code,
+        symbol: r.symbol,
+        rate,
+        amount, // wallet units
+        bankAmount, // bank units
+        totalAmount: amount + bankAmount,
+        walletValue: amount * rate,
+        bankValue: bankAmount * rate,
+        totalValue: (amount + bankAmount) * rate
+      };
+    });
   }
 
   getUserCurrencyBalance(guildId, userId, currencyId) {
     const row = this.db.get(
-      'SELECT amount FROM economy_user_currencies WHERE guild_id = ? AND user_id = ? AND currency_id = ?',
+      'SELECT amount, COALESCE(bank_amount, 0) AS bank_amount FROM economy_user_currencies WHERE guild_id = ? AND user_id = ? AND currency_id = ?',
       [guildId, userId, Number(currencyId)]
     );
     return row ? Number(row.amount) : 0;
+  }
+
+  getUserCurrencyBankBalance(guildId, userId, currencyId) {
+    const row = this.db.get(
+      'SELECT COALESCE(bank_amount, 0) AS bank_amount FROM economy_user_currencies WHERE guild_id = ? AND user_id = ? AND currency_id = ?',
+      [guildId, userId, Number(currencyId)]
+    );
+    return row ? Number(row.bank_amount) : 0;
+  }
+
+  getUserCurrencyTotalBalance(guildId, userId, currencyId) {
+    const row = this.db.get(
+      'SELECT amount, COALESCE(bank_amount, 0) AS bank_amount FROM economy_user_currencies WHERE guild_id = ? AND user_id = ? AND currency_id = ?',
+      [guildId, userId, Number(currencyId)]
+    );
+    return row ? (Number(row.amount) + Number(row.bank_amount)) : 0;
   }
 
   addUserCurrencyBalance(guildId, userId, currencyId, delta) {
@@ -814,13 +839,68 @@ class EconomyRepository {
     const now = new Date().toISOString();
 
     this.db.run(
-      `INSERT INTO economy_user_currencies (guild_id, user_id, currency_id, amount, updated_at)
-       VALUES (?, ?, ?, ?, ?)
+      `INSERT INTO economy_user_currencies (guild_id, user_id, currency_id, amount, bank_amount, updated_at)
+       VALUES (?, ?, ?, ?, 0, ?)
        ON CONFLICT(guild_id, user_id, currency_id) DO UPDATE SET amount = ?, updated_at = ?`,
       [guildId, userId, Number(currencyId), newAmount, now, newAmount, now]
     );
 
     return newAmount;
+  }
+
+  addUserCurrencyBankBalance(guildId, userId, currencyId, delta) {
+    const current = this.getUserCurrencyBankBalance(guildId, userId, currencyId);
+    const newBankAmount = Math.max(0, current + Number(delta));
+    const now = new Date().toISOString();
+
+    this.db.run(
+      `INSERT INTO economy_user_currencies (guild_id, user_id, currency_id, amount, bank_amount, updated_at)
+       VALUES (?, ?, ?, 0, ?, ?)
+       ON CONFLICT(guild_id, user_id, currency_id) DO UPDATE SET bank_amount = ?, updated_at = ?`,
+      [guildId, userId, Number(currencyId), newBankAmount, now, newBankAmount, now]
+    );
+
+    return newBankAmount;
+  }
+
+  transferUserCurrencyToBank(guildId, userId, currencyId, unitsToDeposit) {
+    const walletCurrent = this.getUserCurrencyBalance(guildId, userId, currencyId);
+    if (walletCurrent < unitsToDeposit) {
+      throw new Error(`Saldo insuficiente na carteira para esta moeda.`);
+    }
+    const bankCurrent = this.getUserCurrencyBankBalance(guildId, userId, currencyId);
+    const newWallet = walletCurrent - unitsToDeposit;
+    const newBank = bankCurrent + unitsToDeposit;
+    const now = new Date().toISOString();
+
+    this.db.run(
+      `INSERT INTO economy_user_currencies (guild_id, user_id, currency_id, amount, bank_amount, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT(guild_id, user_id, currency_id) DO UPDATE SET amount = ?, bank_amount = ?, updated_at = ?`,
+      [guildId, userId, Number(currencyId), newWallet, newBank, now, newWallet, newBank, now]
+    );
+
+    return { newWallet, newBank };
+  }
+
+  transferUserCurrencyFromBank(guildId, userId, currencyId, unitsToWithdraw) {
+    const bankCurrent = this.getUserCurrencyBankBalance(guildId, userId, currencyId);
+    if (bankCurrent < unitsToWithdraw) {
+      throw new Error(`Saldo insuficiente no banco para esta moeda.`);
+    }
+    const walletCurrent = this.getUserCurrencyBalance(guildId, userId, currencyId);
+    const newWallet = walletCurrent + unitsToWithdraw;
+    const newBank = bankCurrent - unitsToWithdraw;
+    const now = new Date().toISOString();
+
+    this.db.run(
+      `INSERT INTO economy_user_currencies (guild_id, user_id, currency_id, amount, bank_amount, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT(guild_id, user_id, currency_id) DO UPDATE SET amount = ?, bank_amount = ?, updated_at = ?`,
+      [guildId, userId, Number(currencyId), newWallet, newBank, now, newWallet, newBank, now]
+    );
+
+    return { newWallet, newBank };
   }
 
   // ==========================================

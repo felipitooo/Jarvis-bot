@@ -1118,8 +1118,10 @@ class PrefixCommandHandler {
           const balance = economyService.getBalance(guild.id, target.id);
           const isDebt = balance.walletBalance < 0;
 
-          const hasExchangeInWallet = (balance.exchangeAssetsValue || 0) > 0;
+          const hasExchangeInWallet = (balance.walletExchangeAssetsValue || 0) > 0;
+          const hasExchangeInBank = (balance.bankExchangeAssetsValue || 0) > 0;
           const effectiveWalletVal = balance.effectiveWalletBalance ?? balance.walletBalance;
+          const effectiveBankVal = balance.effectiveBankBalance ?? balance.bankBalance;
 
           let walletDisplay = Math.abs(effectiveWalletVal) >= 1e6
             ? `${balance.formattedCompactEffectiveWallet || balance.formattedCompactWallet}\n*(${effectiveWalletVal.toLocaleString('pt-BR')})*`
@@ -1127,14 +1129,24 @@ class PrefixCommandHandler {
 
           if (hasExchangeInWallet) {
             const currencySummary = balance.userCurrencies
+              .filter(c => c.amount > 0)
               .map(c => `${c.symbol} **${formatCompactNumber(c.amount)}** ${c.name}`)
               .join(', ');
             walletDisplay += `\n*(Moedas comuns: ${balance.formattedCompactWallet} + Câmbio: ${currencySummary})*`;
           }
 
-          const bankDisplay = Math.abs(balance.bankBalance) >= 1e6
-            ? `${balance.formattedCompactBank}\n*(${balance.bankBalance.toLocaleString('pt-BR')})*`
-            : balance.formattedBank;
+          let bankDisplay = Math.abs(effectiveBankVal) >= 1e6
+            ? `${balance.formattedCompactEffectiveBank || balance.formattedCompactBank}\n*(${effectiveBankVal.toLocaleString('pt-BR')})*`
+            : (balance.formattedEffectiveBank || balance.formattedBank);
+
+          if (hasExchangeInBank) {
+            const bankCurrencySummary = balance.userCurrencies
+              .filter(c => (c.bankAmount || 0) > 0)
+              .map(c => `${c.symbol} **${formatCompactNumber(c.bankAmount)}** ${c.name}`)
+              .join(', ');
+            bankDisplay += `\n*(Moedas comuns: ${balance.formattedCompactBank} + No cofre: ${bankCurrencySummary})*`;
+          }
+
           const totalDisplay = Math.abs(balance.totalNetWorth || balance.totalBalance) >= 1e6
             ? `${balance.formattedCompactNetWorth || balance.formattedCompactTotal}\n*(${(balance.totalNetWorth || balance.totalBalance).toLocaleString('pt-BR')})*`
             : (balance.formattedNetWorth || balance.formattedTotal);
@@ -1149,17 +1161,21 @@ class PrefixCommandHandler {
                 value: isDebt ? `${walletDisplay}\n*(⚠️ Endividado)*` : walletDisplay,
                 inline: true
               },
-              { name: '🏦 Banco', value: bankDisplay, inline: true },
+              { name: '🏦 Banco (Valor Total)', value: bankDisplay, inline: true },
               { name: '💎 Patrimônio Total', value: totalDisplay, inline: true },
               { name: '🏆 Posição no Ranking', value: `#${balance.rank}`, inline: true }
             );
 
           if (balance.userCurrencies && balance.userCurrencies.length > 0) {
-            const exchangeLines = balance.userCurrencies.map(c =>
-              `${c.symbol} **${formatCompactNumber(c.amount)}** ${c.name} (\`${c.code}\`) • *Vale ${formatCompactNumber(c.rate)} cada (Total na carteira: ${formatCompactNumber(c.totalValue)})*`
-            ).join('\n');
+            const exchangeLines = balance.userCurrencies.map(c => {
+              const parts = [];
+              if (c.amount > 0) parts.push(`👛 Carteira: **${formatCompactNumber(c.amount)}**`);
+              if (c.bankAmount > 0) parts.push(`🏦 Banco: **${formatCompactNumber(c.bankAmount)}**`);
+              const totalVal = formatCompactNumber(c.totalValue || ((c.amount + (c.bankAmount || 0)) * c.rate));
+              return `${c.symbol} **${c.name}** (\`${c.code}\`) • ${parts.join(' | ')} *(Cotação: ${formatCompactNumber(c.rate)} | Patrimônio: ${totalVal})*`;
+            }).join('\n');
             embed.addFields({
-              name: '💱 Moedas de Câmbio na Carteira',
+              name: '💱 Moedas de Câmbio & Prestígio (Carteira & Banco)',
               value: exchangeLines,
               inline: false
             });
@@ -1218,21 +1234,53 @@ class PrefixCommandHandler {
         case 'depositar':
         case 'dep': {
           if (!args[0]) {
-            await message.reply('❌ Informe a quantia a depositar ou `all`. Ex: `+dep 500` ou `+dep all`');
+            await message.reply('❌ Informe a quantia a depositar ou `all` (e opcionalmente a moeda de câmbio).\nExemplo: `+dep 500` ou `+dep all` ou `+dep 2 ouro` ou `+dep all ouro`');
             return true;
           }
-          const amountArg = args[0].toLowerCase();
+          let amountArg = args[0].toLowerCase();
+          let currencyCode = null;
+
+          if (args[1]) {
+            const allWords = ['all', 'tudo', 'max', 'todos', 'todas'];
+            const a0 = args[0].toLowerCase();
+            const a1 = args[1].toLowerCase();
+            if (allWords.includes(a0)) {
+              amountArg = 'all';
+              currencyCode = a1;
+            } else if (allWords.includes(a1)) {
+              amountArg = 'all';
+              currencyCode = a0;
+            } else if (!isNaN(parseInt(a0, 10))) {
+              amountArg = a0;
+              currencyCode = a1;
+            } else {
+              amountArg = a1;
+              currencyCode = a0;
+            }
+          }
+
           try {
-            const res = economyService.deposit(guild.id, author.id, amountArg);
+            const res = economyService.deposit(guild.id, author.id, amountArg, currencyCode);
             const embed = new EmbedBuilder()
               .setColor(0x57F287)
-              .setTitle('🏦 Depósito Realizado')
-              .setDescription(`Você guardou **${res.formattedAmount}** no seu banco com sucesso!`)
-              .addFields(
-                { name: '👛 Carteira', value: res.formattedWallet, inline: true },
-                { name: '🏦 Banco', value: res.formattedBank, inline: true }
+              .setTitle('🏦 Depósito Realizado com Sucesso')
+              .setDescription(
+                res.isCurrency
+                  ? `Você guardou **${res.formattedAmount}** *(equivalente a ${res.formattedEquivalent})* no cofre do seu banco com segurança!`
+                  : `Você guardou **${res.formattedAmount}** no seu banco com sucesso!`
               )
-              .setFooter({ text: `${aiName} • Banco` })
+              .addFields(
+                res.isCurrency
+                  ? [
+                      { name: `👛 ${res.currency.name} na Carteira`, value: res.formattedWallet, inline: true },
+                      { name: `🏦 ${res.currency.name} no Banco`, value: res.formattedBank, inline: true }
+                    ]
+                  : [
+                      { name: '👛 Carteira', value: res.formattedWallet, inline: true },
+                      { name: '🏦 Banco', value: res.formattedBank, inline: true }
+                    ]
+              )
+              .setFooter({ text: `${aiName} • Banco Central Stark` })
               .setTimestamp();
             await message.reply({ embeds: [embed] });
           } catch (err) {
@@ -1245,21 +1293,53 @@ class PrefixCommandHandler {
         case 'sacar':
         case 'sac': {
           if (!args[0]) {
-            await message.reply('❌ Informe a quantia a sacar ou `all`. Ex: `+sac 500` ou `+sac all`');
+            await message.reply('❌ Informe a quantia a sacar ou `all` (e opcionalmente a moeda de câmbio).\nExemplo: `+sac 500` ou `+sac all` ou `+sac 2 ouro` ou `+sac all ouro`');
             return true;
           }
-          const amountArg = args[0].toLowerCase();
+          let amountArg = args[0].toLowerCase();
+          let currencyCode = null;
+
+          if (args[1]) {
+            const allWords = ['all', 'tudo', 'max', 'todos', 'todas'];
+            const a0 = args[0].toLowerCase();
+            const a1 = args[1].toLowerCase();
+            if (allWords.includes(a0)) {
+              amountArg = 'all';
+              currencyCode = a1;
+            } else if (allWords.includes(a1)) {
+              amountArg = 'all';
+              currencyCode = a0;
+            } else if (!isNaN(parseInt(a0, 10))) {
+              amountArg = a0;
+              currencyCode = a1;
+            } else {
+              amountArg = a1;
+              currencyCode = a0;
+            }
+          }
+
           try {
-            const res = economyService.withdraw(guild.id, author.id, amountArg);
+            const res = economyService.withdraw(guild.id, author.id, amountArg, currencyCode);
             const embed = new EmbedBuilder()
               .setColor(0x3B82F6)
-              .setTitle('👛 Saque Realizado')
-              .setDescription(`Você retirou **${res.formattedAmount}** do banco para a carteira!`)
-              .addFields(
-                { name: '👛 Carteira', value: res.formattedWallet, inline: true },
-                { name: '🏦 Banco', value: res.formattedBank, inline: true }
+              .setTitle('👛 Saque Realizado com Sucesso')
+              .setDescription(
+                res.isCurrency
+                  ? `Você retirou **${res.formattedAmount}** *(equivalente a ${res.formattedEquivalent})* do cofre do banco para a sua carteira!`
+                  : `Você retirou **${res.formattedAmount}** do banco para a carteira!`
               )
-              .setFooter({ text: `${aiName} • Banco` })
+              .addFields(
+                res.isCurrency
+                  ? [
+                      { name: `👛 ${res.currency.name} na Carteira`, value: res.formattedWallet, inline: true },
+                      { name: `🏦 ${res.currency.name} no Banco`, value: res.formattedBank, inline: true }
+                    ]
+                  : [
+                      { name: '👛 Carteira', value: res.formattedWallet, inline: true },
+                      { name: '🏦 Banco', value: res.formattedBank, inline: true }
+                    ]
+              )
+              .setFooter({ text: `${aiName} • Banco Central Stark` })
               .setTimestamp();
             await message.reply({ embeds: [embed] });
           } catch (err) {
@@ -1776,6 +1856,58 @@ class PrefixCommandHandler {
             return true;
           }
 
+          if (sub === 'dep' || sub === 'depositar' || sub === 'guardar') {
+            const code = args[1];
+            const qtyInput = args[2] || 'all';
+            if (!code) {
+              await message.reply('❓ Uso correto: `+cambio dep <codigo_moeda> [quantidade|tudo]`\nExemplo: `+cambio dep ouro 2` ou `+cambio dep ouro tudo`');
+              return true;
+            }
+            try {
+              const res = economyService.depositExchangeCurrency(guild.id, author.id, code, qtyInput);
+              const embed = new EmbedBuilder()
+                .setColor(0x57F287)
+                .setTitle('🏦 Moeda Guardada no Banco com Sucesso')
+                .setDescription(
+                  `Você guardou **${res.formattedAmount}** *(equivalente a ${res.formattedEquivalent})* no cofre do seu banco com segurança!\n\n` +
+                  `• **Carteira:** ${res.formattedWallet}\n` +
+                  `• **Banco:** ${res.formattedBank}`
+                )
+                .setFooter({ text: `${aiName} • Banco Stark & Câmbio` })
+                .setTimestamp();
+              await message.reply({ embeds: [embed] });
+            } catch (err) {
+              await message.reply(`❌ **Erro no depósito:** ${err.message}`);
+            }
+            return true;
+          }
+
+          if (sub === 'sac' || sub === 'sacar' || sub === 'retirar' || sub === 'with') {
+            const code = args[1];
+            const qtyInput = args[2] || 'all';
+            if (!code) {
+              await message.reply('❓ Uso correto: `+cambio sac <codigo_moeda> [quantidade|tudo]`\nExemplo: `+cambio sac ouro 2` ou `+cambio sac ouro tudo`');
+              return true;
+            }
+            try {
+              const res = economyService.withdrawExchangeCurrency(guild.id, author.id, code, qtyInput);
+              const embed = new EmbedBuilder()
+                .setColor(0x3B82F6)
+                .setTitle('👛 Moeda Sacada para a Carteira')
+                .setDescription(
+                  `Você retirou **${res.formattedAmount}** *(equivalente a ${res.formattedEquivalent})* do banco para a sua carteira!\n\n` +
+                  `• **Carteira:** ${res.formattedWallet}\n` +
+                  `• **Banco:** ${res.formattedBank}`
+                )
+                .setFooter({ text: `${aiName} • Banco Stark & Câmbio` })
+                .setTimestamp();
+              await message.reply({ embeds: [embed] });
+            } catch (err) {
+              await message.reply(`❌ **Erro no saque:** ${err.message}`);
+            }
+            return true;
+          }
+
           // Default: lista moedas e cotações
           const currencies = economyService.listExchangeCurrencies(guild.id, false);
           const userCurrencies = economyService.getUserCurrencies(guild.id, author.id);
@@ -1796,7 +1928,8 @@ class PrefixCommandHandler {
             return true;
           }
 
-          const userMap = new Map(userCurrencies.map(c => [c.currencyId, c.amount]));
+          const userWalletMap = new Map(userCurrencies.map(c => [c.currencyId, c.amount || 0]));
+          const userBankMap = new Map(userCurrencies.map(c => [c.currencyId, c.bankAmount || 0]));
           if (sub === 'grafico' || sub === 'chart' || sub === 'bolsa') {
             const targetCode = args[1] || null;
             try {
@@ -1831,7 +1964,8 @@ class PrefixCommandHandler {
             const modeTag = c.isDynamic
               ? `📈 Bolsa (${c.changePercent >= 0 ? `+${c.changePercent}%` : `${c.changePercent}%`})`
               : '🔒 Fixa';
-            const userHoldings = userMap.get(c.id) || 0;
+            const walletUnits = userWalletMap.get(c.id) || 0;
+            const bankUnits = userBankMap.get(c.id) || 0;
             const formattedRate = Number(c.rate).toLocaleString('pt-BR');
             const compactRate = formatCompactNumber(c.rate);
             const desc = c.description ? `\n> *${c.description}*` : '';
@@ -1840,16 +1974,17 @@ class PrefixCommandHandler {
               `### ${c.symbol} **${c.name}** (\`${c.code}\`) — *${modeTag}*\n` +
               `• **Cotação Unitária:** ${config.currencySymbol} **${compactRate}** ${config.currencyName} *(${formattedRate})*\n` +
               `• **Status:** ${status}\n` +
-              `• **Seu Saldo:** **${formatCompactNumber(userHoldings)}** ${c.name}${desc}`
+              `• **Seu Saldo:** 👛 **${formatCompactNumber(walletUnits)}** na Carteira | 🏦 **${formatCompactNumber(bankUnits)}** no Banco${desc}`
             );
           });
 
           embed.setDescription(
-            `As moedas de câmbio mantêm o mesmo valor total na sua carteira e no ranking, podendo ser enviadas, apostadas no cassino, emprestadas ou usadas nas suas compras!\n\n` +
-            `👛 **Valor Total na Carteira:** ${balance.formattedCompactEffectiveWallet || balance.formattedCompactWallet} *(${(balance.effectiveWalletBalance ?? balance.walletBalance).toLocaleString('pt-BR')})*\n` +
-            `🪙 **Moedas Comuns:** ${balance.formattedCompactWallet}\n\n` +
+            `As moedas de câmbio são tratadas como moedas normais: podem ser guardadas no banco, sacadas, apostadas, transferidas ou usadas como patrimônio!\n\n` +
+            `👛 **Carteira (Total):** ${balance.formattedCompactEffectiveWallet || balance.formattedCompactWallet} *(${(balance.effectiveWalletBalance ?? balance.walletBalance).toLocaleString('pt-BR')})*\n` +
+            `🏦 **Banco (Total):** ${balance.formattedCompactEffectiveBank || balance.formattedCompactBank} *(${(balance.effectiveBankBalance ?? balance.bankBalance).toLocaleString('pt-BR')})*\n` +
+            `💎 **Patrimônio Geral:** ${balance.formattedCompactNetWorth || balance.formattedCompactTotal} *(${(balance.totalNetWorth || balance.totalBalance).toLocaleString('pt-BR')})*\n\n` +
             lines.join('\n\n') +
-            `\n\n💡 **Como operar:**\n• \`+cambio comprar <código> [qtd|tudo]\`\n• \`+cambio vender <código> [qtd|tudo]\`\n• \`+cambio enviar @membro <código> [qtd|tudo]\`\n• \`+grafico <código>\` — Ver gráfico da Bolsa Stark`
+            `\n\n💡 **Como operar:**\n• \`+cambio comprar <código> [qtd|tudo]\`\n• \`+cambio vender <código> [qtd|tudo]\`\n• \`+cambio dep <código> [qtd|tudo]\` ou \`+dep <qtd> <código>\` — Guardar no Banco\n• \`+cambio sac <código> [qtd|tudo]\` ou \`+sac <qtd> <código>\` — Sacar do Banco\n• \`+cambio enviar @membro <código> [qtd|tudo]\`\n• \`+grafico <código>\` — Ver gráfico da Bolsa Stark`
           );
 
           await message.reply({ embeds: [embed] });

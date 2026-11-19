@@ -67,6 +67,40 @@ module.exports = {
             .setDescription('Quantidade a enviar (número ou "tudo")')
             .setRequired(true)
         )
+    )
+    .addSubcommand(sub =>
+      sub
+        .setName('depositar')
+        .setDescription('Guarda moedas de câmbio no banco com total segurança.')
+        .addStringOption(opt =>
+          opt
+            .setName('moeda')
+            .setDescription('Código ou nome da moeda (ex: ouro, diamante)')
+            .setRequired(true)
+        )
+        .addStringOption(opt =>
+          opt
+            .setName('quantidade')
+            .setDescription('Quantidade a depositar (número ou "tudo", padrão: tudo)')
+            .setRequired(false)
+        )
+    )
+    .addSubcommand(sub =>
+      sub
+        .setName('sacar')
+        .setDescription('Saca moedas de câmbio do cofre do banco para a sua carteira.')
+        .addStringOption(opt =>
+          opt
+            .setName('moeda')
+            .setDescription('Código ou nome da moeda (ex: ouro, diamante)')
+            .setRequired(true)
+        )
+        .addStringOption(opt =>
+          opt
+            .setName('quantidade')
+            .setDescription('Quantidade a sacar (número ou "tudo", padrão: tudo)')
+            .setRequired(false)
+        )
     ),
 
   /**
@@ -100,11 +134,13 @@ module.exports = {
         return interaction.reply({ embeds: [embed] });
       }
 
-      const userMap = new Map(userCurrencies.map(c => [c.currencyId, c.amount]));
+      const userWalletMap = new Map(userCurrencies.map(c => [c.currencyId, c.amount || 0]));
+      const userBankMap = new Map(userCurrencies.map(c => [c.currencyId, c.bankAmount || 0]));
 
       const lines = currencies.map(c => {
         const status = c.isActive ? '🟢 Ativo' : '🔴 Pausado';
-        const userHoldings = userMap.get(c.id) || 0;
+        const walletUnits = userWalletMap.get(c.id) || 0;
+        const bankUnits = userBankMap.get(c.id) || 0;
         const formattedRate = Number(c.rate).toLocaleString('pt-BR');
         const compactRate = formatCompactNumber(c.rate);
         const desc = c.description ? `\n> *${c.description}*` : '';
@@ -113,18 +149,71 @@ module.exports = {
           `### ${c.symbol} **${c.name}** (\`${c.code}\`)\n` +
           `• **Cotação Unitária:** ${config.currencySymbol} **${compactRate}** ${config.currencyName} *(${formattedRate})*\n` +
           `• **Status:** ${status}\n` +
-          `• **Seu Saldo:** **${formatCompactNumber(userHoldings)}** ${c.name}${desc}`
+          `• **Seu Saldo:** 👛 **${formatCompactNumber(walletUnits)}** na Carteira | 🏦 **${formatCompactNumber(bankUnits)}** no Banco${desc}`
         );
       });
 
       embed.setDescription(
-        `As moedas de câmbio mantêm o mesmo valor total na sua carteira e no ranking, podendo ser enviadas, apostadas no cassino ou usadas automaticamente nas suas compras!\n\n` +
-        `👛 **Valor Total na Carteira:** ${balance.formattedCompactEffectiveWallet || balance.formattedCompactWallet} *(${(balance.effectiveWalletBalance ?? balance.walletBalance).toLocaleString('pt-BR')})*\n` +
-        `🪙 **Moedas Comuns:** ${balance.formattedCompactWallet}\n\n` +
+        `As moedas de câmbio são tratadas como moedas normais: podem ser guardadas no banco, sacadas, transferidas ou usadas nas compras!\n\n` +
+        `👛 **Carteira (Total):** ${balance.formattedCompactEffectiveWallet || balance.formattedCompactWallet} *(${(balance.effectiveWalletBalance ?? balance.walletBalance).toLocaleString('pt-BR')})*\n` +
+        `🏦 **Banco (Total):** ${balance.formattedCompactEffectiveBank || balance.formattedCompactBank} *(${(balance.effectiveBankBalance ?? balance.bankBalance).toLocaleString('pt-BR')})*\n` +
+        `💎 **Patrimônio Geral:** ${balance.formattedCompactNetWorth || balance.formattedCompactTotal} *(${(balance.totalNetWorth || balance.totalBalance).toLocaleString('pt-BR')})*\n\n` +
         lines.join('\n\n')
       );
 
       return interaction.reply({ embeds: [embed] });
+    }
+
+    if (sub === 'depositar') {
+      const moedaInput = interaction.options.getString('moeda');
+      const qtyInput = interaction.options.getString('quantidade') || 'all';
+
+      try {
+        const result = economyService.depositExchangeCurrency(guild.id, user.id, moedaInput, qtyInput);
+        const embed = new EmbedBuilder()
+          .setColor(0x57F287)
+          .setTitle('🏦 Depósito de Câmbio Concluído!')
+          .setDescription(
+            `Você guardou **${result.formattedAmount}** *(equivalente a ${result.formattedEquivalent})* no cofre do seu banco com sucesso!\n\n` +
+            `• **Carteira:** ${result.formattedWallet}\n` +
+            `• **Banco:** ${result.formattedBank}`
+          )
+          .setFooter({ text: `${aiName} • Banco Stark & Câmbio` })
+          .setTimestamp();
+
+        return interaction.reply({ embeds: [embed] });
+      } catch (err) {
+        return interaction.reply({
+          content: `❌ **Falha ao depositar moeda de câmbio:** ${err.message}`,
+          ephemeral: true
+        });
+      }
+    }
+
+    if (sub === 'sacar') {
+      const moedaInput = interaction.options.getString('moeda');
+      const qtyInput = interaction.options.getString('quantidade') || 'all';
+
+      try {
+        const result = economyService.withdrawExchangeCurrency(guild.id, user.id, moedaInput, qtyInput);
+        const embed = new EmbedBuilder()
+          .setColor(0x3B82F6)
+          .setTitle('👛 Saque de Câmbio Concluído!')
+          .setDescription(
+            `Você retirou **${result.formattedAmount}** *(equivalente a ${result.formattedEquivalent})* do cofre do banco para a sua carteira!\n\n` +
+            `• **Carteira:** ${result.formattedWallet}\n` +
+            `• **Banco:** ${result.formattedBank}`
+          )
+          .setFooter({ text: `${aiName} • Banco Stark & Câmbio` })
+          .setTimestamp();
+
+        return interaction.reply({ embeds: [embed] });
+      } catch (err) {
+        return interaction.reply({
+          content: `❌ **Falha ao sacar moeda de câmbio:** ${err.message}`,
+          ephemeral: true
+        });
+      }
     }
 
     if (sub === 'comprar') {

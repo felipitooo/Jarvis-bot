@@ -170,6 +170,63 @@ describe('Economy System: Compact Number Formatter & Currency Exchange', () => {
       assert.equal(balance.totalNetWorth, 3500000);
       assert.equal(balance.userCurrencies.length, 1);
       assert.equal(balance.userCurrencies[0].amount, 3);
+      assert.equal(balance.userCurrencies[0].bankAmount, 0);
+    });
+
+    test('deposits and withdraws exchange currencies to and from the bank', () => {
+      const cur = ecoRepo.createExchangeCurrency(guildId, {
+        name: 'Ouro Stark',
+        code: 'ouro_bank',
+        symbol: '🪙',
+        rate: 500000
+      });
+
+      // User starts with 5x Ouro Stark in wallet
+      ecoRepo.addUserCurrencyBalance(guildId, userId, cur.id, 5);
+      assert.equal(ecoRepo.getUserCurrencyBalance(guildId, userId, cur.id), 5);
+      assert.equal(ecoRepo.getUserCurrencyBankBalance(guildId, userId, cur.id), 0);
+
+      // Deposit 2x Ouro Stark into bank via depositExchangeCurrency
+      const depRes = ecoService.depositExchangeCurrency(guildId, userId, 'ouro_bank', 2);
+      assert.equal(depRes.isCurrency, true);
+      assert.equal(depRes.amount, 2);
+      assert.equal(depRes.walletUnits, 3);
+      assert.equal(depRes.bankUnits, 2);
+
+      // Check repository balances
+      assert.equal(ecoRepo.getUserCurrencyBalance(guildId, userId, cur.id), 3);
+      assert.equal(ecoRepo.getUserCurrencyBankBalance(guildId, userId, cur.id), 2);
+      assert.equal(ecoRepo.getUserCurrencyTotalBalance(guildId, userId, cur.id), 5);
+
+      // Deposit all remaining (3) via deposit(guildId, userId, 'all', currencyCode)
+      const depAll = ecoService.deposit(guildId, userId, 'all', 'ouro_bank');
+      assert.equal(depAll.isCurrency, true);
+      assert.equal(depAll.amount, 3);
+      assert.equal(depAll.walletUnits, 0);
+      assert.equal(depAll.bankUnits, 5);
+
+      // Verify balance reflects bank currencies
+      const bal = ecoService.getBalance(guildId, userId);
+      assert.equal(bal.bankExchangeAssetsValue >= 2500000, true);
+      const userCur = bal.userCurrencies.find(c => c.code === 'ouro_bank');
+      assert.ok(userCur);
+      assert.equal(userCur.amount, 0);
+      assert.equal(userCur.bankAmount, 5);
+      assert.equal(userCur.bankValue, 2500000);
+
+      // Withdraw 2x Ouro Stark back to wallet via withdrawExchangeCurrency
+      const withRes = ecoService.withdrawExchangeCurrency(guildId, userId, 'ouro_bank', 2);
+      assert.equal(withRes.isCurrency, true);
+      assert.equal(withRes.amount, 2);
+      assert.equal(withRes.walletUnits, 2);
+      assert.equal(withRes.bankUnits, 3);
+
+      // Withdraw remaining (3) via withdraw(guildId, userId, 'all', currencyCode)
+      const withAll = ecoService.withdraw(guildId, userId, 'all', 'ouro_bank');
+      assert.equal(withAll.isCurrency, true);
+      assert.equal(withAll.amount, 3);
+      assert.equal(withAll.walletUnits, 5);
+      assert.equal(withAll.bankUnits, 0);
     });
   });
 });
