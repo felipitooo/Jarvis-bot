@@ -235,6 +235,11 @@ class WebPanelService {
         const activePrefix = cfg.prefix || '+';
         const auditChan = cfg.audit?.channelId || cfg.moderation?.logChannelId || '';
 
+        const live = mb.activeInstances?.get(botId);
+        const resolvedAvatar = (typeof live?.client?.user?.displayAvatarURL === 'function')
+          ? live.client.user.displayAvatarURL({ extension: 'png', size: 128 })
+          : (inst.avatarUrl || inst.config?.theme?.avatarUrl || ('/api/bot/avatar?botId=' + encodeURIComponent(botId)));
+
         return {
           guildId,
           guildName: botGuild?.name || 'Servidor',
@@ -244,7 +249,7 @@ class WebPanelService {
           prefix: activePrefix,
           serverPrefix: activePrefix,
           prefixlessMode: Boolean(cfg.commands?.prefixlessMode),
-          botAvatarUrl: inst.client?.user?.displayAvatarURL ? inst.client.user.displayAvatarURL({ extension: 'png', size: 128 }) : 'https://cdn.discordapp.com/embed/avatars/0.png',
+          botAvatarUrl: resolvedAvatar,
           channels,
           roles,
           settings: {
@@ -2191,7 +2196,7 @@ class WebPanelService {
     };
   }
 
-  async getMemberDetails(session, guildId, userId, botGuild = null) {
+  async getMemberDetails(session, guildId, userId, botGuild = null, botId = null) {
     this.verifyGuildAccess(session, guildId);
     const { memoryRepo, modRepo, economyRepo, xpRepo } = this.services;
 
@@ -2219,7 +2224,7 @@ class WebPanelService {
     }
     const warns = modRepo?.getMemberWarns ? modRepo.getMemberWarns(guildId, userId) : [];
     const memories = memoryRepo?.listUserMemories ? memoryRepo.listUserMemories(guildId, userId) : [];
-    const dmSession = dmTracker.getSession(userId, guildId);
+    const dmSession = dmTracker.getSession(userId, guildId, botId);
 
     const roles = [];
     if (member?.roles?.cache) {

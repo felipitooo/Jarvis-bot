@@ -1699,6 +1699,11 @@ function renderDashboardHtml({
       background: rgba(255, 255, 255, 0.04) !important;
     }
 
+    .mmodal-tab-btn.is-hidden,
+    button.mmodal-tab-btn.is-hidden {
+      display: none !important;
+    }
+
     .subtab-btn.active,
     .mmodal-tab-btn.active,
     button.mmodal-tab-btn.active {
@@ -6820,7 +6825,36 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
               <small style="color: var(--text-subtle); font-size: 0.75rem;">Separados por vírgula. Responde sem precisar de @menção.</small>
             </div>
           </div>
-          <button type="button" class="primary-btn" id="saveBotIdentityBtn" style="margin-top: 0.75rem; font-weight: 700;">💾 Salvar Identidade & Prefixo</button>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 0.5rem;">
+            <div class="form-group">
+              <label>Status no Discord</label>
+              <select id="cfgPresenceStatus">
+                <option value="online">🟢 Online</option>
+                <option value="idle">🟡 Ausente (Idle)</option>
+                <option value="dnd">🔴 Não Perturbe (DND)</option>
+                <option value="invisible">⚪ Invisível</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Tipo de Atividade</label>
+              <select id="cfgPresenceActivityType">
+                <option value="Custom">💬 Personalizado</option>
+                <option value="Playing">🎮 Jogando</option>
+                <option value="Listening">🎧 Ouvindo</option>
+                <option value="Watching">📺 Assistindo</option>
+                <option value="Competing">🏆 Competindo</option>
+                <option value="Streaming">🔴 Transmitindo (Live)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-top: 0.5rem;">
+            <label>Texto da Mensagem de Atividade</label>
+            <input type="text" id="cfgPresenceActivityText" placeholder="Ex: Nala | +ajuda">
+          </div>
+
+          <button type="button" class="primary-btn" id="saveBotIdentityBtn" style="margin-top: 0.75rem; font-weight: 700;">💾 Salvar Identidade, Prefixo & Status</button>
         </div>
 
         <!-- 2. PERSONALIDADE DA IA (SYSTEM PROMPT) -->
@@ -7232,10 +7266,27 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
     } catch (e) {}
     window.currentActiveBotId = initialActiveBotId;
     if (initialActiveBotId !== 'PRIMARY') {
+      const avatarUrl = '/api/bot/avatar?botId=' + encodeURIComponent(initialActiveBotId);
       const sAv = document.getElementById('sidebarBotAvatar');
-      if (sAv) {
-        sAv.src = '/api/bot/avatar?botId=' + encodeURIComponent(initialActiveBotId);
+      if (sAv) sAv.src = avatarUrl;
+      const tAv = document.getElementById('topHeaderBotAvatar');
+      if (tAv) tAv.src = avatarUrl;
+      const storedName = localStorage.getItem('jarvis_active_bot_name');
+      if (storedName) {
+        const hName = document.getElementById('headerAiName');
+        if (hName) hName.innerText = storedName;
+        const uBannerName = document.getElementById('universalBannerBotName');
+        if (uBannerName) uBannerName.innerText = storedName;
       }
+      try {
+        const cachedMods = localStorage.getItem('jarvis_cached_bot_modules_' + initialActiveBotId);
+        if (cachedMods) {
+          window.botModulesMap = window.botModulesMap || {};
+          window.botModulesMap[initialActiveBotId] = JSON.parse(cachedMods);
+        }
+      } catch (e) {}
+      applyBotTheme(initialActiveBotId);
+      if (typeof syncSidebarModuleVisibility === 'function') syncSidebarModuleVisibility();
     }
 
     function escapeHtml(str) {
@@ -8378,6 +8429,13 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           allModuleDefinitions = mods.guildModules.definitions || [];
           currentGuildModulesState = mods.guildModules.settings || {};
           if (typeof renderModulesGrid === 'function') renderModulesGrid(document.getElementById('moduleSearchInput')?.value || '');
+          const targetBot = window.currentActiveBotId || 'PRIMARY';
+          if (targetBot !== 'PRIMARY') {
+            window.botModulesMap = window.botModulesMap || {};
+            window.botModulesMap[targetBot] = mods.guildModules.settings || {};
+            try { localStorage.setItem('jarvis_cached_bot_modules_' + targetBot, JSON.stringify(mods.guildModules.settings || {})); } catch (e) {}
+          }
+          if (typeof syncSidebarModuleVisibility === 'function') syncSidebarModuleVisibility();
         } else if (typeof loadGuildModules === 'function') {
           loadGuildModules();
         }
@@ -12024,7 +12082,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         'msub-verbal-warn': ['moderation'],
         'msub-punish': ['moderation'],
         'msub-roles': [],
-        'msub-xp': ['xp'],
+        'msub-xp': ['xp', 'voice_xp'],
         'msub-memory': ['ai_memory'],
         'msub-dm': []
       };
@@ -12035,10 +12093,14 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         const subId = btn.getAttribute('data-subtab');
         const reqs = subtabRequirements[subId] || [];
         const isVisible = reqs.length === 0 || reqs.some(m => isModuleActiveForCurrentBot(m));
-        btn.style.display = isVisible ? '' : 'none';
         if (isVisible) {
+          btn.style.removeProperty('display');
+          btn.classList.remove('is-hidden');
           if (!firstVisibleSubtab) firstVisibleSubtab = subId;
           if (subId === lastModalSubtab) activeSubtabStillVisible = true;
+        } else {
+          btn.style.setProperty('display', 'none', 'important');
+          btn.classList.add('is-hidden');
         }
       });
 
@@ -12087,7 +12149,9 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
     async function loadMemberFullDetails(userId) {
       if (!currentGuildId || !userId) return;
       try {
-        const res = await fetch('/api/guilds/' + currentGuildId + '/members/' + userId + '/details', { credentials: 'same-origin' });
+        const targetBot = window.currentActiveBotId || 'PRIMARY';
+        const url = '/api/guilds/' + currentGuildId + '/members/' + userId + '/details' + (targetBot !== 'PRIMARY' ? '?botId=' + encodeURIComponent(targetBot) : '');
+        const res = await fetch(url, { headers: { 'X-Bot-Id': targetBot }, credentials: 'same-origin' });
         if (!res.ok) return;
         const data = await res.json();
 
@@ -12348,7 +12412,9 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
     async function refreshDmTracker() {
       if (!currentGuildId || !selectedMember) return;
       try {
-        const res = await fetch('/api/guilds/' + currentGuildId + '/members/' + selectedMember.id + '/dm', { credentials: 'same-origin' });
+        const targetBot = window.currentActiveBotId || 'PRIMARY';
+        const url = '/api/guilds/' + currentGuildId + '/members/' + selectedMember.id + '/dm' + (targetBot !== 'PRIMARY' ? '?botId=' + encodeURIComponent(targetBot) : '');
+        const res = await fetch(url, { headers: { 'X-Bot-Id': targetBot }, credentials: 'same-origin' });
         if (!res.ok) return;
         const data = await res.json();
 
@@ -13603,10 +13669,13 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
     function populateBotConfigForm(cfg) {
       if (!cfg) return;
 
-      // 1. Identity
+      // 1. Identity & Presence
       if (document.getElementById('cfgBotName')) document.getElementById('cfgBotName').value = cfg.identity?.name || '';
       if (document.getElementById('cfgBotPrefix')) document.getElementById('cfgBotPrefix').value = cfg.identity?.defaultPrefix || '+';
       if (document.getElementById('cfgTriggerNames')) document.getElementById('cfgTriggerNames').value = (cfg.identity?.triggerNames || []).join(', ');
+      if (document.getElementById('cfgPresenceStatus')) document.getElementById('cfgPresenceStatus').value = cfg.presence?.status || 'online';
+      if (document.getElementById('cfgPresenceActivityType')) document.getElementById('cfgPresenceActivityType').value = cfg.presence?.activityType || 'Custom';
+      if (document.getElementById('cfgPresenceActivityText')) document.getElementById('cfgPresenceActivityText').value = cfg.presence?.activityText !== undefined ? cfg.presence.activityText : '';
 
       // 2. AI & Persona
       if (document.getElementById('cfgAiRole')) document.getElementById('cfgAiRole').value = cfg.ai?.persona?.role || '';
@@ -13978,6 +14047,71 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       }
     }
 
+    // Save Bot Identity, Prefix & Presence without resetting themes
+    async function saveBotIdentityAndPresence() {
+      const btn = document.getElementById('saveBotIdentityBtn');
+      if (btn) { btn.disabled = true; btn.innerText = '💾 Salvando...'; }
+
+      const targetBot = window.currentActiveBotId || 'PRIMARY';
+      const botName = document.getElementById('cfgBotName')?.value?.trim() || 'J.A.R.V.I.S.';
+      const prefix = document.getElementById('cfgBotPrefix')?.value?.trim() || '+';
+      const triggerNames = (document.getElementById('cfgTriggerNames')?.value || '')
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean);
+
+      const presenceStatus = document.getElementById('cfgPresenceStatus')?.value || 'online';
+      const presenceActivityType = document.getElementById('cfgPresenceActivityType')?.value || 'Custom';
+      const presenceActivityText = document.getElementById('cfgPresenceActivityText')?.value ?? '';
+
+      const payload = {
+        botId: targetBot,
+        identity: {
+          name: botName,
+          defaultPrefix: prefix,
+          triggerNames
+        },
+        presence: {
+          status: presenceStatus,
+          activityType: presenceActivityType,
+          activityText: presenceActivityText
+        }
+      };
+
+      try {
+        const res = await authFetch('/api/bot/config' + (targetBot !== 'PRIMARY' ? '?botId=' + encodeURIComponent(targetBot) : ''), {
+          method: 'POST',
+          headers: { 'X-Bot-Id': targetBot },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.success) {
+          showToast('Identidade, prefixo (' + prefix + ') e status salvos com sucesso!', 'success', 'Identidade Salva');
+
+          if (window.botNamesMap) window.botNamesMap[targetBot] = botName;
+          try { localStorage.setItem('jarvis_active_bot_name', botName); } catch (e) {}
+
+          const hName = document.getElementById('headerAiName');
+          if (hName) hName.innerText = botName;
+          const uBannerName = document.getElementById('universalBannerBotName');
+          if (uBannerName) uBannerName.innerText = botName;
+          const sPref = document.getElementById('serverPrefixInput');
+          if (sPref) sPref.value = prefix;
+          const cPref = document.getElementById('cfgBotPrefix');
+          if (cPref) cPref.value = prefix;
+
+          // Re-apply isolated theme for this bot so colors are never lost
+          applyBotTheme(targetBot);
+        } else {
+          showToast(data.error || 'Falha ao salvar identidade.', 'error', 'Erro ao Salvar');
+        }
+      } catch (err) {
+        showToast('Erro de conexão ao salvar identidade: ' + err.message, 'error', 'Erro de Rede');
+      } finally {
+        if (btn) { btn.disabled = false; btn.innerText = '💾 Salvar Identidade, Prefixo & Status'; }
+      }
+    }
+
     // Reset Bot Config Function
     async function resetBotConfigFromForm() {
       if (!confirm('Deseja realmente redefinir todas as configurações para os padrões originais de fábrica?')) {
@@ -14009,7 +14143,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
     const sBtnB = document.getElementById('saveGlobalConfigBtnBottom');
     if (sBtnB) sBtnB.addEventListener('click', saveBotConfigFromForm);
 
-    document.getElementById('saveBotIdentityBtn')?.addEventListener('click', saveBotConfigFromForm);
+    document.getElementById('saveBotIdentityBtn')?.addEventListener('click', saveBotIdentityAndPresence);
     document.getElementById('saveBotPersonaBtn')?.addEventListener('click', saveBotConfigFromForm);
     document.getElementById('saveBotThemeBtn')?.addEventListener('click', saveBotConfigFromForm);
 
@@ -14288,6 +14422,11 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           allModuleDefinitions = payload.definitions;
         }
         window.currentGuildModulesState = currentGuildModulesState = payload.settings || (payload.definitions ? {} : payload) || {};
+        if (targetBot !== 'PRIMARY') {
+          window.botModulesMap = window.botModulesMap || {};
+          window.botModulesMap[targetBot] = currentGuildModulesState;
+          try { localStorage.setItem('jarvis_cached_bot_modules_' + targetBot, JSON.stringify(currentGuildModulesState)); } catch (e) {}
+        }
 
         const badge = document.getElementById('moduleTargetBotBadge');
         if (badge) {
@@ -14454,9 +14593,8 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       'tab-casino': ['casino'],
       'tab-tickets': ['tickets'],
       'tab-reviews': ['reviews'],
-      'tab-identity': ['ai_chat'],
       'tab-aimemory': ['ai_memory'],
-      'tab-speak': ['ai_chat', 'automations'],
+      'tab-botspeak': ['automations', 'ai_chat'],
       'tab-customcommands': ['automations'],
       'tab-community': ['automations'],
       'tab-alerts': ['automations'],
@@ -14476,6 +14614,13 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         if (window.botAssignedModulesMap && window.botAssignedModulesMap[activeBot]) {
           return window.botAssignedModulesMap[activeBot].includes(modId);
         }
+        try {
+          const cachedMods = localStorage.getItem('jarvis_cached_bot_modules_' + activeBot);
+          if (cachedMods) {
+            const parsed = JSON.parse(cachedMods);
+            if (parsed && typeof parsed === 'object') return parsed[modId] === true;
+          }
+        } catch (e) {}
         return false;
       }
       const state = window.currentGuildModulesState || currentGuildModulesState;
@@ -14493,13 +14638,16 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         const reqs = TAB_MODULE_REQUIREMENTS[tabId];
         if (!reqs) {
           btn.style.removeProperty('display');
+          btn.classList.remove('is-hidden');
           return;
         }
         const isVisible = reqs.some(modId => isModuleActiveForCurrentBot(modId));
         if (isVisible) {
           btn.style.removeProperty('display');
+          btn.classList.remove('is-hidden');
         } else {
           btn.style.setProperty('display', 'none', 'important');
+          btn.classList.add('is-hidden');
         }
         if (!isVisible && currentTab === tabId) {
           activeTabIsHidden = true;
@@ -14514,9 +14662,12 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           let next = title.nextElementSibling;
           let hasVisibleChild = false;
           while (next && !next.classList.contains('menu-group-title')) {
-            if (next.classList.contains('nav-item') && next.style.display !== 'none') {
-              hasVisibleChild = true;
-              break;
+            if (next.classList.contains('nav-item')) {
+              const isHidden = next.style.display === 'none' || next.classList.contains('is-hidden') || (window.getComputedStyle && window.getComputedStyle(next).display === 'none');
+              if (!isHidden) {
+                hasVisibleChild = true;
+                break;
+              }
             }
             next = next.nextElementSibling;
           }
@@ -14616,6 +14767,11 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       }
 
       const botName = window.botNamesMap?.[botId] || (botId === 'PRIMARY' ? 'J.A.R.V.I.S. (Principal)' : botId);
+      const cleanBotName = (botName || 'J.A.R.V.I.S.').replace(' (Principal)', '');
+      try {
+        localStorage.setItem('jarvis_active_bot_name', cleanBotName);
+      } catch (e) {}
+
       const uBannerName = document.getElementById('universalBannerBotName');
       if (uBannerName) {
         uBannerName.innerText = botName;
@@ -14631,7 +14787,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       if (topAvatar) topAvatar.src = newAvatar;
       const headerAiName = document.getElementById('headerAiName');
       if (headerAiName) {
-        headerAiName.innerText = (botName || 'J.A.R.V.I.S.').replace(' (Principal)', '');
+        headerAiName.innerText = cleanBotName;
       }
 
       // Apply isolated theme for this bot
@@ -14716,6 +14872,10 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           window.botAvatarsMap[inst.id] = inst.avatarUrl || ('/api/bot/avatar?botId=' + encodeURIComponent(inst.id));
           window.botModulesMap[inst.id] = inst.config?.modules || {};
           window.botAssignedModulesMap[inst.id] = inst.assignedModules || [];
+          try {
+            localStorage.setItem('jarvis_cached_bot_modules_' + inst.id, JSON.stringify(inst.config?.modules || {}));
+            localStorage.setItem('jarvis_cached_bot_assigned_' + inst.id, JSON.stringify(inst.assignedModules || []));
+          } catch (e) {}
         }
 
         // Populate all 4 Bot Selectors (Top Header, Sidebar, Universal Tab Banner, Modules Hub)
@@ -14741,13 +14901,18 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
 
         const curActive = window.currentActiveBotId || 'PRIMARY';
         if (curActive !== 'PRIMARY') {
+          const resolvedAv = window.botAvatarsMap[curActive] || ('/api/bot/avatar?botId=' + encodeURIComponent(curActive));
           const sAv = document.getElementById('sidebarBotAvatar');
-          if (sAv && window.botAvatarsMap[curActive]) {
-            sAv.src = window.botAvatarsMap[curActive];
-          }
+          if (sAv) sAv.src = resolvedAv;
+          const tAv = document.getElementById('topHeaderBotAvatar');
+          if (tAv) tAv.src = resolvedAv;
           const hName = document.getElementById('headerAiName');
           if (hName && window.botNamesMap[curActive]) {
             hName.innerText = window.botNamesMap[curActive];
+          }
+          const uBannerName = document.getElementById('universalBannerBotName');
+          if (uBannerName && window.botNamesMap[curActive]) {
+            uBannerName.innerText = window.botNamesMap[curActive];
           }
           applyBotTheme(curActive);
         }

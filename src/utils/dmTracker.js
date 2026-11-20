@@ -178,7 +178,7 @@ class DmTracker {
    * @param {string} [guildId]
    * @returns {object|null}
    */
-  getSession(userId, guildId = null) {
+  getSession(userId, guildId = null, botId = null) {
     if (!userId) return null;
     const uid = String(userId);
     let session = this.sessions.get(uid);
@@ -198,6 +198,7 @@ class DmTracker {
               adminUsername: row.admin_username,
               sentText: row.sent_text,
               sentAt: row.sent_at,
+              botId: row.bot_id || 'PRIMARY',
               replies,
               maxReplies: row.max_replies || 2,
               status: row.status || 'waiting'
@@ -209,6 +210,9 @@ class DmTracker {
     }
 
     if (session && guildId && session.guildId && String(session.guildId) !== String(guildId)) {
+      return null;
+    }
+    if (session && botId && session.botId && botId !== 'all' && botId !== 'PRIMARY' && session.botId !== 'PRIMARY' && String(session.botId) !== String(botId)) {
       return null;
     }
 

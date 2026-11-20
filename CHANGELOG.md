@@ -5,6 +5,30 @@ Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [9.14.0] - 2026-11-20
+
+### Corrigido, Aprimorado & Adaptado ao Multi-Bot
+- **Isolamento Total de Temas Visuais por Bot (Zero Regressão para Tema Padrão):**
+  - Implementada função isolada `saveBotIdentityAndPresence()` para o botão `💾 Salvar Identidade, Prefixo & Status`.
+  - O salvamento de identidade e prefixo agora não toca nas propriedades de cores do tema, impedindo que o tema personalizado (ex: Veronica ouro/marrom, N.A.L.A ciano ou outro) reverta para o roxo/índigo (`#6366F1`) padrão do Jarvis.
+  - Cada bot possui agora seu próprio tema isolado armazenado em `jarvis_custom_theme_<botId>` e persistido na chave `theme.panel` de sua respectiva configuração no backend.
+- **Restauração e Integração dos Controles de Status Discord na Identidade:**
+  - Restaurados os campos de Presença no Discord no card de Identidade (`#cfgPresenceStatus`, `#cfgPresenceActivityType`, `#cfgPresenceActivityText`).
+  - Atualizado o endpoint `POST /api/bot/config` e `MultiBotManager.applyInstancePresence()` para atualizar o status e atividade em tempo real da instância ativa no Discord.
+  - A aba `Identidade & Presença` (`tab-identity`) foi desvinculada da dependência estrita do módulo `ai_chat`, garantindo acesso total às configurações de identidade e status para qualquer bot secundário.
+- **Ocultamento e Escopo Estrito de Sub-Abas no Modal de Membros (`#memberManageModal`):**
+  - As sub-abas `[ 📈 Nível & XP ]` e `[ 🧠 Memória IA ]` (bem como as abas de moderação `Timeout`, `Warn`, `Advertência Verbal`, `Ban & Kick`) agora verificam os módulos ativados para o bot atualmente selecionado no painel.
+  - Adicionada a classe `.is-hidden` com regra CSS `display: none !important` para sobrepor com prioridade absoluta qualquer estilo inline ou regra global.
+  - Ao abrir o modal, caso a aba ativa anterior não seja suportada pelo bot atual, o modal redireciona automaticamente para a primeira sub-aba válida disponível (ex: Cargos).
+- **Adaptação Completa do DM Tracker (PV & 2 Mensagens) para Instâncias Multi-Bot:**
+  - O rastreador de mensagens privadas (`dmTracker.getSession(userId, guildId, botId)`) agora suporta escopo por instância (`botId`), garantindo isolamento total entre os PVs do Jarvis e das instâncias secundárias (como N.A.L.A).
+  - Atualizados os endpoints `/api/guilds/:guildId/members/:userId/details` e `/api/guilds/:guildId/members/:userId/dm` para propagar o cabeçalho `X-Bot-Id` e query param `?botId=`.
+  - As funções `loadMemberFullDetails()` e `refreshDmTracker()` no frontend passam o bot ativo para sincronização precisa em tempo real.
+- **Sincronização Automática Imediata do Avatar e Nome nos Headers:**
+  - O avatar superior e da barra lateral (`#topHeaderBotAvatar` e `#sidebarBotAvatar`), além dos títulos de cabeçalho (`#headerAiName` e `#universalBannerBotName`), sincronizam instantaneamente no F5 através do cache local e do endpoint `/api/bot/avatar?botId=`.
+- **Limpeza e Despoluição da Aba Multi-Bot Manager (`tab-multibot`):**
+  - Confirmada a remoção das 24 abas redundantes que poluíam o gerenciador multi-bot, mantendo a aba limpa e focada exclusivamente no cadastro, monitoramento de instâncias e status da rede mesh.
+
 ## [9.13.0] - 2026-11-20
 
 ### Corrigido & Aprimorado

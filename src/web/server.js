@@ -595,6 +595,12 @@ class WebServer {
                 name: inst.name || inst.config?.aiName || baseConfig.identity?.name,
                 defaultPrefix: inst.config?.prefix || inst.config?.commands?.prefix || '+',
               },
+              presence: {
+                status: inst.config?.presenceStatus || 'online',
+                activityType: inst.config?.presenceActivityType || 'Custom',
+                activityText: inst.config?.presenceActivityText !== undefined ? inst.config.presenceActivityText : `${inst.name || 'Bot'} | ${inst.config?.prefix || '+'}ajuda`,
+                activityUrl: inst.config?.presenceActivityUrl || ''
+              },
               ai: {
                 ...baseConfig.ai,
                 model: inst.config?.aiModel || baseConfig.ai?.model,
@@ -610,7 +616,16 @@ class WebServer {
           }
         }
         const { botConfig } = require('../config/botConfig');
-        return this._sendJson(res, 200, botConfig.getConfig());
+        const primaryCfg = botConfig.getConfig();
+        if (!primaryCfg.presence) {
+          primaryCfg.presence = {
+            status: 'online',
+            activityType: 'Custom',
+            activityText: `${primaryCfg.identity?.name || 'J.A.R.V.I.S.'} | ${primaryCfg.identity?.defaultPrefix || '+'}ajuda`,
+            activityUrl: ''
+          };
+        }
+        return this._sendJson(res, 200, primaryCfg);
       }
 
       // POST /api/bot/config — Update universal configuration
@@ -635,6 +650,24 @@ class WebServer {
               cfg.commands = { ...(cfg.commands || {}), prefix: cfg.prefix };
               updates.prefix = cfg.prefix;
             }
+            if (body.presence && typeof body.presence === 'object') {
+              if (body.presence.status) {
+                cfg.presenceStatus = String(body.presence.status).trim();
+                updates.presenceStatus = cfg.presenceStatus;
+              }
+              if (body.presence.activityType) {
+                cfg.presenceActivityType = String(body.presence.activityType).trim();
+                updates.presenceActivityType = cfg.presenceActivityType;
+              }
+              if (body.presence.activityText !== undefined) {
+                cfg.presenceActivityText = String(body.presence.activityText).trim();
+                updates.presenceActivityText = cfg.presenceActivityText;
+              }
+              if (body.presence.activityUrl !== undefined) {
+                cfg.presenceActivityUrl = String(body.presence.activityUrl).trim();
+                updates.presenceActivityUrl = cfg.presenceActivityUrl;
+              }
+            }
             if (body.ai?.model) cfg.aiModel = body.ai.model;
             if (body.ai?.humorMode) cfg.humorMode = body.ai.humorMode;
             if (body.ai?.persona?.role) cfg.personaRole = body.ai.persona.role;
@@ -643,6 +676,9 @@ class WebServer {
             }
             updates.config = cfg;
             mb.updateInstance(targetBotId, updates);
+            if (body.presence) {
+              mb.applyInstancePresence(targetBotId, cfg, inst.name);
+            }
             return this._sendJson(res, 200, {
               success: true,
               message: `Configurações da instância "${inst.name}" salvas com sucesso!`,
@@ -679,6 +715,19 @@ class WebServer {
         // Update live Gemini model if available
         if (this.webPanelService?.services?.llmAdapter && updated.ai?.model) {
           this.webPanelService.services.llmAdapter.model = updated.ai.model;
+        }
+
+        // Update live Discord presence for Primary Bot if presence was passed
+        if (body.presence && typeof body.presence === 'object' && this.botClient) {
+          try {
+            const { applyBotPresence } = require('../utils/presenceHelper');
+            applyBotPresence(this.botClient, {
+              botStatus: body.presence.status || 'online',
+              activityType: body.presence.activityType || 'Custom',
+              activityName: body.presence.activityText || `${updated.identity?.name || 'J.A.R.V.I.S.'} | ${updated.identity?.defaultPrefix || '+'}ajuda`,
+              activityUrl: body.presence.activityUrl || ''
+            });
+          } catch {}
         }
 
         return this._sendJson(res, 200, {
@@ -964,7 +1013,8 @@ class WebServer {
         const memberDetailsMatch = subPath.match(/^\/members\/([a-zA-Z0-9_-]+)\/details$/);
         if (memberDetailsMatch && method === 'GET') {
           const targetUserId = memberDetailsMatch[1];
-          const details = await this.webPanelService.getMemberDetails(session, guildId, targetUserId, botGuild);
+          const targetBotId = req.headers['x-bot-id'] || parsedUrl.searchParams.get('botId') || null;
+          const details = await this.webPanelService.getMemberDetails(session, guildId, targetUserId, botGuild, targetBotId);
           return this._sendJson(res, 200, details);
         }
 
@@ -984,8 +1034,9 @@ class WebServer {
         const memberDmMatch = subPath.match(/^\/members\/([a-zA-Z0-9_-]+)\/dm$/);
         if (memberDmMatch && method === 'GET') {
           const targetUserId = memberDmMatch[1];
+          const targetBotId = req.headers['x-bot-id'] || parsedUrl.searchParams.get('botId') || null;
           const { dmTracker } = require('../utils/dmTracker');
-          const sessionData = dmTracker.getSession(targetUserId);
+          const sessionData = dmTracker.getSession(targetUserId, guildId, targetBotId);
           return this._sendJson(res, 200, { session: sessionData });
         }
 

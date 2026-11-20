@@ -144,6 +144,19 @@ function buildDefaultInstanceConfig(name = 'J.A.R.V.I.S.', assignedModules = nul
       debugMode: false,
       autoRestartOnCrash: true,
       memoryLimitMb: 512
+    },
+    theme: {
+      panel: {
+        primary: '#6366F1',
+        accent: '#38BDF8',
+        bgPage: '#0B0F19',
+        bgSurface: '#1E293B',
+        bgHeader: '#0F172A',
+        textMain: '#F8FAFC',
+        topbarBrand: '#38BDF8',
+        topbarActiveTitle: '#F8FAFC',
+        topbarBorder: 'rgba(255, 255, 255, 0.08)'
+      }
     }
   };
 }
@@ -339,7 +352,8 @@ class MultiBotManager {
       embeds: { ...defaults.embeds, ...safeJsonParse(cfgRow.embeds_config_json, {}) },
       permissions: { ...defaults.permissions, ...safeJsonParse(cfgRow.permissions_config_json, {}) },
       integrations: { ...defaults.integrations, ...safeJsonParse(cfgRow.integrations_config_json, {}) },
-      advanced: { ...defaults.advanced, ...safeJsonParse(cfgRow.advanced_config_json, {}) }
+      advanced: { ...defaults.advanced, ...safeJsonParse(cfgRow.advanced_config_json, {}) },
+      theme: safeJsonParse(cfgRow.advanced_config_json, {}).theme || defaults.theme
     };
   }
 
@@ -421,7 +435,7 @@ class MultiBotManager {
       embeds_config_json: JSON.stringify(cfg.embeds || {}),
       permissions_config_json: JSON.stringify(cfg.permissions || {}),
       integrations_config_json: JSON.stringify(cfg.integrations || {}),
-      advanced_config_json: JSON.stringify({ ...(cfg.advanced || {}), audit: cfg.audit || {} }),
+      advanced_config_json: JSON.stringify({ ...(cfg.advanced || {}), audit: cfg.audit || {}, theme: cfg.theme || {} }),
       updated_at: now
     };
 
