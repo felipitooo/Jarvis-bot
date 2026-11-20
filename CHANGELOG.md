@@ -5,6 +5,11 @@ Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [9.21.0] - 2026-11-20
+
+### Corrigido
+- Quando a Central de Ajuda esta desativada, o bot agora ignora `+ajuda`/`+help`/`+comandos` em silencio (sem enviar aviso no chat).
+
 ## [9.20.0] - 2026-11-20
 
 ### Corrigido & Aprimorado (Sincronização Imediata de Ajuda nos Bots & Correção de Contadores em Snapshots)

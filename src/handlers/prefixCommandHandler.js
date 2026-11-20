@@ -4771,14 +4771,8 @@ class PrefixCommandHandler {
           }
 
           if (helpConfig?.enabled === false) {
-            const { EmbedBuilder } = require('discord.js');
-            const disabledEmbed = new EmbedBuilder()
-              .setColor(0xED4245)
-              .setTitle('⚠️ Central de Ajuda Desativada')
-              .setDescription(`A central de ajuda deste bot foi temporariamente desativada pela administração.`)
-              .setFooter({ text: `${aiName}` });
-            await message.reply({ embeds: [disabledEmbed] });
-            return true;
+            // Help disabled: stay completely silent (do NOT speak in chat)
+            return false;
           }
 
           const payload = buildHelpResponse({

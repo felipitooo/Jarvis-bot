@@ -277,11 +277,40 @@ describe('Traditional Prefix Commands (+work, +slut, +bank, +ban, +daily, etc.)'
       }
     };
 
-    const handled = await prefixCommandHandler.handle(mockMessage, eventContext);
+    const { botConfig: helpBotConfig } = require('../src/config/botConfig');
+    const originalGetConfig = helpBotConfig.getConfig.bind(helpBotConfig);
+    helpBotConfig.getConfig = () => ({ ...originalGetConfig(), help: { enabled: true } });
+    let handled;
+    try {
+      handled = await prefixCommandHandler.handle(mockMessage, eventContext);
+    } finally {
+      helpBotConfig.getConfig = originalGetConfig;
+    }
     assert.equal(handled, true);
     assert.ok(replyPayload);
     assert.ok(replyPayload.embeds && replyPayload.embeds.length === 1);
     assert.ok(replyPayload.embeds[0].data.title.includes('Central de Comandos'));
+  });
+
+  test('+ajuda stays silent when help is disabled', async () => {
+    let replied = false;
+    const mockMessage = {
+      content: '+ajuda',
+      guild: { id: 'g_prefix_1' },
+      author: { id: 'u_helper_1' },
+      member: { permissions: { has: () => false } },
+      reply: async () => { replied = true; }
+    };
+    const { botConfig: helpBotConfig } = require('../src/config/botConfig');
+    const originalGetConfig = helpBotConfig.getConfig.bind(helpBotConfig);
+    helpBotConfig.getConfig = () => ({ ...originalGetConfig(), help: { enabled: false } });
+    try {
+      const handled = await prefixCommandHandler.handle(mockMessage, eventContext);
+      assert.equal(handled, false);
+      assert.equal(replied, false);
+    } finally {
+      helpBotConfig.getConfig = originalGetConfig;
+    }
   });
 
   test('+crime deducts from bank when wallet is empty and does not fine 0', async () => {
