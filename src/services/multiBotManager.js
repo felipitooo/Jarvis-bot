@@ -794,7 +794,7 @@ class MultiBotManager {
     if (!live || !live.client || !live.client.user) return false;
 
     const inst = this.getInstance(botId);
-    const cfg = live.config || inst?.config || this.getInstanceConfig(botId);
+    const cfg = inst?.config || live.config || this.getInstanceConfig(botId);
     const token = live.token || inst?.token;
     const clientId = live.client.user.id;
     const botName = inst?.name || cfg?.aiName || live.client.user.username;

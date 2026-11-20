@@ -247,10 +247,20 @@ class WebPanelService {
           ? effectiveGuild.iconURL({ extension: 'png', size: 128 })
           : (effectiveGuild?.icon ? `https://cdn.discordapp.com/icons/${effectiveGuild.id}/${effectiveGuild.icon}.png?size=128` : 'https://cdn.discordapp.com/embed/avatars/0.png');
 
+        let resolvedMemberCount = effectiveGuild?.memberCount || 0;
+        if (resolvedMemberCount <= 0) {
+          const altGuild = (botGuild && (botGuild.memberCount || 0) > 0)
+            ? botGuild
+            : (this.botClient?.guilds?.cache?.get(guildId) || null);
+          if (altGuild && (altGuild.memberCount || 0) > 0) {
+            resolvedMemberCount = altGuild.memberCount;
+          }
+        }
+
         return {
           guildId,
           guildName: effectiveGuild?.name || 'Servidor',
-          memberCount: effectiveGuild?.memberCount || 0,
+          memberCount: resolvedMemberCount,
           guildIconUrl,
           aiDisplayName: activeAiName,
           activeBotId: botId,
@@ -449,6 +459,7 @@ class WebPanelService {
             })),
             socialAlerts: (this.services.socialAlertRepo || this.services.socialAlertsRepo ? (this.services.socialAlertRepo || this.services.socialAlertsRepo).listAlerts(guildId) : []) || [],
             tempbans: this.services.modRepo ? this.services.modRepo.getActiveTempBans(guildId) : [],
+            backups: this.services.backupSecurityService ? this.services.backupSecurityService.listBackups(guildId) : [],
             guildModules: {
               definitions: MODULE_DEFINITIONS,
               settings: cfg.modules || {}
@@ -1254,9 +1265,6 @@ class WebPanelService {
             if (!cfg.commands) cfg.commands = {};
             cfg.commands.help = { ...(cfg.commands.help || {}), ...updates };
             mb.updateInstance(botId, { config: cfg });
-            if (updates.enabled !== undefined) {
-              mb.deployInstanceSlashCommands(botId).catch(() => {});
-            }
             return { module: 'help', config: cfg.help };
           }
           case 'anti_bot_scam':
@@ -1988,7 +1996,22 @@ class WebPanelService {
         const { backupSecurityService } = this.services;
         if (!backupSecurityService) throw new Error('Serviço de backups indisponível.');
         if (updates.action === 'CREATE' || updates.create) {
-          const guild = this.botClient?.guilds?.cache?.get(guildId) || { id: guildId, name: 'Servidor', roles: { cache: new Map() }, channels: { cache: new Map() } };
+          let guild = this.botClient?.guilds?.cache?.get(guildId);
+          if (!guild || (guild.channels?.cache?.size || 0) === 0) {
+            const mb = this.services?.multiBotManager;
+            if (mb?.activeInstances) {
+              for (const [, inst] of mb.activeInstances) {
+                const g = inst.client?.guilds?.cache?.get(guildId);
+                if (g && (g.channels?.cache?.size || 0) > 0) {
+                  guild = g;
+                  break;
+                }
+              }
+            }
+          }
+          if (!guild) {
+            guild = { id: guildId, name: 'Servidor', roles: { cache: new Map() }, channels: { cache: new Map() } };
+          }
           backupSecurityService.createBackup(guild, updates.name || `backup_${Date.now()}`, session.userId);
         } else if (updates.action === 'DELETE' || updates.delete) {
           if (backupSecurityService.backupRepo) {

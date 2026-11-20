@@ -1033,7 +1033,9 @@ module.exports = {
 
         if (customId === 'help_category_select') {
           const selected = values[0];
-          const aiName = context.identityService?.getDisplayName(guild.id) || 'Jarvis';
+          const aiName = (context?.botInstanceId && (context?.botInstanceName || interaction.client?.user?.username || context?.multiBotManager?.getInstance?.(context.botInstanceId)?.name))
+            ? (context?.botInstanceName || interaction.client?.user?.username || context?.multiBotManager?.getInstance?.(context.botInstanceId)?.name)
+            : (context.identityService?.getDisplayName(guild.id) || 'Jarvis');
           const { buildHelpResponse } = require('../utils/helpMenuHelper');
           const botAvatarUrl = interaction.client.user?.displayAvatarURL
             ? interaction.client.user.displayAvatarURL({ extension: 'png', size: 128 })

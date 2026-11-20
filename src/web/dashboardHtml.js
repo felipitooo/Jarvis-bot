@@ -12107,8 +12107,8 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         return '<tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">' +
           '<td style="padding: 0.65rem 0.85rem; color: var(--text-muted); font-size: 0.78rem;">#' + (b.backup_id || b.id || 'N/A') + '</td>' +
           '<td style="padding: 0.65rem 0.85rem; font-weight: 700; color: #38bdf8;">' + (b.backup_name || b.name || 'Snapshot') + '</td>' +
-          '<td style="padding: 0.65rem 0.85rem; color: var(--text-muted);">' + (b.channels_count || (b.data?.channels?.length) || 0) + ' canais</td>' +
-          '<td style="padding: 0.65rem 0.85rem; color: var(--text-muted);">' + (b.roles_count || (b.data?.roles?.length) || 0) + ' cargos</td>' +
+          '<td style="padding: 0.65rem 0.85rem; color: var(--text-muted);">' + (b.channels_count !== undefined ? b.channels_count : ((b.counts?.channels) ?? (b.data?.channels?.length) ?? 0)) + ' canais</td>' +
+          '<td style="padding: 0.65rem 0.85rem; color: var(--text-muted);">' + (b.roles_count !== undefined ? b.roles_count : ((b.counts?.roles) ?? (b.data?.roles?.length) ?? 0)) + ' cargos</td>' +
           '<td style="padding: 0.65rem 0.85rem; color: var(--text-muted); font-size: 0.8rem;">' + (b.created_by || 'Admin') + '</td>' +
           '<td style="padding: 0.65rem 0.85rem; color: var(--text-muted); font-size: 0.8rem;">' + createdDate + '</td>' +
           '<td style="padding: 0.65rem 0.85rem; text-align: right;">' +
@@ -14732,6 +14732,56 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       }
     }
 
+    // Saves Help Menu configuration individually for the active bot
+    async function saveHelpConfig() {
+      const btn = document.getElementById('saveHelpConfigBtn');
+      if (btn) { btn.disabled = true; btn.innerText = '💾 Salvando Ajuda...'; }
+
+      const targetBot = window.currentActiveBotId || 'PRIMARY';
+      const isHelpEnabled = document.getElementById('cfgHelpEnabled') ? document.getElementById('cfgHelpEnabled').checked : true;
+
+      const helpPayload = {
+        enabled: isHelpEnabled,
+        title: document.getElementById('cfgHelpTitle')?.value?.trim() || '',
+        description: document.getElementById('cfgHelpDescription')?.value || '',
+        footer: document.getElementById('cfgHelpFooter')?.value?.trim() || '',
+        color: document.getElementById('cfgHelpColor')?.value?.trim() || document.getElementById('cfgHelpColorText')?.value?.trim() || '#5865F2',
+        thumbnailUrl: document.getElementById('cfgHelpThumbnail')?.value?.trim() || '',
+        categoryEmojis: {
+          home: document.getElementById('cfgHelpEmoji_home')?.value?.trim() || '🏠',
+          economy: document.getElementById('cfgHelpEmoji_economy')?.value?.trim() || '💼',
+          casino: document.getElementById('cfgHelpEmoji_casino')?.value?.trim() || '🎰',
+          music: document.getElementById('cfgHelpEmoji_music')?.value?.trim() || '🎵',
+          moderation: document.getElementById('cfgHelpEmoji_moderation')?.value?.trim() || '🛡️',
+          xp: document.getElementById('cfgHelpEmoji_xp')?.value?.trim() || '🎖️',
+          fun: document.getElementById('cfgHelpEmoji_fun')?.value?.trim() || '🎉',
+          tickets: document.getElementById('cfgHelpEmoji_tickets')?.value?.trim() || '🎫',
+          admin: document.getElementById('cfgHelpEmoji_admin')?.value?.trim() || '⚙️'
+        }
+      };
+
+      try {
+        const res = await authFetch('/api/bot/config' + (targetBot !== 'PRIMARY' ? '?botId=' + encodeURIComponent(targetBot) : ''), {
+          method: 'POST',
+          headers: { 'X-Bot-Id': targetBot },
+          body: JSON.stringify({
+            botId: targetBot,
+            help: helpPayload
+          })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.success) {
+          showToast('Central de ajuda ' + (isHelpEnabled ? 'ativada' : 'desativada') + ' e customizações salvas com sucesso!', 'success', 'Ajuda Salva!');
+        } else {
+          showToast(data.error || 'Falha ao salvar configurações de ajuda.', 'error', 'Erro ao Salvar');
+        }
+      } catch (err) {
+        showToast('Erro de conexão ao salvar ajuda: ' + err.message, 'error', 'Erro');
+      } finally {
+        if (btn) { btn.disabled = false; btn.innerText = '💾 Salvar Ajuda'; }
+      }
+    }
+
     // Reset Bot Config Function
     async function resetBotConfigFromForm() {
       if (!confirm('Deseja realmente redefinir todas as configurações para os padrões originais de fábrica?')) {
@@ -14766,6 +14816,8 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
     document.getElementById('saveBotIdentityBtn')?.addEventListener('click', saveBotIdentityAndPresence);
     document.getElementById('saveBotPersonaBtn')?.addEventListener('click', saveBotPersonaOnly);
     document.getElementById('saveBotThemeBtn')?.addEventListener('click', saveBotThemeOnly);
+    document.getElementById('saveHelpConfigBtn')?.addEventListener('click', saveHelpConfig);
+    document.getElementById('cfgHelpEnabled')?.addEventListener('change', saveHelpConfig);
 
     const rBtn = document.getElementById('resetConfigBtn');
     if (rBtn) rBtn.addEventListener('click', resetBotConfigFromForm);

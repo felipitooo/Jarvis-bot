@@ -5,6 +5,20 @@ Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [9.20.0] - 2026-11-20
+
+### Corrigido & Aprimorado (Sincronização Imediata de Ajuda nos Bots & Correção de Contadores em Snapshots)
+- **Sincronização Instantânea do Comando `/ajuda` no Discord ao Ativar/Desativar:**
+  - Corrigida a propagação para a API do Discord ao alternar a Central de Ajuda (`#cfgHelpEnabled` e botão `#saveHelpConfigBtn`), garantindo deploy atômico imediato de comandos slash (`/ajuda` adicionado quando ativo e removido quando desativado).
+  - Eliminadas condições de corrida entre chamadas concorrentes de deploy no `server.js` e `multiBotManager.js`.
+  - Atualizado o evento de gateway `ready.js` para respeitar a configuração persistida de ativação da ajuda (`isHelpEnabled`), evitando restauração indesejada no Discord ao reconectar.
+  - O comando `/ajuda` e interações de menu (`help_category_select`) agora resolvem com precisão o nome e avatar da instância ativa (ex: `N.A.L.A` em vez de hardcoded `Jarvis`).
+- **Correção dos Contadores de Canais e Cargos em Backups/Snapshots Estruturais:**
+  - Corrigido o `backupRepository.listBackups()` para extrair e calcular dinamicamente a contagem real de canais (`channels_count`) e cargos (`roles_count`) a partir de `structure_json`.
+  - Atualizada a tabela de snapshots no painel web para renderizar perfeitamente as contagens existentes (ex: Snapshot #6 exibindo `54 canais` e `52 cargos` em vez de `0 canais | 0 cargos`).
+  - Adicionado fallback completo para snapshots e contadores de membros quando uma instância secundária como N.A.L.A estiver selecionada no painel.
+- **Testes Unitários:** 406/406 testes aprovados com 100% de sucesso.
+
 ## [9.19.0] - 2026-11-20
 
 ### Adicionado (Central de Comandos e Ajuda Totalmente Customizável & Ativação Individual por Bot)

@@ -75,6 +75,7 @@ module.exports = {
         let allowedModules = null;
         let instName = null;
 
+        let isHelpEnabled = true;
         if (context?.botInstanceId) {
           instName = context.botInstanceName || client.user?.username || defaultName;
           const instCfg = context.multiBotManager?.getInstanceConfig?.(context.botInstanceId, instName) || context.botInstanceConfig;
@@ -85,10 +86,18 @@ module.exports = {
           } else if (Array.isArray(context.botInstanceAssignedModules)) {
             allowedModules = context.botInstanceAssignedModules;
           }
+          if (instCfg?.commands?.help?.enabled !== undefined) {
+            isHelpEnabled = instCfg.commands.help.enabled !== false;
+          } else if (instCfg?.help?.enabled !== undefined) {
+            isHelpEnabled = instCfg.help.enabled !== false;
+          }
+        } else {
+          const { botConfig } = require('../config/botConfig');
+          isHelpEnabled = botConfig.getConfig()?.help?.enabled !== false;
         }
 
-        readyLogger.info(`Deploying application (/) slash commands to Discord for ${client.user.tag} (${guildIds.length} guilds, modules: ${allowedModules ? allowedModules.join(', ') : 'PER-GUILD DYNAMIC'})...`);
-        await commandRegistry.deployCommands(activeToken, client.user.id, guildIds, allowedModules, instName, context?.guildModuleService);
+        readyLogger.info(`Deploying application (/) slash commands to Discord for ${client.user.tag} (${guildIds.length} guilds, modules: ${allowedModules ? allowedModules.join(', ') : 'PER-GUILD DYNAMIC'}, help: ${isHelpEnabled})...`);
+        await commandRegistry.deployCommands(activeToken, client.user.id, guildIds, allowedModules, instName, context?.guildModuleService, isHelpEnabled);
         readyLogger.info(`All slash commands deployed successfully to Discord for ${client.user.tag}!`);
       } catch (deployErr) {
         readyLogger.warn(`Slash commands deployment skipped or failed for ${client.user?.tag || 'bot'}: ${deployErr.message}`);

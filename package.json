@@ -1,7 +1,7 @@
 {
   "name": "jarvis-discord-bot",
-  "version": "9.19.0",
-  "description": "Unified Modular Discord Bot (Jarvis) - Production Release v9.18.0: Per-Guild Dynamic Slash Command Module Filtering for Primary Bot & Instant Panel Synchronization",
+  "version": "9.20.0",
+  "description": "Unified Modular Discord Bot (Jarvis) - Production Release v9.20.0: Help Menu Toggle/Edit Synchronization for All Bots & Snapshot Channel/Role Counters",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",

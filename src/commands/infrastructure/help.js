@@ -28,7 +28,9 @@ module.exports = {
    */
   async execute(interaction, context) {
     const { identityService, multiBotManager, botInstanceId } = context || {};
-    const aiName = identityService?.getDisplayName(interaction.guildId) || 'Jarvis';
+    const aiName = (botInstanceId && (context?.botInstanceName || interaction.client?.user?.username || multiBotManager?.getInstance?.(botInstanceId)?.name))
+      ? (context?.botInstanceName || interaction.client?.user?.username || multiBotManager?.getInstance?.(botInstanceId)?.name)
+      : (identityService?.getDisplayName(interaction.guildId) || 'Jarvis');
     const category = interaction.options.getString('categoria') || 'home';
     const botAvatarUrl = interaction.client?.user?.displayAvatarURL
       ? interaction.client.user.displayAvatarURL({ extension: 'png', size: 128 })

@@ -29,10 +29,34 @@ class BackupRepository {
   }
 
   listBackups(guildId) {
-    return this.db.all(
-      'SELECT id, guild_id, backup_name, created_by, checksum, created_at FROM guild_backups WHERE guild_id = ? ORDER BY id DESC',
+    const rows = this.db.all(
+      'SELECT id, guild_id, backup_name, created_by, checksum, structure_json, created_at FROM guild_backups WHERE guild_id = ? ORDER BY id DESC',
       [guildId]
-    );
+    ) || [];
+
+    return rows.map(r => {
+      let channelsCount = 0;
+      let rolesCount = 0;
+      try {
+        if (r.structure_json) {
+          const parsed = JSON.parse(r.structure_json);
+          channelsCount = parsed.counts?.channels ?? (Array.isArray(parsed.channels) ? parsed.channels.length : 0);
+          rolesCount = parsed.counts?.roles ?? (Array.isArray(parsed.roles) ? parsed.roles.length : 0);
+        }
+      } catch {}
+      return {
+        id: r.id,
+        backup_id: r.id,
+        guild_id: r.guild_id,
+        backup_name: r.backup_name,
+        name: r.backup_name,
+        created_by: r.created_by,
+        checksum: r.checksum,
+        channels_count: channelsCount,
+        roles_count: rolesCount,
+        created_at: r.created_at
+      };
+    });
   }
 
   deleteBackup(id) {

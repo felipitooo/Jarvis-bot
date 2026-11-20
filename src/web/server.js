@@ -433,10 +433,20 @@ class WebServer {
           }
         }
 
+        const multiBotMgr = this.webPanelService?.services?.multiBotManager;
+        if ((!initialMemberCount || initialMemberCount === '0') && multiBotMgr?.activeInstances && initialGuilds[0]?.id) {
+          for (const [, inst] of multiBotMgr.activeInstances) {
+            const g = inst.client?.guilds?.cache?.get(initialGuilds[0].id);
+            if (g && (g.memberCount || 0) > 0) {
+              initialMemberCount = String(g.memberCount);
+              break;
+            }
+          }
+        }
+
         const isUnlocked = this._isPanelUnlocked(req, session);
         const { botConfig } = require('../config/botConfig');
         const activeBotConfig = botConfig.getConfig();
-        const multiBotMgr = this.webPanelService?.services?.multiBotManager;
         const initialMultiBots = multiBotMgr ? multiBotMgr.listInstances() : [];
         const html = renderDashboardHtml({
           isUnlocked,
@@ -711,9 +721,6 @@ class WebServer {
               cfg.help = { ...(cfg.help || {}), ...body.help };
               if (!cfg.commands) cfg.commands = {};
               cfg.commands.help = { ...(cfg.commands.help || {}), ...body.help };
-              if (body.help.enabled !== undefined) {
-                mb.deployInstanceSlashCommands(targetBotId).catch(() => {});
-              }
             }
             updates.config = cfg;
             mb.updateInstance(targetBotId, updates);
