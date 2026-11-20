@@ -431,6 +431,8 @@ class WebServer {
         const isUnlocked = this._isPanelUnlocked(req, session);
         const { botConfig } = require('../config/botConfig');
         const activeBotConfig = botConfig.getConfig();
+        const multiBotMgr = this.webPanelService?.services?.multiBotManager;
+        const initialMultiBots = multiBotMgr ? multiBotMgr.listInstances() : [];
         const html = renderDashboardHtml({
           isUnlocked,
           aiDisplayName: defaultAiName || activeBotConfig.identity?.name || 'Jarvis',
@@ -445,7 +447,8 @@ class WebServer {
           initialHeapUsedMb: `${heapUsedMb} MB`,
           initialMemberCount,
           initialServerId,
-          botConfig: activeBotConfig
+          botConfig: activeBotConfig,
+          initialMultiBots
         });
         res.writeHead(200, {
           'Content-Type': 'text/html; charset=utf-8',

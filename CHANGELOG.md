@@ -5,6 +5,25 @@ Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [9.15.0] - 2026-11-20
+
+### Corrigido & Aprimorado (Hotfix de Inicialização & Interatividade dos Botões)
+- **Correção Crítica de Inicialização do Script do Cliente (TDZ ReferenceError):**
+  - Identificada e corrigida a causa raiz do travamento total dos botões ("os botões bugaram") e da ausência de bots secundários nos seletores: a chamada inicial de `syncSidebarModuleVisibility()` acessava `TAB_MODULE_REQUIREMENTS` antes de sua declaração léxica (`const` no fim do arquivo), disparando uma `ReferenceError` fatal na inicialização do navegador.
+  - Movidas as declarações de `TAB_MODULE_REQUIREMENTS`, `isModuleActiveForCurrentBot`, `syncSidebarModuleVisibility`, `applyBotTheme` e `populateBotSelectors` para o topo imediato da tag `<script>`.
+  - Todas as funções de inicialização foram protegidas com blocos `try / catch` defensivos, garantindo que nenhum erro de módulo ou seletor interrompa a execução dos event listeners da página.
+  - Com isso, 100% dos botões da interface (troca de abas, atalhos de configuração, modais de membros e auditoria) voltam a responder com fluidez imediata.
+- **Renderização no Servidor (SSR) das Opções do Seletor de Bots:**
+  - O servidor web agora repassa `initialMultiBots` diretamente para `renderDashboardHtml()`.
+  - Todos os dropdowns de seleção de bot (`#globalBotSelector`, `#sidebarBotSelector`, `#universalBannerBotSelect`, `#moduleTargetBotSelect` e `#speakBotInstanceSelect`) já saem do backend com as tags `<option>` de todos os bots cadastrados (ex: N.A.L.A e Jarvis) pré-renderizadas no HTML inicial.
+  - Mesmo antes do carregamento da API ou em conexões lentas, os bots secundários já aparecem disponíveis imediatamente na lista suspensa do cabeçalho.
+- **Funções de Salvamento Especializadas e Isoladas em Configurações (`tab-settings`):**
+  - Implementada a função `saveBotThemeOnly()` para o Card 3 (`💾 Salvar Cores & Tema do Painel`): salva exclusivamente as cores do tema do bot ativo sem alterar nome, prefixo ou presença.
+  - Implementada a função `saveBotPersonaOnly()` para o Card 2 (`💾 Salvar Personalidade & Diretrizes`): salva exclusivamente a persona e modelo de IA sem tocar em tema ou identidade.
+  - Card 1 permanece estritamente isolado com `saveBotIdentityAndPresence()`, garantindo que salvar nome, prefixo ou status nunca sobreponha nem reverta as cores personalizadas do bot.
+- **Resiliência do Carregamento Multi-Bot:**
+  - Removida a checagem impeditiva `if (!tbody) return;` no início de `loadMultiBotInstances()`, assegurando que os dropdowns de seleção de bot e os caches locais sejam sincronizados independentemente da tabela do gerenciador estar aberta no DOM.
+
 ## [9.14.0] - 2026-11-20
 
 ### Corrigido, Aprimorado & Adaptado ao Multi-Bot

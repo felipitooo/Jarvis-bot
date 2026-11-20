@@ -1,7 +1,7 @@
 {
   "name": "jarvis-discord-bot",
-  "version": "9.14.0",
-  "description": "Unified Modular Discord Bot (Jarvis) - Production Release v9.14.0 Multi-Bot Total Scope Adaptation: Isolated Themes & Presence Controls, Clean Multi-Bot Manager View, Modular Subtab Scoping in Member Modal & Realtime DM Sync",
+  "version": "9.15.0",
+  "description": "Unified Modular Discord Bot (Jarvis) - Production Release v9.15.0 Hotfix & Robustness: Client Initialization Hoisting Fix, Server-Side Bot Selectors Pre-Rendering, Isolated Theme & Persona Handlers & Button Responsiveness",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",

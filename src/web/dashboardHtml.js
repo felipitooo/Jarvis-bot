@@ -21,7 +21,8 @@ function renderDashboardHtml({
   initialHeapUsedMb = '32 MB',
   initialMemberCount = '9',
   initialServerId = 'Conectado',
-  botConfig = null
+  botConfig = null,
+  initialMultiBots = []
 }) {
   const { botConfig: defaultBotConfigMgr } = require('../config/botConfig');
   const activeConfig = botConfig || defaultBotConfigMgr.getConfig();
@@ -30,6 +31,26 @@ function renderDashboardHtml({
     ? activeConfig.panelBranding.title
     : defaultTitle;
   const brandBadge = activeConfig.panelBranding?.badge || 'TECH CORE v2.0';
+
+  function escapeHtmlServer(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  const serverBotOptionsHtml = '<option value="PRIMARY">🤖 J.A.R.V.I.S. (Principal — Servidor)</option>' +
+    (Array.isArray(initialMultiBots)
+      ? initialMultiBots.map(b => `<option value="${escapeHtmlServer(b.id)}">🤖 ${escapeHtmlServer(b.name || b.id)} (${escapeHtmlServer(b.status || 'OFFLINE')})</option>`).join('')
+      : '');
+
+  const serverSpeakBotOptionsHtml = `<option value="MAIN">🤖 Bot Principal (${escapeHtmlServer(aiDisplayName)})</option>` +
+    (Array.isArray(initialMultiBots)
+      ? initialMultiBots.map(b => `<option value="${escapeHtmlServer(b.id)}">🤖 ${escapeHtmlServer(b.name || b.id)} (${escapeHtmlServer(b.status || 'OFFLINE')})</option>`).join('')
+      : '');
 
   const renderedGuildOptions = Array.isArray(initialGuilds) && initialGuilds.length > 0
     ? initialGuilds.map(g => `<option value="${g.id}">${g.name}</option>`).join('')
@@ -2609,7 +2630,7 @@ function renderDashboardHtml({
       <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 4px;">
         <span style="font-size: 1.15rem;">🤖</span>
         <select id="sidebarBotSelector" style="width: 100%; background: #0c0f18; color: #c084fc; font-weight: 700; border: 1px solid rgba(168, 85, 247, 0.35); border-radius: 6px; padding: 0.3rem 0.5rem; font-size: 0.82rem; cursor: pointer;">
-          <option value="PRIMARY">🤖 J.A.R.V.I.S. (Principal)</option>
+          ${serverBotOptionsHtml}
         </select>
       </div>
     </div>
@@ -2807,7 +2828,7 @@ function renderDashboardHtml({
         <div class="meli-guild-meta">
           <span class="meli-guild-label" style="color: #c084fc;">Bot Ativo</span>
           <select id="globalBotSelector" class="meli-guild-select" style="color: #c084fc; font-weight: 700;">
-            <option value="PRIMARY">🤖 J.A.R.V.I.S. (Principal)</option>
+            ${serverBotOptionsHtml}
           </select>
         </div>
       </div>
@@ -2852,7 +2873,7 @@ function renderDashboardHtml({
       <div style="display: flex; align-items: center; gap: 0.5rem;">
         <span style="font-size: 0.8rem; color: #cbd5e1; font-weight: 600;">Alternar Bot:</span>
         <select id="universalBannerBotSelect" style="background: #0f121d; color: #c084fc; font-weight: 700; border: 1px solid rgba(168, 85, 247, 0.5); border-radius: 6px; padding: 0.35rem 0.65rem; font-size: 0.82rem; cursor: pointer;">
-          <option value="PRIMARY">🤖 J.A.R.V.I.S. (Principal)</option>
+          ${serverBotOptionsHtml}
         </select>
       </div>
     </div>
@@ -3193,7 +3214,7 @@ function renderDashboardHtml({
           <div class="form-group">
             <label>🤖 Bot Transmissor (Qual Bot Enviará a Mensagem) *</label>
             <select id="speakBotInstanceSelect">
-              <option value="MAIN">🤖 Bot Principal (${aiDisplayName})</option>
+              ${serverSpeakBotOptionsHtml}
             </select>
             <small style="color: var(--text-muted); font-size: 0.75rem;">Escolha se a mensagem será enviada pelo bot principal ou por uma instância do Multi-Bot Manager.</small>
           </div>
@@ -6638,7 +6659,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           <div style="display: flex; align-items: center; gap: 0.75rem; flex: 1; min-width: 290px;">
             <label style="font-weight: 700; color: #00e5ff; margin: 0; white-space: nowrap;">🤖 Bot em Edição:</label>
             <select id="moduleTargetBotSelect" style="flex: 1; padding: 0.5rem 0.85rem; border-radius: 6px; background: #131722; border: 1px solid rgba(0, 229, 255, 0.4); color: #fff; font-weight: 600;">
-              <option value="PRIMARY">🤖 Bot Principal (${aiDisplayName}) — Servidor</option>
+              ${serverBotOptionsHtml}
             </select>
           </div>
           <div id="moduleTargetBotBadge" style="padding: 0.35rem 0.75rem; border-radius: 6px; font-size: 0.82rem; font-weight: 600; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.4); color: #34d399;">
@@ -7258,6 +7279,250 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
     window.csrfToken = csrfToken;
     window.currentCsrfToken = csrfToken;
 
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    var TAB_MODULE_REQUIREMENTS = {
+      'tab-moderation': ['moderation'],
+      'tab-antibot': ['auto_protection'],
+      'tab-tempbans': ['moderation'],
+      'tab-welcome': ['welcome', 'goodbye', 'autorole'],
+      'tab-starboard': ['starboard'],
+      'tab-economy': ['economy'],
+      'tab-casino': ['casino'],
+      'tab-tickets': ['tickets'],
+      'tab-reviews': ['reviews'],
+      'tab-aimemory': ['ai_memory'],
+      'tab-botspeak': ['automations', 'ai_chat'],
+      'tab-customcommands': ['automations'],
+      'tab-community': ['automations'],
+      'tab-alerts': ['automations'],
+      'tab-summary': ['ai_chat'],
+      'tab-quiz': ['quiz'],
+      'tab-social': ['social', 'marriages', 'reputation', 'fun_commands', 'gifs'],
+      'tab-xp': ['xp', 'voice_xp'],
+      'tab-music': ['music']
+    };
+
+    function isModuleActiveForCurrentBot(modId) {
+      const activeBot = window.currentActiveBotId || 'PRIMARY';
+      if (activeBot !== 'PRIMARY') {
+        if (window.botModulesMap && window.botModulesMap[activeBot]) {
+          return window.botModulesMap[activeBot][modId] === true;
+        }
+        if (window.botAssignedModulesMap && window.botAssignedModulesMap[activeBot]) {
+          return window.botAssignedModulesMap[activeBot].includes(modId);
+        }
+        try {
+          const cachedMods = localStorage.getItem('jarvis_cached_bot_modules_' + activeBot);
+          if (cachedMods) {
+            const parsed = JSON.parse(cachedMods);
+            if (parsed && typeof parsed === 'object') return parsed[modId] === true;
+          }
+        } catch (e) {}
+        return false;
+      }
+      const state = window.currentGuildModulesState || (typeof currentGuildModulesState !== 'undefined' ? currentGuildModulesState : null);
+      if (!state || Object.keys(state).length === 0) return true;
+      return state[modId] !== false;
+    }
+
+    function syncSidebarModuleVisibility() {
+      try {
+        const navItems = document.querySelectorAll('.sidebar-nav .nav-item[data-tab]');
+        let activeTabIsHidden = false;
+        const currentTab = document.querySelector('.tab-content.active')?.id;
+
+        navItems.forEach(btn => {
+          const tabId = btn.getAttribute('data-tab');
+          const reqs = (typeof TAB_MODULE_REQUIREMENTS !== 'undefined' && TAB_MODULE_REQUIREMENTS) ? TAB_MODULE_REQUIREMENTS[tabId] : null;
+          if (!reqs) {
+            btn.style.removeProperty('display');
+            btn.classList.remove('is-hidden');
+            return;
+          }
+          const isVisible = reqs.some(modId => isModuleActiveForCurrentBot(modId));
+          if (isVisible) {
+            btn.style.removeProperty('display');
+            btn.classList.remove('is-hidden');
+          } else {
+            btn.style.setProperty('display', 'none', 'important');
+            btn.classList.add('is-hidden');
+          }
+          if (!isVisible && currentTab === tabId) {
+            activeTabIsHidden = true;
+          }
+        });
+
+        // Also hide empty menu-group-titles if all items in that group are hidden
+        const navContainer = document.querySelector('.sidebar-nav');
+        if (navContainer) {
+          const groupTitles = navContainer.querySelectorAll('.menu-group-title');
+          groupTitles.forEach(title => {
+            let next = title.nextElementSibling;
+            let hasVisibleChild = false;
+            while (next && !next.classList.contains('menu-group-title')) {
+              if (next.classList.contains('nav-item')) {
+                const isHidden = next.style.display === 'none' || next.classList.contains('is-hidden') || (window.getComputedStyle && window.getComputedStyle(next).display === 'none');
+                if (!isHidden) {
+                  hasVisibleChild = true;
+                  break;
+                }
+              }
+              next = next.nextElementSibling;
+            }
+            if (hasVisibleChild) {
+              title.style.removeProperty('display');
+            } else {
+              title.style.setProperty('display', 'none', 'important');
+            }
+          });
+        }
+
+        if (activeTabIsHidden) {
+          const overviewBtn = document.querySelector('.nav-item[data-tab="tab-overview"]');
+          if (overviewBtn) overviewBtn.click();
+        }
+      } catch (err) {
+        console.warn('syncSidebarModuleVisibility warning:', err);
+      }
+    }
+
+    function applyBotTheme(botId) {
+      try {
+        const DEFAULT_THEME = {
+          primary: '#6366F1',
+          accent: '#38BDF8',
+          bgPage: '#0B0F19',
+          bgSurface: '#1E293B',
+          bgHeader: '#0F172A',
+          textMain: '#F8FAFC',
+          topbarBrand: '#38BDF8',
+          topbarActiveTitle: '#F8FAFC',
+          topbarBorder: 'rgba(255, 255, 255, 0.08)'
+        };
+        let savedTheme = null;
+        try {
+          const raw = localStorage.getItem('jarvis_custom_theme_' + botId) || (botId === 'PRIMARY' ? localStorage.getItem('jarvis_custom_theme') : null);
+          if (raw) savedTheme = JSON.parse(raw);
+        } catch (e) {}
+
+        const th = savedTheme || DEFAULT_THEME;
+        const r = document.documentElement;
+        if (th.primary) r.style.setProperty('--primary', th.primary);
+        if (th.accent) r.style.setProperty('--cyan', th.accent);
+        if (th.bgPage) r.style.setProperty('--bg-page', th.bgPage);
+        if (th.bgSurface) r.style.setProperty('--bg-surface', th.bgSurface);
+        if (th.bgHeader) r.style.setProperty('--bg-header', th.bgHeader);
+        if (th.textMain) r.style.setProperty('--text-main', th.textMain);
+        if (th.topbarBorder) r.style.setProperty('--topbar-border', th.topbarBorder);
+        if (th.topbarBrand) r.style.setProperty('--topbar-brand', th.topbarBrand);
+        if (th.topbarActiveTitle) r.style.setProperty('--topbar-active-title', th.topbarActiveTitle);
+
+        // If we don't have a cached theme for a secondary bot, fetch from server once
+        if (!savedTheme && botId !== 'PRIMARY') {
+          fetch('/api/bot/config?botId=' + encodeURIComponent(botId), {
+            headers: { 'X-Bot-Id': botId },
+            credentials: 'include'
+          })
+            .then(res => res.json())
+            .then(data => {
+              if (data?.theme?.panel && window.currentActiveBotId === botId) {
+                const p = data.theme.panel;
+                try {
+                  localStorage.setItem('jarvis_custom_theme_' + botId, JSON.stringify(p));
+                } catch (e) {}
+                if (p.primary) r.style.setProperty('--primary', p.primary);
+                if (p.accent) r.style.setProperty('--cyan', p.accent);
+                if (p.bgPage) r.style.setProperty('--bg-page', p.bgPage);
+                if (p.bgSurface) r.style.setProperty('--bg-surface', p.bgSurface);
+                if (p.bgHeader) r.style.setProperty('--bg-header', p.bgHeader);
+                if (p.textMain) r.style.setProperty('--text-main', p.textMain);
+                if (p.topbarBorder) r.style.setProperty('--topbar-border', p.topbarBorder);
+                if (p.topbarBrand) r.style.setProperty('--topbar-brand', p.topbarBrand);
+                if (p.topbarActiveTitle) r.style.setProperty('--topbar-active-title', p.topbarActiveTitle);
+              }
+            })
+            .catch(() => {});
+        }
+      } catch (err) {
+        console.warn('applyBotTheme warning:', err);
+      }
+    }
+
+    function populateBotSelectors(list) {
+      try {
+        if (!Array.isArray(list)) return;
+        window.botNamesMap = window.botNamesMap || { 'PRIMARY': 'J.A.R.V.I.S. (Principal)' };
+        window.botAvatarsMap = window.botAvatarsMap || { 'PRIMARY': '/api/bot/avatar' };
+        window.botModulesMap = window.botModulesMap || {};
+        window.botAssignedModulesMap = window.botAssignedModulesMap || {};
+
+        for (const inst of list) {
+          if (!inst || !inst.id) continue;
+          window.botNamesMap[inst.id] = inst.name || inst.id;
+          window.botAvatarsMap[inst.id] = inst.avatarUrl || ('/api/bot/avatar?botId=' + encodeURIComponent(inst.id));
+          if (inst.config?.modules) window.botModulesMap[inst.id] = inst.config.modules;
+          if (inst.assignedModules) window.botAssignedModulesMap[inst.id] = inst.assignedModules;
+        }
+
+        const globalBotSel = document.getElementById('globalBotSelector');
+        const sidebarBotSel = document.getElementById('sidebarBotSelector');
+        const universalBotSel = document.getElementById('universalBannerBotSelect');
+        const modTargetSel = document.getElementById('moduleTargetBotSelect');
+        const speakBotSel = document.getElementById('speakBotInstanceSelect');
+        const curActive = window.currentActiveBotId || 'PRIMARY';
+
+        let botOptionsHtml = '<option value="PRIMARY">🤖 J.A.R.V.I.S. (Principal — Servidor)</option>';
+        for (const inst of list) {
+          if (!inst || !inst.id) continue;
+          const statusLabel = inst.status ? ' (' + escapeHtml(inst.status) + ')' : '';
+          botOptionsHtml += '<option value="' + escapeHtml(inst.id) + '">🤖 ' + escapeHtml(inst.name || inst.id) + statusLabel + '</option>';
+        }
+
+        [globalBotSel, sidebarBotSel, universalBotSel, modTargetSel].forEach(sel => {
+          if (sel) {
+            sel.innerHTML = botOptionsHtml;
+            if ([...sel.options].some(o => o.value === curActive)) {
+              sel.value = curActive;
+            }
+          }
+        });
+
+        if (speakBotSel) {
+          const prevVal = speakBotSel.value || (curActive === 'PRIMARY' ? 'MAIN' : curActive);
+          let optsHtml = '<option value="MAIN">🤖 Bot Principal (${aiDisplayName})</option>';
+          for (const inst of list) {
+            if (!inst || !inst.id) continue;
+            const statusLabel = inst.status ? ' (' + escapeHtml(inst.status) + ')' : '';
+            optsHtml += '<option value="' + escapeHtml(inst.id) + '">🤖 ' + escapeHtml(inst.name || inst.id) + statusLabel + '</option>';
+          }
+          speakBotSel.innerHTML = optsHtml;
+          if ([...speakBotSel.options].some(o => o.value === prevVal)) {
+            speakBotSel.value = prevVal;
+          }
+        }
+      } catch (err) {
+        console.warn('populateBotSelectors warning:', err);
+      }
+    }
+
+    const serverMultiBots = ${JSON.stringify(Array.isArray(initialMultiBots) ? initialMultiBots.map(b => ({
+      id: b.id,
+      name: b.name,
+      status: b.status,
+      avatarUrl: b.avatarUrl,
+      assignedModules: b.assignedModules,
+      config: b.config
+    })) : [])};
+
     // Persistência de Bot Ativo no LocalStorage (F5 mantém o bot selecionado)
     let initialActiveBotId = 'PRIMARY';
     try {
@@ -7265,13 +7530,26 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       if (stored) initialActiveBotId = stored;
     } catch (e) {}
     window.currentActiveBotId = initialActiveBotId;
+
+    if (serverMultiBots && serverMultiBots.length > 0) {
+      populateBotSelectors(serverMultiBots);
+      try { localStorage.setItem('jarvis_cached_bots_list', JSON.stringify(serverMultiBots)); } catch(e) {}
+    } else {
+      try {
+        const cached = localStorage.getItem('jarvis_cached_bots_list');
+        if (cached) populateBotSelectors(JSON.parse(cached));
+      } catch (e) {}
+    }
+
     if (initialActiveBotId !== 'PRIMARY') {
-      const avatarUrl = '/api/bot/avatar?botId=' + encodeURIComponent(initialActiveBotId);
+      const avatarUrl = (window.botAvatarsMap && window.botAvatarsMap[initialActiveBotId])
+        ? window.botAvatarsMap[initialActiveBotId]
+        : ('/api/bot/avatar?botId=' + encodeURIComponent(initialActiveBotId));
       const sAv = document.getElementById('sidebarBotAvatar');
       if (sAv) sAv.src = avatarUrl;
       const tAv = document.getElementById('topHeaderBotAvatar');
       if (tAv) tAv.src = avatarUrl;
-      const storedName = localStorage.getItem('jarvis_active_bot_name');
+      const storedName = window.botNamesMap?.[initialActiveBotId] || localStorage.getItem('jarvis_active_bot_name');
       if (storedName) {
         const hName = document.getElementById('headerAiName');
         if (hName) hName.innerText = storedName;
@@ -7286,17 +7564,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         }
       } catch (e) {}
       applyBotTheme(initialActiveBotId);
-      if (typeof syncSidebarModuleVisibility === 'function') syncSidebarModuleVisibility();
-    }
-
-    function escapeHtml(str) {
-      if (str === null || str === undefined) return '';
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
+      syncSidebarModuleVisibility();
     }
 
     function authFetch(url, options = {}) {
@@ -14112,6 +14380,112 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       }
     }
 
+    // Save Bot Persona without touching identity or themes
+    async function saveBotPersonaOnly() {
+      const btn = document.getElementById('saveBotPersonaBtn');
+      if (btn) { btn.disabled = true; btn.innerText = '💾 Salvando Persona...'; }
+
+      const targetBot = window.currentActiveBotId || 'PRIMARY';
+      const guidelines = (document.getElementById('cfgAiGuidelines')?.value || '')
+        .split(String.fromCharCode(10))
+        .map(s => s.trim())
+        .filter(Boolean);
+
+      const payload = {
+        botId: targetBot,
+        ai: {
+          model: document.getElementById('cfgAiModel')?.value || 'gemini-3.5-flash-lite',
+          temperature: parseFloat(document.getElementById('cfgAiTemp')?.value || '0.65'),
+          humorMode: document.getElementById('cfgAiHumorMode')?.value || 'normal',
+          persona: {
+            role: document.getElementById('cfgAiRole')?.value?.trim() || '',
+            tone: document.getElementById('cfgAiTone')?.value?.trim() || '',
+            salutation: document.getElementById('cfgAiSalutation')?.value?.trim() || '',
+            guidelines
+          }
+        }
+      };
+
+      try {
+        const res = await authFetch('/api/bot/config' + (targetBot !== 'PRIMARY' ? '?botId=' + encodeURIComponent(targetBot) : ''), {
+          method: 'POST',
+          headers: { 'X-Bot-Id': targetBot },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.success) {
+          showToast('Personalidade e diretrizes salvas com sucesso!', 'success', 'Persona Salva');
+          applyBotTheme(targetBot);
+        } else {
+          showToast(data.error || 'Falha ao salvar persona.', 'error', 'Erro');
+        }
+      } catch (err) {
+        showToast('Erro de conexão ao salvar persona: ' + err.message, 'error', 'Erro de Rede');
+      } finally {
+        if (btn) { btn.disabled = false; btn.innerText = '💾 Salvar Personalidade & Diretrizes'; }
+      }
+    }
+
+    // Save Bot Theme Colors without touching identity or persona
+    async function saveBotThemeOnly() {
+      const btn = document.getElementById('saveBotThemeBtn');
+      if (btn) { btn.disabled = true; btn.innerText = '💾 Salvando Tema...'; }
+
+      const targetBot = window.currentActiveBotId || 'PRIMARY';
+      const themeData = {
+        primary: document.getElementById('cfgColorPrimary')?.value?.trim() || '#6366F1',
+        accent: document.getElementById('cfgColorAccent')?.value?.trim() || '#38BDF8',
+        bgPage: document.getElementById('cfgColorBgPage')?.value?.trim() || '#0B0F19',
+        bgSurface: document.getElementById('cfgColorBgSurface')?.value?.trim() || '#1E293B',
+        bgHeader: document.getElementById('cfgColorBgHeader')?.value?.trim() || '#0F172A',
+        textMain: document.getElementById('cfgColorTextMain')?.value?.trim() || '#F8FAFC',
+        topbarBrand: document.getElementById('cfgColorTopbarBrand')?.value?.trim() || '#38BDF8',
+        topbarActiveTitle: document.getElementById('cfgColorTopbarTitle')?.value?.trim() || '#F8FAFC',
+        topbarBorder: document.getElementById('cfgColorTopbarBorder')?.value?.trim() || 'rgba(255, 255, 255, 0.08)'
+      };
+
+      try {
+        localStorage.setItem('jarvis_custom_theme_' + targetBot, JSON.stringify(themeData));
+        if (targetBot === 'PRIMARY') {
+          localStorage.setItem('jarvis_custom_theme', JSON.stringify(themeData));
+        }
+      } catch (e) {}
+
+      const r = document.documentElement;
+      r.style.setProperty('--primary', themeData.primary);
+      r.style.setProperty('--cyan', themeData.accent);
+      r.style.setProperty('--bg-page', themeData.bgPage);
+      r.style.setProperty('--bg-surface', themeData.bgSurface);
+      r.style.setProperty('--bg-header', themeData.bgHeader);
+      r.style.setProperty('--text-main', themeData.textMain);
+      r.style.setProperty('--topbar-brand', themeData.topbarBrand);
+      r.style.setProperty('--topbar-active-title', themeData.topbarActiveTitle);
+      r.style.setProperty('--topbar-border', themeData.topbarBorder);
+
+      try {
+        const res = await authFetch('/api/bot/config' + (targetBot !== 'PRIMARY' ? '?botId=' + encodeURIComponent(targetBot) : ''), {
+          method: 'POST',
+          headers: { 'X-Bot-Id': targetBot },
+          body: JSON.stringify({
+            botId: targetBot,
+            theme: {
+              panel: themeData
+            }
+          })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.success) {
+          showToast('Cores e tema do painel salvos com sucesso para este bot!', 'success', 'Tema Salvo');
+        } else {
+          showToast(data.error || 'Falha ao salvar tema no servidor.', 'error', 'Erro ao Salvar');
+        }
+      } catch (err) {
+        showToast('Erro de rede ao salvar tema: ' + err.message, 'error', 'Erro');
+      } finally {
+        if (btn) { btn.disabled = false; btn.innerText = '💾 Salvar Cores & Tema do Painel'; }
+      }
+    }
+
     // Reset Bot Config Function
     async function resetBotConfigFromForm() {
       if (!confirm('Deseja realmente redefinir todas as configurações para os padrões originais de fábrica?')) {
@@ -14144,8 +14518,8 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
     if (sBtnB) sBtnB.addEventListener('click', saveBotConfigFromForm);
 
     document.getElementById('saveBotIdentityBtn')?.addEventListener('click', saveBotIdentityAndPresence);
-    document.getElementById('saveBotPersonaBtn')?.addEventListener('click', saveBotConfigFromForm);
-    document.getElementById('saveBotThemeBtn')?.addEventListener('click', saveBotConfigFromForm);
+    document.getElementById('saveBotPersonaBtn')?.addEventListener('click', saveBotPersonaOnly);
+    document.getElementById('saveBotThemeBtn')?.addEventListener('click', saveBotThemeOnly);
 
     const rBtn = document.getElementById('resetConfigBtn');
     if (rBtn) rBtn.addEventListener('click', resetBotConfigFromForm);
@@ -14583,167 +14957,6 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       if (sBtn) { sBtn.disabled = false; sBtn.innerText = '💾 Salvar Todos os Módulos'; }
     });
 
-    const TAB_MODULE_REQUIREMENTS = {
-      'tab-moderation': ['moderation'],
-      'tab-antibot': ['auto_protection'],
-      'tab-tempbans': ['moderation'],
-      'tab-welcome': ['welcome', 'goodbye', 'autorole'],
-      'tab-starboard': ['starboard'],
-      'tab-economy': ['economy'],
-      'tab-casino': ['casino'],
-      'tab-tickets': ['tickets'],
-      'tab-reviews': ['reviews'],
-      'tab-aimemory': ['ai_memory'],
-      'tab-botspeak': ['automations', 'ai_chat'],
-      'tab-customcommands': ['automations'],
-      'tab-community': ['automations'],
-      'tab-alerts': ['automations'],
-      'tab-summary': ['ai_chat'],
-      'tab-quiz': ['quiz'],
-      'tab-social': ['social', 'marriages', 'reputation', 'fun_commands', 'gifs'],
-      'tab-xp': ['xp', 'voice_xp'],
-      'tab-music': ['music']
-    };
-
-    function isModuleActiveForCurrentBot(modId) {
-      const activeBot = window.currentActiveBotId || 'PRIMARY';
-      if (activeBot !== 'PRIMARY') {
-        if (window.botModulesMap && window.botModulesMap[activeBot]) {
-          return window.botModulesMap[activeBot][modId] === true;
-        }
-        if (window.botAssignedModulesMap && window.botAssignedModulesMap[activeBot]) {
-          return window.botAssignedModulesMap[activeBot].includes(modId);
-        }
-        try {
-          const cachedMods = localStorage.getItem('jarvis_cached_bot_modules_' + activeBot);
-          if (cachedMods) {
-            const parsed = JSON.parse(cachedMods);
-            if (parsed && typeof parsed === 'object') return parsed[modId] === true;
-          }
-        } catch (e) {}
-        return false;
-      }
-      const state = window.currentGuildModulesState || currentGuildModulesState;
-      if (!state || Object.keys(state).length === 0) return true;
-      return state[modId] !== false;
-    }
-
-    function syncSidebarModuleVisibility() {
-      const navItems = document.querySelectorAll('.sidebar-nav .nav-item[data-tab]');
-      let activeTabIsHidden = false;
-      const currentTab = document.querySelector('.tab-content.active')?.id;
-
-      navItems.forEach(btn => {
-        const tabId = btn.getAttribute('data-tab');
-        const reqs = TAB_MODULE_REQUIREMENTS[tabId];
-        if (!reqs) {
-          btn.style.removeProperty('display');
-          btn.classList.remove('is-hidden');
-          return;
-        }
-        const isVisible = reqs.some(modId => isModuleActiveForCurrentBot(modId));
-        if (isVisible) {
-          btn.style.removeProperty('display');
-          btn.classList.remove('is-hidden');
-        } else {
-          btn.style.setProperty('display', 'none', 'important');
-          btn.classList.add('is-hidden');
-        }
-        if (!isVisible && currentTab === tabId) {
-          activeTabIsHidden = true;
-        }
-      });
-
-      // Also hide empty menu-group-titles if all items in that group are hidden
-      const navContainer = document.querySelector('.sidebar-nav');
-      if (navContainer) {
-        const groupTitles = navContainer.querySelectorAll('.menu-group-title');
-        groupTitles.forEach(title => {
-          let next = title.nextElementSibling;
-          let hasVisibleChild = false;
-          while (next && !next.classList.contains('menu-group-title')) {
-            if (next.classList.contains('nav-item')) {
-              const isHidden = next.style.display === 'none' || next.classList.contains('is-hidden') || (window.getComputedStyle && window.getComputedStyle(next).display === 'none');
-              if (!isHidden) {
-                hasVisibleChild = true;
-                break;
-              }
-            }
-            next = next.nextElementSibling;
-          }
-          if (hasVisibleChild) {
-            title.style.removeProperty('display');
-          } else {
-            title.style.setProperty('display', 'none', 'important');
-          }
-        });
-      }
-
-      // If the currently open tab was hidden, navigate smoothly to Visão Geral
-      if (activeTabIsHidden) {
-        const overviewBtn = document.querySelector('.nav-item[data-tab="tab-overview"]');
-        if (overviewBtn) overviewBtn.click();
-      }
-    }
-
-    function applyBotTheme(botId) {
-      const DEFAULT_THEME = {
-        primary: '#6366F1',
-        accent: '#38BDF8',
-        bgPage: '#0B0F19',
-        bgSurface: '#1E293B',
-        bgHeader: '#0F172A',
-        textMain: '#F8FAFC',
-        topbarBrand: '#38BDF8',
-        topbarActiveTitle: '#F8FAFC',
-        topbarBorder: 'rgba(255, 255, 255, 0.08)'
-      };
-      let savedTheme = null;
-      try {
-        const raw = localStorage.getItem('jarvis_custom_theme_' + botId) || (botId === 'PRIMARY' ? localStorage.getItem('jarvis_custom_theme') : null);
-        if (raw) savedTheme = JSON.parse(raw);
-      } catch (e) {}
-
-      const th = savedTheme || DEFAULT_THEME;
-      const r = document.documentElement;
-      if (th.primary) r.style.setProperty('--primary', th.primary);
-      if (th.accent) r.style.setProperty('--cyan', th.accent);
-      if (th.bgPage) r.style.setProperty('--bg-page', th.bgPage);
-      if (th.bgSurface) r.style.setProperty('--bg-surface', th.bgSurface);
-      if (th.bgHeader) r.style.setProperty('--bg-header', th.bgHeader);
-      if (th.textMain) r.style.setProperty('--text-main', th.textMain);
-      if (th.topbarBorder) r.style.setProperty('--topbar-border', th.topbarBorder);
-      if (th.topbarBrand) r.style.setProperty('--topbar-brand', th.topbarBrand);
-      if (th.topbarActiveTitle) r.style.setProperty('--topbar-active-title', th.topbarActiveTitle);
-
-      // If we don't have a cached theme for a secondary bot, fetch from server once
-      if (!savedTheme && botId !== 'PRIMARY') {
-        fetch('/api/bot/config?botId=' + encodeURIComponent(botId), {
-          headers: { 'X-Bot-Id': botId },
-          credentials: 'include'
-        })
-          .then(res => res.json())
-          .then(data => {
-            if (data?.theme?.panel && window.currentActiveBotId === botId) {
-              const p = data.theme.panel;
-              try {
-                localStorage.setItem('jarvis_custom_theme_' + botId, JSON.stringify(p));
-              } catch (e) {}
-              if (p.primary) r.style.setProperty('--primary', p.primary);
-              if (p.accent) r.style.setProperty('--cyan', p.accent);
-              if (p.bgPage) r.style.setProperty('--bg-page', p.bgPage);
-              if (p.bgSurface) r.style.setProperty('--bg-surface', p.bgSurface);
-              if (p.bgHeader) r.style.setProperty('--bg-header', p.bgHeader);
-              if (p.textMain) r.style.setProperty('--text-main', p.textMain);
-              if (p.topbarBorder) r.style.setProperty('--topbar-border', p.topbarBorder);
-              if (p.topbarBrand) r.style.setProperty('--topbar-brand', p.topbarBrand);
-              if (p.topbarActiveTitle) r.style.setProperty('--topbar-active-title', p.topbarActiveTitle);
-            }
-          })
-          .catch(() => {});
-      }
-    }
-
     function handleActiveBotSwitch(botId) {
       window.currentActiveBotId = botId;
       try {
@@ -14848,7 +15061,6 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
 
     async function loadMultiBotInstances() {
       const tbody = document.getElementById('multiBotTableBody');
-      if (!tbody) return;
 
       try {
         const res = await fetch('/api/multi-bot', {
@@ -14862,42 +15074,8 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           multiBotModuleDefinitions = data.moduleDefinitions;
         }
 
-        window.botNamesMap = { 'PRIMARY': 'J.A.R.V.I.S. (Principal)' };
-        window.botAvatarsMap = { 'PRIMARY': '/api/bot/avatar' };
-        window.botModulesMap = {};
-        window.botAssignedModulesMap = {};
-
-        for (const inst of list) {
-          window.botNamesMap[inst.id] = inst.name;
-          window.botAvatarsMap[inst.id] = inst.avatarUrl || ('/api/bot/avatar?botId=' + encodeURIComponent(inst.id));
-          window.botModulesMap[inst.id] = inst.config?.modules || {};
-          window.botAssignedModulesMap[inst.id] = inst.assignedModules || [];
-          try {
-            localStorage.setItem('jarvis_cached_bot_modules_' + inst.id, JSON.stringify(inst.config?.modules || {}));
-            localStorage.setItem('jarvis_cached_bot_assigned_' + inst.id, JSON.stringify(inst.assignedModules || []));
-          } catch (e) {}
-        }
-
-        // Populate all 4 Bot Selectors (Top Header, Sidebar, Universal Tab Banner, Modules Hub)
-        const globalBotSel = document.getElementById('globalBotSelector');
-        const sidebarBotSel = document.getElementById('sidebarBotSelector');
-        const universalBotSel = document.getElementById('universalBannerBotSelect');
-        const modTargetSel = document.getElementById('moduleTargetBotSelect');
-        const prevTargetVal = window.currentActiveBotId || globalBotSel?.value || 'PRIMARY';
-
-        let botOptionsHtml = '<option value="PRIMARY">🤖 J.A.R.V.I.S. (Principal — Servidor)</option>';
-        for (const inst of list) {
-          botOptionsHtml += '<option value="' + escapeHtml(inst.id) + '">🤖 ' + escapeHtml(inst.name) + ' (' + escapeHtml(inst.status) + ')</option>';
-        }
-
-        [globalBotSel, sidebarBotSel, universalBotSel, modTargetSel].forEach(sel => {
-          if (sel) {
-            sel.innerHTML = botOptionsHtml;
-            if ([...sel.options].some(o => o.value === prevTargetVal)) {
-              sel.value = prevTargetVal;
-            }
-          }
-        });
+        try { localStorage.setItem('jarvis_cached_bots_list', JSON.stringify(list)); } catch (e) {}
+        populateBotSelectors(list);
 
         const curActive = window.currentActiveBotId || 'PRIMARY';
         if (curActive !== 'PRIMARY') {
@@ -14918,23 +15096,11 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         }
         syncSidebarModuleVisibility();
 
-        const activeBotName = window.botNamesMap?.[prevTargetVal] || (prevTargetVal === 'PRIMARY' ? 'J.A.R.V.I.S. (Principal)' : prevTargetVal);
+        const activeBotName = window.botNamesMap?.[curActive] || (curActive === 'PRIMARY' ? 'J.A.R.V.I.S. (Principal)' : curActive);
         const uBannerName = document.getElementById('universalBannerBotName');
         if (uBannerName) uBannerName.innerText = activeBotName;
 
-        // Populate #speakBotInstanceSelect in main "Falar pelo Bot" tab
-        const speakBotSel = document.getElementById('speakBotInstanceSelect');
-        if (speakBotSel) {
-          const prevVal = speakBotSel.value || 'MAIN';
-          let optsHtml = '<option value="MAIN">🤖 Bot Principal (${aiDisplayName})</option>';
-          for (const inst of list) {
-            optsHtml += '<option value="' + escapeHtml(inst.id) + '">🤖 ' + escapeHtml(inst.name) + ' (' + escapeHtml(inst.status) + ')</option>';
-          }
-          speakBotSel.innerHTML = optsHtml;
-          if ([...speakBotSel.options].some(o => o.value === prevVal)) {
-            speakBotSel.value = prevVal;
-          }
-        }
+        if (!tbody) return;
 
         if (list.length === 0) {
           tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 1.5rem; color: var(--text-muted);">Nenhuma instância secundária cadastrada. O bot principal continua operando normalmente.</td></tr>';
