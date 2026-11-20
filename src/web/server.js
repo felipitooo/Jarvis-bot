@@ -331,6 +331,11 @@ class WebServer {
             });
             return res.end();
           }
+          res.writeHead(302, {
+            Location: 'https://cdn.discordapp.com/embed/avatars/0.png',
+            'Cache-Control': 'no-cache, no-store, must-revalidate'
+          });
+          return res.end();
         }
 
         const buf = await this._getBotAvatarBuffer(256);
@@ -597,6 +602,7 @@ class WebServer {
                 ...baseConfig.identity,
                 name: inst.name || inst.config?.aiName || baseConfig.identity?.name,
                 defaultPrefix: inst.config?.prefix || inst.config?.commands?.prefix || '+',
+                triggerNames: inst.config?.triggerNames || [inst.name || 'Bot']
               },
               presence: {
                 status: inst.config?.presenceStatus || 'online',
@@ -652,6 +658,11 @@ class WebServer {
               cfg.prefix = String(body.identity.defaultPrefix).trim();
               cfg.commands = { ...(cfg.commands || {}), prefix: cfg.prefix };
               updates.prefix = cfg.prefix;
+            }
+            if (body.identity?.triggerNames !== undefined) {
+              cfg.triggerNames = Array.isArray(body.identity.triggerNames)
+                ? body.identity.triggerNames.map(s => String(s).trim()).filter(Boolean)
+                : String(body.identity.triggerNames).split(',').map(s => s.trim()).filter(Boolean);
             }
             if (body.presence && typeof body.presence === 'object') {
               if (body.presence.status) {

@@ -240,9 +240,15 @@ class WebPanelService {
           ? live.client.user.displayAvatarURL({ extension: 'png', size: 128 })
           : (inst.avatarUrl || inst.config?.theme?.avatarUrl || ('/api/bot/avatar?botId=' + encodeURIComponent(botId)));
 
+        const guildIconUrl = botGuild?.iconURL
+          ? botGuild.iconURL({ extension: 'png', size: 128 })
+          : (botGuild?.icon ? `https://cdn.discordapp.com/icons/${botGuild.id}/${botGuild.icon}.png?size=128` : 'https://cdn.discordapp.com/embed/avatars/0.png');
+
         return {
           guildId,
           guildName: botGuild?.name || 'Servidor',
+          memberCount: botGuild?.memberCount || 0,
+          guildIconUrl,
           aiDisplayName: activeAiName,
           activeBotId: botId,
           activeBotName: activeAiName,

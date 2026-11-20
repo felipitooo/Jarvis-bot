@@ -2894,7 +2894,7 @@ function renderDashboardHtml({
               <span>•</span>
               <span>ID: <code id="overviewServerId" style="color: #93c5fd; background: rgba(0,0,0,0.25); padding: 2px 6px; border-radius: 4px;">${initialServerId}</code></span>
               <span>•</span>
-              <span style="color: var(--cyan); font-weight: 600;">J.A.R.V.I.S. Core v2.0</span>
+              <span id="overviewBotCoreBadge" style="color: var(--cyan); font-weight: 600;">${aiDisplayName} Core v2.0</span>
             </div>
           </div>
         </div>
@@ -7329,7 +7329,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         } catch (e) {}
         return false;
       }
-      const state = window.currentGuildModulesState || (typeof currentGuildModulesState !== 'undefined' ? currentGuildModulesState : null);
+      const state = window.primaryGuildModulesState || window.botModulesMap?.['PRIMARY'] || window.currentGuildModulesState || (typeof currentGuildModulesState !== 'undefined' ? currentGuildModulesState : null);
       if (!state || Object.keys(state).length === 0) return true;
       return state[modId] !== false;
     }
@@ -7464,6 +7464,8 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         window.botAvatarsMap = window.botAvatarsMap || { 'PRIMARY': '/api/bot/avatar' };
         window.botModulesMap = window.botModulesMap || {};
         window.botAssignedModulesMap = window.botAssignedModulesMap || {};
+        window.botPrefixesMap = window.botPrefixesMap || { 'PRIMARY': '${activeConfig.identity?.defaultPrefix || "+"}' };
+        window.botTriggerNamesMap = window.botTriggerNamesMap || { 'PRIMARY': '${escapeHtmlServer((activeConfig.identity?.triggerNames || ["Jarvis", "J.A.R.V.I.S"]).join(", "))}' };
 
         for (const inst of list) {
           if (!inst || !inst.id) continue;
@@ -7471,6 +7473,10 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           window.botAvatarsMap[inst.id] = inst.avatarUrl || ('/api/bot/avatar?botId=' + encodeURIComponent(inst.id));
           if (inst.config?.modules) window.botModulesMap[inst.id] = inst.config.modules;
           if (inst.assignedModules) window.botAssignedModulesMap[inst.id] = inst.assignedModules;
+          const pfx = inst.config?.prefix || inst.config?.commands?.prefix || '+';
+          window.botPrefixesMap[inst.id] = pfx;
+          const trigs = inst.config?.triggerNames || [inst.name || 'Bot'];
+          window.botTriggerNamesMap[inst.id] = Array.isArray(trigs) ? trigs.join(', ') : String(trigs);
         }
 
         const globalBotSel = document.getElementById('globalBotSelector');
@@ -7549,12 +7555,40 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       if (sAv) sAv.src = avatarUrl;
       const tAv = document.getElementById('topHeaderBotAvatar');
       if (tAv) tAv.src = avatarUrl;
-      const storedName = window.botNamesMap?.[initialActiveBotId] || localStorage.getItem('jarvis_active_bot_name');
+      const storedName = (window.botNamesMap?.[initialActiveBotId] || localStorage.getItem('jarvis_active_bot_name') || initialActiveBotId).replace(' (Principal)', '');
       if (storedName) {
         const hName = document.getElementById('headerAiName');
         if (hName) hName.innerText = storedName;
         const uBannerName = document.getElementById('universalBannerBotName');
         if (uBannerName) uBannerName.innerText = storedName;
+        const topBread = document.getElementById('topHeaderBreadcrumbRoot');
+        if (topBread) topBread.innerText = storedName;
+        const coreBadge = document.getElementById('overviewBotCoreBadge');
+        if (coreBadge) coreBadge.innerText = storedName + ' Core v2.0';
+        const ovAi = document.getElementById('overviewAiName');
+        if (ovAi) ovAi.value = storedName;
+        const aInp = document.getElementById('aiNameInput');
+        if (aInp) aInp.value = storedName;
+        const cfgName = document.getElementById('cfgBotName');
+        if (cfgName) cfgName.value = storedName;
+        const prevBot = document.getElementById('previewBotName');
+        if (prevBot) prevBot.innerText = storedName;
+        const prevSpeak = document.getElementById('speakBotNamePreview');
+        if (prevSpeak) prevSpeak.innerText = storedName;
+        const prevW = document.getElementById('previewWelcomeBotName');
+        if (prevW) prevW.innerText = storedName;
+      }
+      const initPfx = window.botPrefixesMap?.[initialActiveBotId];
+      if (initPfx) {
+        const sPref = document.getElementById('serverPrefixInput');
+        if (sPref) sPref.value = initPfx;
+        const cPref = document.getElementById('cfgBotPrefix');
+        if (cPref) cPref.value = initPfx;
+      }
+      const initTrigs = window.botTriggerNamesMap?.[initialActiveBotId];
+      if (initTrigs) {
+        const cTrig = document.getElementById('cfgTriggerNames');
+        if (cTrig) cTrig.value = initTrigs;
       }
       try {
         const cachedMods = localStorage.getItem('jarvis_cached_bot_modules_' + initialActiveBotId);
@@ -8331,17 +8365,18 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
 
         // 1. AI Display Name
         if (data.aiDisplayName) {
-          const isPrimary = !targetBot || targetBot === 'PRIMARY';
-          if (isPrimary) {
-            const hName = document.getElementById('headerAiName');
-            if (hName) hName.innerText = data.aiDisplayName;
-            const topBread = document.getElementById('topHeaderBreadcrumbRoot');
-            if (topBread) topBread.innerText = data.aiDisplayName;
-            const oName = document.getElementById('overviewAiName');
-            if (oName) oName.value = data.aiDisplayName;
-          }
+          const hName = document.getElementById('headerAiName');
+          if (hName) hName.innerText = data.aiDisplayName;
+          const topBread = document.getElementById('topHeaderBreadcrumbRoot');
+          if (topBread) topBread.innerText = data.aiDisplayName;
+          const oName = document.getElementById('overviewAiName');
+          if (oName) oName.value = data.aiDisplayName;
+          const coreBadge = document.getElementById('overviewBotCoreBadge');
+          if (coreBadge) coreBadge.innerText = data.aiDisplayName + ' Core v2.0';
           const aInp = document.getElementById('aiNameInput');
           if (aInp) aInp.value = data.aiDisplayName;
+          const cfgName = document.getElementById('cfgBotName');
+          if (cfgName) cfgName.value = data.aiDisplayName;
           const prevBot = document.getElementById('previewBotName');
           if (prevBot) prevBot.innerText = data.aiDisplayName;
           const prevSpeakBot = document.getElementById('speakBotNamePreview');
@@ -14800,6 +14835,10 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           window.botModulesMap = window.botModulesMap || {};
           window.botModulesMap[targetBot] = currentGuildModulesState;
           try { localStorage.setItem('jarvis_cached_bot_modules_' + targetBot, JSON.stringify(currentGuildModulesState)); } catch (e) {}
+        } else {
+          window.primaryGuildModulesState = currentGuildModulesState;
+          window.botModulesMap = window.botModulesMap || {};
+          window.botModulesMap['PRIMARY'] = currentGuildModulesState;
         }
 
         const badge = document.getElementById('moduleTargetBotBadge');
@@ -15002,6 +15041,42 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       if (headerAiName) {
         headerAiName.innerText = cleanBotName;
       }
+
+      // Update top header breadcrumb root
+      const topBread = document.getElementById('topHeaderBreadcrumbRoot');
+      if (topBread) topBread.innerText = cleanBotName;
+
+      // Update overview hero badge
+      const coreBadge = document.getElementById('overviewBotCoreBadge');
+      if (coreBadge) coreBadge.innerText = cleanBotName + ' Core v2.0';
+
+      // Update overview AI inputs
+      const ovAi = document.getElementById('overviewAiName');
+      if (ovAi) ovAi.value = cleanBotName;
+      const aInp = document.getElementById('aiNameInput');
+      if (aInp) aInp.value = cleanBotName;
+      const cfgName = document.getElementById('cfgBotName');
+      if (cfgName) cfgName.value = cleanBotName;
+
+      // Update prefix inputs immediately
+      const pfx = window.botPrefixesMap?.[botId] || (botId === 'PRIMARY' ? '${activeConfig.identity?.defaultPrefix || "+"}' : '+');
+      const sPref = document.getElementById('serverPrefixInput');
+      if (sPref) sPref.value = pfx;
+      const cPref = document.getElementById('cfgBotPrefix');
+      if (cPref) cPref.value = pfx;
+
+      // Update chat triggers input immediately
+      const trigs = window.botTriggerNamesMap?.[botId] || cleanBotName;
+      const cTrig = document.getElementById('cfgTriggerNames');
+      if (cTrig) cTrig.value = trigs;
+
+      // Update previews
+      const prevBot = document.getElementById('previewBotName');
+      if (prevBot) prevBot.innerText = cleanBotName;
+      const prevSpeak = document.getElementById('speakBotNamePreview');
+      if (prevSpeak) prevSpeak.innerText = cleanBotName;
+      const prevW = document.getElementById('previewWelcomeBotName');
+      if (prevW) prevW.innerText = cleanBotName;
 
       // Apply isolated theme for this bot
       applyBotTheme(botId);

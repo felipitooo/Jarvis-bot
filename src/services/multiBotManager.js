@@ -353,6 +353,7 @@ class MultiBotManager {
       permissions: { ...defaults.permissions, ...safeJsonParse(cfgRow.permissions_config_json, {}) },
       integrations: { ...defaults.integrations, ...safeJsonParse(cfgRow.integrations_config_json, {}) },
       advanced: { ...defaults.advanced, ...safeJsonParse(cfgRow.advanced_config_json, {}) },
+      triggerNames: safeJsonParse(cfgRow.advanced_config_json, {}).triggerNames || [resolvedAiName || botName],
       theme: safeJsonParse(cfgRow.advanced_config_json, {}).theme || defaults.theme
     };
   }
@@ -435,7 +436,7 @@ class MultiBotManager {
       embeds_config_json: JSON.stringify(cfg.embeds || {}),
       permissions_config_json: JSON.stringify(cfg.permissions || {}),
       integrations_config_json: JSON.stringify(cfg.integrations || {}),
-      advanced_config_json: JSON.stringify({ ...(cfg.advanced || {}), audit: cfg.audit || {}, theme: cfg.theme || {} }),
+      advanced_config_json: JSON.stringify({ ...(cfg.advanced || {}), audit: cfg.audit || {}, theme: cfg.theme || {}, triggerNames: cfg.triggerNames || [] }),
       updated_at: now
     };
 

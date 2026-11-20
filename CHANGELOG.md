@@ -5,6 +5,30 @@ Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [9.16.0] - 2026-11-20
+
+### Corrigido & Aprimorado (Atualização Imediata Zero-Delay Sem F5 & Sincronização Total)
+- **Atualização Imediata e Síncrona (Zero-Delay 0ms) na Troca de Bots Ativos:**
+  - Corrigida a necessidade de recarregar a página (F5) para visualizar as informações do bot selecionado:
+    - O breadcrumb superior (`#topHeaderBreadcrumbRoot`) atualiza instantaneamente para o nome do bot ativo (ex: `N.A.L.A` em vez de `J.A.R.V.I.S.`).
+    - O badge no banner do servidor hero (`#overviewBotCoreBadge`) agora possui ID dinâmico e atualiza instantaneamente para `${nome} Core v2.0` (ex: `N.A.L.A Core v2.0`).
+    - Os campos de identidade da IA na Visão Geral (`#overviewAiName` e `#aiNameInput`) e em Configurações (`#cfgBotName`) são atualizados de imediato.
+    - O seletor de prefixo (`#serverPrefixInput` e `#cfgBotPrefix`) é atualizado instantaneamente a partir do mapa de prefixos em memória (`window.botPrefixesMap`).
+    - O campo de gatilhos no chat (`#cfgTriggerNames`) é sincronizado imediatamente a partir de `window.botTriggerNamesMap`.
+    - Os avatares da barra lateral (`#sidebarBotAvatar`) e do topo (`#topHeaderBotAvatar`) são atualizados imediatamente com a foto correta da instância ativa.
+    - Todos os previews visuais (`#previewBotName`, `#speakBotNamePreview`, `#previewWelcomeBotName`) sincronizam no mesmo milissegundo da troca.
+- **Correção da Contagem de Membros (`0 membros`) e Ícone do Servidor em Bots Secundários:**
+  - O endpoint de visão geral `webPanelService.getGuildOverview` agora inclui `memberCount: botGuild?.memberCount || 0` e `guildIconUrl` no payload retornado para bots secundários.
+  - A contagem de membros no card do servidor agora exibe a quantidade real (ex: `23 membros`) em vez de zerar para `0 membros`.
+- **Sincronização de Gatilhos de Chat Isolados (`triggerNames`):**
+  - Implementado suporte a `triggerNames` no backend para bots secundários em `GET /api/bot/config` e `POST /api/bot/config`, bem como na persistência em `MultiBotManager`.
+  - Corrigido o bug onde o campo de gatilhos exibia `Jarvis, J.A.R.V.I.S` mesmo estando com a `N.A.L.A` selecionada.
+- **Isolamento de Estado de Módulos (Sem Contaminação Cruzada):**
+  - O estado dos módulos do bot principal agora é armazenado separadamente em `window.primaryGuildModulesState` e `window.botModulesMap['PRIMARY']`.
+  - A função `isModuleActiveForCurrentBot()` consulta os estados isolados de forma determinística, impedindo que a ativação ou desativação de módulos de uma instância secundária afete a barra lateral ou os modais do bot base.
+- **Filtragem Dinâmica de Abas no Modal de Membros e Barra Lateral:**
+  - Garantido que as sub-abas do modal de membros (`msub-economy`, `msub-timeout`, `msub-warn`, `msub-verbal-warn`, `msub-punish`, `msub-xp`, `msub-memory`) e as abas da barra lateral respeitem com prioridade absoluta os módulos ativos do bot selecionado, aplicando `display: none !important` para qualquer funcionalidade ausente na instância atual.
+
 ## [9.15.0] - 2026-11-20
 
 ### Corrigido & Aprimorado (Hotfix de Inicialização & Interatividade dos Botões)
