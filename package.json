@@ -1,7 +1,7 @@
 {
   "name": "jarvis-discord-bot",
-  "version": "9.17.0",
-  "description": "Unified Modular Discord Bot (Jarvis) - Production Release v9.17.0: Dynamic Multi-Bot Slash Command Module Isolation, Discord REST Guild Deployment Synchronization & Instance Help Personalization",
+  "version": "9.18.0",
+  "description": "Unified Modular Discord Bot (Jarvis) - Production Release v9.18.0: Per-Guild Dynamic Slash Command Module Filtering for Primary Bot & Instant Panel Synchronization",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",

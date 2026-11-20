@@ -99,32 +99,74 @@ class CommandRegistry {
   }
 
   /**
-   * Deploys registered slash commands to the Discord REST API globally and directly to guilds for instant availability.
+   * Deploys slash commands directly to a specific Discord guild, filtered by that guild's allowed modules.
    * @param {string} token
    * @param {string} clientId
-   * @param {Array<string>} [guildIds=[]]
+   * @param {string} guildId
    * @param {Array<string>|Set<string>|object|null} [allowedModules=null]
    * @param {string|null} [botName=null]
    */
-  async deployCommands(token, clientId, guildIds = [], allowedModules = null, botName = null) {
-    if (!token || !clientId) {
-      throw new Error('token and clientId are required to deploy slash commands.');
+  async deployGuildCommands(token, clientId, guildId, allowedModules = null, botName = null) {
+    if (!token || !clientId || !guildId) {
+      throw new Error('token, clientId and guildId are required to deploy guild slash commands.');
     }
 
     const rest = new REST({ version: '10' }).setToken(token);
     const body = this.getSlashCommandsJSON(allowedModules, botName);
 
-    cmdLogger.info(`Started refreshing ${body.length} application (/) commands for client ${clientId} (botName: ${botName || 'Default'}, modules: ${allowedModules ? 'Filtered (' + body.length + ' commands)' : 'ALL'}).`);
+    try {
+      const data = await rest.put(
+        Routes.applicationGuildCommands(clientId, guildId),
+        { body }
+      );
+      cmdLogger.info(`Successfully deployed ${body.length} slash commands directly to guild ${guildId} (Instant propagation, bot: ${botName || 'Default'}).`);
+      return data;
+    } catch (err) {
+      cmdLogger.warn(`Could not deploy guild commands to ${guildId}: ${err.message}`);
+      throw err;
+    }
+  }
+
+  /**
+   * Deploys registered slash commands to the Discord REST API globally and directly to guilds for instant availability.
+   * Supports per-guild dynamic module filtering via guildModuleService when allowedModules is not globally fixed.
+   * @param {string} token
+   * @param {string} clientId
+   * @param {Array<string>} [guildIds=[]]
+   * @param {Array<string>|Set<string>|object|null} [allowedModules=null]
+   * @param {string|null} [botName=null]
+   * @param {object|null} [guildModuleService=null]
+   */
+  async deployCommands(token, clientId, guildIds = [], allowedModules = null, botName = null, guildModuleService = null) {
+    if (!token || !clientId) {
+      throw new Error('token and clientId are required to deploy slash commands.');
+    }
+
+    const rest = new REST({ version: '10' }).setToken(token);
 
     // 1. Deploy directly to connected guilds for INSTANT (0-second) appearance in Discord
     if (Array.isArray(guildIds) && guildIds.length > 0) {
+      let lastDeployedBody = [];
       for (const guildId of guildIds) {
         try {
+          // Resolve effective allowed modules: either globally fixed (e.g. secondary bot) or per-guild (primary bot)
+          let effectiveModules = allowedModules;
+          if (!effectiveModules && guildModuleService && typeof guildModuleService.getGuildModules === 'function') {
+            const guildMods = guildModuleService.getGuildModules(guildId);
+            if (guildMods && typeof guildMods === 'object') {
+              effectiveModules = Object.entries(guildMods)
+                .filter(([, enabled]) => enabled === true)
+                .map(([modId]) => modId);
+            }
+          }
+
+          const body = this.getSlashCommandsJSON(effectiveModules, botName);
           await rest.put(
             Routes.applicationGuildCommands(clientId, guildId),
             { body }
           );
-          cmdLogger.info(`Successfully deployed ${body.length} slash commands directly to guild ${guildId} (Instant propagation).`);
+          lastDeployedBody = body;
+          cmdLogger.info(`Successfully deployed ${body.length} slash commands directly to guild ${guildId} (Instant propagation, modules: ${effectiveModules ? effectiveModules.length + ' active' : 'ALL'}).`);
         } catch (gErr) {
           cmdLogger.warn(`Could not deploy guild commands to ${guildId}: ${gErr.message}`);
         }
@@ -138,10 +180,11 @@ class CommandRegistry {
         cmdLogger.debug(`Could not clear global commands: ${err.message}`);
       }
 
-      return body;
+      return lastDeployedBody;
     }
 
     // 2. Deploy globally if no guild IDs were specified
+    const body = this.getSlashCommandsJSON(allowedModules, botName);
     const data = await rest.put(
       Routes.applicationCommands(clientId),
       { body }

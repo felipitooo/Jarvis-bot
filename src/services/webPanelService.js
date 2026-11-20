@@ -1936,6 +1936,15 @@ class WebPanelService {
         if (!gms) throw new Error('Serviço de controle modular indisponível.');
         const modulesToSet = updates.modules || updates;
         updated = gms.setGuildModules(guildId, modulesToSet, session.userId);
+
+        // Immediate 0ms propagation to Discord slash commands for this guild
+        if (this.botClient?.token && this.botClient?.user?.id) {
+          try {
+            const activeMods = Object.entries(updated).filter(([, v]) => v === true).map(([k]) => k);
+            const { commandRegistry } = require('../commands/commandRegistry');
+            commandRegistry.deployGuildCommands(this.botClient.token, this.botClient.user.id, guildId, activeMods).catch(() => {});
+          } catch {}
+        }
         break;
       }
       case 'tempbans':

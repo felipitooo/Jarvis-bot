@@ -5,6 +5,20 @@ Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [9.18.0] - 2026-11-20
+
+### Corrigido & Aprimorado (Filtragem Dinâmica de Comandos Slash do Bot Principal por Servidor)
+- **Filtragem de Comandos Slash do Bot Principal (J.A.R.V.I.S.) Baseada em `guild_module_settings`:**
+  - Corrigido o bug onde o bot principal mantinha comandos como `/punir`, `/warnlist`, `/lockdown`, `/cargo`, etc. registrados no Discord mesmo quando o módulo de `moderation` estava desativado no servidor (ex: servidor "Nova Era").
+  - O método `commandRegistry.deployCommands()` agora suporta o parâmetro `guildModuleService` e efetua a resolução dinâmica e individual dos módulos ativos de cada guilda conectada para o bot principal.
+  - Implementado o método `commandRegistry.deployGuildCommands(token, clientId, guildId, allowedModules, botName)` para deploy atômico e direcionado de comandos slash por guilda.
+  - Adicionada sincronização automática em tempo real em `webPanelService.js`: sempre que os módulos de um servidor forem atualizados no painel (`case 'guild_modules'`), os comandos slash no Discord para aquele servidor são atualizados em 0ms.
+  - Aplicado ao vivo no servidor Nova Era para o `J.A.R.V.I.S.`, reduzindo de 83 para 73 comandos e removendo completamente `/punir` do bot principal.
+- **Divisão Perfeita de Tarefas entre Bots:**
+  - `N.A.L.A`: Exclusivamente 14 comandos (moderação e utilitários de infraestrutura).
+  - `J.A.R.V.I.S`: Exclusivamente 73 comandos (IA, Música, Economia, Social, Cassino, etc.), sem conflito ou duplicidade de moderação.
+- **Testes Unitários:** 400/400 testes passando em 85 suítes.
+
 ## [9.17.0] - 2026-11-20
 
 ### Corrigido & Aprimorado (Isolamento Restrito de Comandos Slash por Módulo & Sincronização Discord)

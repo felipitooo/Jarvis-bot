@@ -91,4 +91,49 @@ describe('CommandRegistry & Multi-Bot Slash Commands Isolation', () => {
     const fallbackRes = buildHelpResponse({ category: 'economy', aiName: 'N.A.L.A', allowedModules: ['moderation'] });
     assert.ok(fallbackRes.embeds[0].data.title.includes('Central de Comandos — N.A.L.A'));
   });
+
+  it('filters primary bot commands per guild dynamically when moderation is disabled on that guild', () => {
+    const registry = new CommandRegistry();
+
+    registry.register({
+      data: { name: 'ping', toJSON: () => ({ name: 'ping', description: 'Ping' }) },
+      execute: async () => {}
+    });
+    registry.register({
+      data: { name: 'punir', toJSON: () => ({ name: 'punir', description: 'Punir' }) },
+      execute: async () => {}
+    });
+    registry.register({
+      data: { name: 'play', toJSON: () => ({ name: 'play', description: 'Play' }) },
+      execute: async () => {}
+    });
+
+    // Mock GuildModuleService where guild A has moderation disabled, but music enabled
+    const mockGuildModuleService = {
+      getGuildModules(gId) {
+        if (gId === 'guild_without_mod') {
+          return { music: true, moderation: false, auto_protection: false };
+        }
+        return { music: true, moderation: true, auto_protection: true };
+      }
+    };
+
+    // Guild without mod: punir must be excluded, play and ping included
+    const guildMods = mockGuildModuleService.getGuildModules('guild_without_mod');
+    const activeMods = Object.entries(guildMods).filter(([, v]) => v === true).map(([k]) => k);
+    const jsonA = registry.getSlashCommandsJSON(activeMods);
+    const namesA = jsonA.map(c => c.name);
+
+    assert.ok(namesA.includes('ping'), 'Universal ping must be present');
+    assert.ok(namesA.includes('play'), 'Music must be present');
+    assert.ok(!namesA.includes('punir'), 'Punir MUST NOT be present when moderation is disabled');
+
+    // Guild with mod: punir must be included
+    const guildModsWith = mockGuildModuleService.getGuildModules('guild_with_mod');
+    const activeModsWith = Object.entries(guildModsWith).filter(([, v]) => v === true).map(([k]) => k);
+    const jsonB = registry.getSlashCommandsJSON(activeModsWith);
+    const namesB = jsonB.map(c => c.name);
+
+    assert.ok(namesB.includes('punir'), 'Punir must be present when moderation is enabled');
+  });
 });

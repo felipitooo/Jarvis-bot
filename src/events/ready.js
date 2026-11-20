@@ -87,8 +87,8 @@ module.exports = {
           }
         }
 
-        readyLogger.info(`Deploying application (/) slash commands to Discord for ${client.user.tag} (${guildIds.length} guilds, modules: ${allowedModules ? allowedModules.join(', ') : 'ALL'})...`);
-        await commandRegistry.deployCommands(activeToken, client.user.id, guildIds, allowedModules, instName);
+        readyLogger.info(`Deploying application (/) slash commands to Discord for ${client.user.tag} (${guildIds.length} guilds, modules: ${allowedModules ? allowedModules.join(', ') : 'PER-GUILD DYNAMIC'})...`);
+        await commandRegistry.deployCommands(activeToken, client.user.id, guildIds, allowedModules, instName, context?.guildModuleService);
         readyLogger.info(`All slash commands deployed successfully to Discord for ${client.user.tag}!`);
       } catch (deployErr) {
         readyLogger.warn(`Slash commands deployment skipped or failed for ${client.user?.tag || 'bot'}: ${deployErr.message}`);
