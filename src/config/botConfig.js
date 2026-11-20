@@ -61,6 +61,25 @@ const DEFAULT_CONFIG = {
     subtitle: 'Sistemas Centrais e Gestão de Servidores',
     footerCopyright: '© 2026 Stark Industries. Todos os direitos reservados.'
   },
+  help: {
+    enabled: true,
+    title: '⚡ Central de Comandos — {bot_name}',
+    description: '',
+    footer: '{bot_name} • Use o menu abaixo para navegar entre as categorias',
+    color: '#5865F2',
+    thumbnailUrl: '',
+    categoryEmojis: {
+      home: '🏠',
+      economy: '💼',
+      casino: '🎰',
+      music: '🎵',
+      moderation: '🛡️',
+      xp: '🎖️',
+      fun: '🎉',
+      tickets: '🎫',
+      admin: '⚙️'
+    }
+  },
   modules: {
     aiChat: true,
     music: true,

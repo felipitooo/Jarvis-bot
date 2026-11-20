@@ -5,6 +5,26 @@ Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [9.19.0] - 2026-11-20
+
+### Adicionado (Central de Comandos e Ajuda Totalmente Customizável & Ativação Individual por Bot)
+- **Ativação / Desativação Individual do Menu de Ajuda (`/ajuda`, `+ajuda`, `+help`, `+comandos`):**
+  - Implementado switch independente para habilitar ou desabilitar o sistema de ajuda para cada bot (Principal ou instâncias Multi-Bot como N.A.L.A).
+  - Quando desativado, o comando `/ajuda` é omitido do registro de Comandos Slash do Discord daquele bot e qualquer chamada via prefixo (`+ajuda`, etc.) retorna um aviso amigável de central desativada.
+- **Customização Total do Menu de Ajuda com Suporte a Emojis do Servidor e Externos:**
+  - Título customizável com suporte a variáveis `{bot_name}`, `{prefix}`, `{guild_name}`, etc.
+  - Mensagem / Descrição customizável com renderização automática de emojis do servidor (`:emoji:` ou `<:name:id>`).
+  - Cor do Embed personalizável via seletor visual e código HEX.
+  - Rodapé e Thumbnail personalizáveis (com fallback automático para avatar do bot).
+  - Emojis personalizados para cada uma das 9 categorias do menu (`home`, `economy`, `casino`, `music`, `moderation`, `xp`, `fun`, `tickets`, `admin`).
+  - Suporte completo no Select Menu do Discord (`StringSelectMenuOptionBuilder.setEmoji`) para emojis de texto Unicode, emojis estáticos de servidor (`<:name:id>`) e emojis animados (`<a:name:id>`).
+  - Seletor de emojis integrado no painel web com abas para emojis padrão, do servidor atual e externos para todos os campos do menu de ajuda.
+
+### Corrigido (Resolução de Membros, Servidor e Identidade no Painel Multi-Bot)
+- Corrigida a resolução de contagem de membros (`memberCount`) ao alternar entre bots no painel administrativo, utilizando fallback seguro entre as instâncias conectadas à guilda (evitando `0 membros`).
+- Corrigida a exibição do nome do servidor (`guildNameDisplay`) no carregamento inicial, eliminando estado preso em `"Carregando..."`.
+- Sincronização imediata da identidade da IA (`overviewAiName`) ao alternar entre bots na Visão Geral e demais abas.
+
 ## [9.18.0] - 2026-11-20
 
 ### Corrigido & Aprimorado (Filtragem Dinâmica de Comandos Slash do Bot Principal por Servidor)

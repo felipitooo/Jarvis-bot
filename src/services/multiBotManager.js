@@ -41,7 +41,26 @@ function buildDefaultInstanceConfig(name = 'J.A.R.V.I.S.', assignedModules = nul
       prefix: '+',
       prefixlessMode: false,
       disabledCommands: [],
-      customAliases: {}
+      customAliases: {},
+      help: {
+        enabled: true,
+        title: `⚡ Central de Comandos — ${name || 'Bot'}`,
+        description: '',
+        footer: `${name || 'Bot'} • Use o menu abaixo para navegar entre as categorias`,
+        color: '#5865F2',
+        thumbnailUrl: '',
+        categoryEmojis: {
+          home: '🏠',
+          economy: '💼',
+          casino: '🎰',
+          music: '🎵',
+          moderation: '🛡️',
+          xp: '🎖️',
+          fun: '🎉',
+          tickets: '🎫',
+          admin: '⚙️'
+        }
+      }
     },
     moderation: {
       logChannelId: '',
@@ -340,7 +359,18 @@ class MultiBotManager {
       presenceActivityText: resolvedPresText,
       presenceActivityUrl: cfgRow.presence_activity_url || defaults.presenceActivityUrl,
       modules: mergedModules,
-      commands: { ...defaults.commands, ...safeJsonParse(cfgRow.commands_config_json, {}) },
+      commands: {
+        ...defaults.commands,
+        ...safeJsonParse(cfgRow.commands_config_json, {}),
+        help: {
+          ...defaults.commands.help,
+          ...((safeJsonParse(cfgRow.commands_config_json, {}).help) || {})
+        }
+      },
+      help: {
+        ...defaults.commands.help,
+        ...((safeJsonParse(cfgRow.commands_config_json, {}).help) || {})
+      },
       moderation: { ...defaults.moderation, ...safeJsonParse(cfgRow.moderation_config_json, {}) },
       audit: {
         ...defaults.audit,
@@ -579,6 +609,14 @@ class MultiBotManager {
       if (incomingCfg.commands.prefix && incomingCfg.prefix === undefined) {
         newConfig.prefix = incomingCfg.commands.prefix;
       }
+      if (incomingCfg.commands.help && typeof incomingCfg.commands.help === 'object') {
+        newConfig.help = { ...(newConfig.help || {}), ...incomingCfg.commands.help };
+      }
+    }
+    if (incomingCfg.help && typeof incomingCfg.help === 'object') {
+      newConfig.commands = newConfig.commands || {};
+      newConfig.commands.help = { ...(newConfig.commands.help || {}), ...incomingCfg.help };
+      newConfig.help = newConfig.commands.help;
     }
     if (incomingCfg.moderation && typeof incomingCfg.moderation === 'object') {
       newConfig.moderation = { ...newConfig.moderation, ...incomingCfg.moderation };
@@ -769,14 +807,16 @@ class MultiBotManager {
 
     const guildIds = live.client.guilds?.cache ? Array.from(live.client.guilds.cache.keys()) : [];
 
+    const isHelpEnabled = cfg?.commands?.help?.enabled !== false && cfg?.help?.enabled !== false;
+
     try {
       const { commandRegistry } = require('../commands/commandRegistry');
-      const deployed = await commandRegistry.deployCommands(token, clientId, guildIds, activeModules, botName);
+      const deployed = await commandRegistry.deployCommands(token, clientId, guildIds, activeModules, botName, null, isHelpEnabled);
       this.addInstanceLog(
         botId,
         'INFO',
         'COMMANDS',
-        `Comandos Slash sincronizados no Discord (${deployed.length} comandos para ${activeModules.length} módulos ativos: ${activeModules.join(', ')}).`
+        `Comandos Slash sincronizados no Discord (${deployed.length} comandos, Ajuda: ${isHelpEnabled ? 'Ativada' : 'Desativada'}, módulos ativos: ${activeModules.join(', ')}).`
       );
       mbLogger.info(`Successfully deployed ${deployed.length} slash commands to Discord for instance "${botName}" (${clientId}) across ${guildIds.length} guilds.`);
       return true;

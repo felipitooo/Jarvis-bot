@@ -4747,18 +4747,49 @@ class PrefixCommandHandler {
           const { buildHelpResponse } = require('../utils/helpMenuHelper');
           const botAvatarUrl = message.client?.user?.displayAvatarURL ? message.client.user.displayAvatarURL({ extension: 'png', size: 128 }) : null;
           let allowedModules = null;
+          let helpConfig = null;
+
           if (context.botInstanceId && context.multiBotManager) {
             const cfg = context.multiBotManager.getInstanceConfig?.(context.botInstanceId);
             if (cfg?.modules) {
               allowedModules = Object.entries(cfg.modules).filter(([, v]) => v === true).map(([k]) => k);
             }
+            helpConfig = cfg?.help || cfg?.commands?.help || null;
+          } else {
+            try {
+              const row = context.guildModuleService?.db?.get
+                ? context.guildModuleService.db.get('SELECT value FROM guild_settings WHERE guild_id = ? AND key = ?', [guild.id, 'help_menu_config'])
+                : null;
+              if (row && row.value) {
+                helpConfig = JSON.parse(row.value);
+              }
+            } catch {}
+            if (!helpConfig) {
+              const { botConfig } = require('../config/botConfig');
+              helpConfig = botConfig.getConfig()?.help || null;
+            }
           }
+
+          if (helpConfig?.enabled === false) {
+            const { EmbedBuilder } = require('discord.js');
+            const disabledEmbed = new EmbedBuilder()
+              .setColor(0xED4245)
+              .setTitle('⚠️ Central de Ajuda Desativada')
+              .setDescription(`A central de ajuda deste bot foi temporariamente desativada pela administração.`)
+              .setFooter({ text: `${aiName}` });
+            await message.reply({ embeds: [disabledEmbed] });
+            return true;
+          }
+
           const payload = buildHelpResponse({
             category: 'home',
             aiName,
             prefix: activePrefix || '',
             botAvatarUrl,
-            allowedModules
+            allowedModules,
+            helpConfig,
+            guild,
+            client: message.client
           });
           await message.reply(payload);
           return true;

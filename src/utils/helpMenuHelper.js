@@ -6,6 +6,54 @@ const {
   ButtonBuilder,
   ButtonStyle
 } = require('discord.js');
+const { resolveCustomEmojis } = require('./emojiHelper');
+
+function parseHelpColor(colorInput, defaultColor = 0x5865F2) {
+  if (!colorInput) return defaultColor;
+  if (typeof colorInput === 'number') return colorInput;
+  if (typeof colorInput === 'string') {
+    const clean = colorInput.replace('#', '').trim();
+    const parsed = parseInt(clean, 16);
+    return isNaN(parsed) ? defaultColor : parsed;
+  }
+  return defaultColor;
+}
+
+function formatHelpText(template, aiName, prefix, guild, client = null) {
+  if (!template || typeof template !== 'string') return '';
+  const rendered = template
+    .replace(/{bot_name}/gi, aiName || 'Bot')
+    .replace(/{ai_name}/gi, aiName || 'Bot')
+    .replace(/{prefix}/gi, prefix || '+')
+    .replace(/{guild_name}/gi, guild?.name || 'Servidor')
+    .replace(/{server_name}/gi, guild?.name || 'Servidor')
+    .replace(/{member_count}/gi, String(guild?.memberCount || '0'));
+  const target = client || guild;
+  return resolveCustomEmojis(rendered, target, guild?.id);
+}
+
+function safeSetEmoji(builder, emojiStr, client = null, guildId = null) {
+  if (!emojiStr || typeof emojiStr !== 'string') return builder;
+  let resolved = emojiStr.trim();
+  if (client) {
+    resolved = resolveCustomEmojis(resolved, client, guildId);
+  }
+  const match = resolved.match(/<(a)?:([a-zA-Z0-9_~]+):(\d+)>/);
+  if (match) {
+    try {
+      return builder.setEmoji({
+        animated: Boolean(match[1]),
+        name: match[2],
+        id: match[3]
+      });
+    } catch {}
+  }
+  try {
+    return builder.setEmoji(resolved);
+  } catch {
+    return builder;
+  }
+}
 
 const CATEGORIES = {
   home: {
@@ -77,11 +125,14 @@ const CATEGORY_REQUIRED_MODULES = {
 };
 
 /**
- * Builds the interactive select menu, optionally filtered by allowed modules.
+ * Builds the interactive select menu, optionally filtered by allowed modules and customized with emojis.
  * @param {string} currentCategory
  * @param {Array<string>|Set<string>|null} [allowedModules=null]
+ * @param {object|null} [helpConfig=null]
+ * @param {object|null} [guild=null]
+ * @param {import('discord.js').Client|null} [client=null]
  */
-function buildHelpComponents(currentCategory = 'home', allowedModules = null) {
+function buildHelpComponents(currentCategory = 'home', allowedModules = null, helpConfig = null, guild = null, client = null) {
   let allowedSet = null;
   if (allowedModules) {
     allowedSet = allowedModules instanceof Set
@@ -95,18 +146,22 @@ function buildHelpComponents(currentCategory = 'home', allowedModules = null) {
     return reqs.length === 0 || reqs.some(m => allowedSet.has(m.toLowerCase()));
   });
 
+  const customEmojis = helpConfig?.categoryEmojis || {};
+
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId('help_category_select')
     .setPlaceholder('📂 Escolha uma categoria para navegar...')
     .addOptions(
-      entries.map(([key, cat]) =>
-        new StringSelectMenuOptionBuilder()
+      entries.map(([key, cat]) => {
+        const customEmoji = customEmojis[key] || cat.emoji;
+        const opt = new StringSelectMenuOptionBuilder()
           .setLabel(cat.label)
           .setValue(key)
           .setDescription(cat.description)
-          .setEmoji(cat.emoji)
-          .setDefault(key === currentCategory)
-      )
+          .setDefault(key === currentCategory);
+        safeSetEmoji(opt, customEmoji, client, guild?.id);
+        return opt;
+      })
     );
 
   const selectRow = new ActionRowBuilder().addComponents(selectMenu);
@@ -114,13 +169,16 @@ function buildHelpComponents(currentCategory = 'home', allowedModules = null) {
 }
 
 /**
- * Builds the Home / Overview Embed, filtering sections if allowedModules is specified.
+ * Builds the Home / Overview Embed, filtering sections if allowedModules is specified and applying helpConfig customizations.
  * @param {string} [aiName='Jarvis']
  * @param {string} [prefix='+']
  * @param {string|null} [botAvatarUrl=null]
  * @param {Array<string>|Set<string>|null} [allowedModules=null]
+ * @param {object|null} [helpConfig=null]
+ * @param {object|null} [guild=null]
+ * @param {import('discord.js').Client|null} [client=null]
  */
-function buildHomeEmbed(aiName = 'Jarvis', prefix = '+', botAvatarUrl = null, allowedModules = null) {
+function buildHomeEmbed(aiName = 'Jarvis', prefix = '+', botAvatarUrl = null, allowedModules = null, helpConfig = null, guild = null, client = null) {
   let allowedSet = null;
   if (allowedModules) {
     allowedSet = allowedModules instanceof Set
@@ -128,52 +186,54 @@ function buildHomeEmbed(aiName = 'Jarvis', prefix = '+', botAvatarUrl = null, al
       : new Set(Array.isArray(allowedModules) ? allowedModules.map(m => String(m).toLowerCase().trim()) : Object.keys(allowedModules));
   }
 
+  const customEmojis = helpConfig?.categoryEmojis || {};
+
   const allCategoryFields = [
     {
       category: 'economy',
-      name: '💼 Economia & Negócios (13 cmds)',
+      name: `${customEmojis.economy || '💼'} Economia & Negócios (13 cmds)`,
       value: '`+work` `+daily` `+weekly` `+bank` `+dep` `+sac` `+pay` `+crime` `+slut` `+rob` `+shop` `+inv` `+rich`',
       inline: false
     },
     {
       category: 'casino',
-      name: '🎰 Cassino & Apostas (7 cmds)',
+      name: `${customEmojis.casino || '🎰'} Cassino & Apostas (7 cmds)`,
       value: '`+bj` `+slots` `+roleta` `+dado` `+coinflip` `+bolao` `+cassino`',
       inline: false
     },
     {
       category: 'music',
-      name: '🎵 Música, Rádio & Voz (11 cmds)',
+      name: `${customEmojis.music || '🎵'} Música, Rádio & Voz (11 cmds)`,
       value: '`+play` `+pause` `+resume` `+skip` `+stop` `+queue` `+np` `+vol` `+loop` `+shuffle` `+tts`',
       inline: false
     },
     {
       category: 'moderation',
-      name: '🛡️ Moderação & Segurança (12 cmds)',
+      name: `${customEmojis.moderation || '🛡️'} Moderação & Segurança (12 cmds)`,
       value: '`+ban` `+kick` `+mute` `+unmute` `+warn` `+advertir` `+warnlist` `+clearwarns` `+purge` `+lock` `+unlock` `+unban`',
       inline: false
     },
     {
       category: 'xp',
-      name: '🎖️ Níveis, XP & Recompensas (3 cmds)',
+      name: `${customEmojis.xp || '🎖️'} Níveis, XP & Recompensas (3 cmds)`,
       value: '`+rank` `+conquistas` `+leaderboard` • Recompensas automáticas de cargo por nível configuráveis.',
       inline: false
     },
     {
       category: 'fun',
-      name: '🎉 Social, Romance & Diversão (11 cmds)',
+      name: `${customEmojis.fun || '🎉'} Social, Romance & Diversão (11 cmds)`,
       value: '`+fofoca` `+quiz` `+beijar` `+abracar` `+genero` `+marry` `+divorce` `+ship` `+8ball` `+interact` `+raffle`',
       inline: false
     },
     {
       category: 'tickets',
-      name: '🎫 Central de Atendimento & Tickets (1 cmd)',
+      name: `${customEmojis.tickets || '🎫'} Central de Atendimento & Tickets (1 cmd)`,
       value: '`+ticket` • Sistema completo com histórico, modais e logs privados.',
       inline: false
     },
     {
       category: 'admin',
-      name: '⚙️ Administração & Inteligência Artificial (9 cmds)',
+      name: `${customEmojis.admin || '⚙️'} Administração & Inteligência Artificial (9 cmds)`,
       value: '`+modo` `+backup` `+prefixo` `/ai-name` `/config` `/backup` `/memory` • IA Gemini com modos de humor.',
       inline: false
     }
@@ -183,23 +243,44 @@ function buildHomeEmbed(aiName = 'Jarvis', prefix = '+', botAvatarUrl = null, al
     if (!allowedSet) return true;
     const reqs = CATEGORY_REQUIRED_MODULES[f.category] || [];
     return reqs.length === 0 || reqs.some(m => allowedSet.has(m.toLowerCase()));
-  });
+  }).map(f => ({
+    ...f,
+    name: client ? resolveCustomEmojis(f.name, client, guild?.id) : f.name,
+    value: client ? resolveCustomEmojis(f.value, client, guild?.id) : f.value
+  }));
+
+  const homeColor = parseHelpColor(helpConfig?.color, 0x5865F2);
+  const homeTitleRaw = (helpConfig?.title && String(helpConfig.title).trim() !== '')
+    ? formatHelpText(helpConfig.title, aiName, prefix, guild)
+    : `⚡ Central de Comandos — ${aiName}`;
+  const homeTitle = client ? resolveCustomEmojis(homeTitleRaw, client, guild?.id) : homeTitleRaw;
+
+  const defaultDesc = `Olá! Eu sou o **${aiName}**, seu assistente modular de alta tecnologia para o Discord.\n\n` +
+    `✨ **Módulos Ativos e Comandos configurados** para operar com total segurança.\n` +
+    `⌨️ **Prefixos Suportados:** **\`${prefix}\`** (Texto) e **\`/\`** (Slash Commands da interface).\n\n` +
+    `👇 **Selecione uma categoria no menu suspenso abaixo** para ver os comandos detalhados com exemplos!`;
+  const homeDescRaw = (helpConfig?.description && String(helpConfig.description).trim() !== '')
+    ? formatHelpText(helpConfig.description, aiName, prefix, guild)
+    : defaultDesc;
+  const homeDesc = client ? resolveCustomEmojis(homeDescRaw, client, guild?.id) : homeDescRaw;
+
+  const defaultFooter = `${aiName} • Use o menu abaixo para navegar entre as categorias`;
+  const homeFooterRaw = (helpConfig?.footer && String(helpConfig.footer).trim() !== '')
+    ? formatHelpText(helpConfig.footer, aiName, prefix, guild)
+    : defaultFooter;
+  const homeFooter = client ? resolveCustomEmojis(homeFooterRaw, client, guild?.id) : homeFooterRaw;
 
   const embed = new EmbedBuilder()
-    .setColor(0x5865F2)
-    .setTitle(`⚡ Central de Comandos — ${aiName}`)
-    .setDescription(
-      `Olá! Eu sou o **${aiName}**, seu assistente modular de alta tecnologia para o Discord.\n\n` +
-      `✨ **Módulos Ativos e Comandos configurados** para operar com total segurança.\n` +
-      `⌨️ **Prefixos Suportados:** **\`${prefix}\`** (Texto) e **\`/\`** (Slash Commands da interface).\n\n` +
-      `👇 **Selecione uma categoria no menu suspenso abaixo** para ver os comandos detalhados com exemplos!`
-    )
+    .setColor(homeColor)
+    .setTitle(homeTitle)
+    .setDescription(homeDesc)
     .addFields(visibleFields.length > 0 ? visibleFields : [{ name: 'ℹ️ Módulos', value: 'Nenhum módulo operacional ativo no momento.', inline: false }])
-    .setFooter({ text: `${aiName} • Use o menu abaixo para navegar entre as categorias` })
+    .setFooter({ text: homeFooter })
     .setTimestamp();
 
-  if (botAvatarUrl) {
-    embed.setThumbnail(botAvatarUrl);
+  const thumbUrl = helpConfig?.thumbnailUrl || botAvatarUrl;
+  if (thumbUrl) {
+    embed.setThumbnail(thumbUrl);
   }
 
   return embed;
@@ -208,20 +289,21 @@ function buildHomeEmbed(aiName = 'Jarvis', prefix = '+', botAvatarUrl = null, al
 /**
  * Builds Category Specific Embed
  */
-function buildCategoryEmbed(categoryKey, aiName = 'Jarvis', prefix = '+', botAvatarUrl = null) {
+function buildCategoryEmbed(categoryKey, aiName = 'Jarvis', prefix = '+', botAvatarUrl = null, helpConfig = null, guild = null, client = null) {
   const cat = CATEGORIES[categoryKey] || CATEGORIES.home;
-  const embed = new EmbedBuilder()
-    .setColor(cat.color)
-    .setTimestamp()
-    .setFooter({ text: `${aiName} • Categoria: ${cat.label}` });
-
-  if (botAvatarUrl) {
-    embed.setThumbnail(botAvatarUrl);
-  }
+  const customEmojis = helpConfig?.categoryEmojis || {};
+  const catEmoji = customEmojis[categoryKey] || cat.emoji;
+  const catColor = parseHelpColor(helpConfig?.color, cat.color);
+  const defaultFooter = `${aiName} • Categoria: ${cat.label}`;
+  const footerRaw = (helpConfig?.footer && String(helpConfig.footer).trim() !== '') ? formatHelpText(helpConfig.footer, aiName, prefix, guild) : defaultFooter;
+  const footerText = client ? resolveCustomEmojis(footerRaw, client, guild?.id) : footerRaw;
+  const embed = new EmbedBuilder().setColor(catColor).setTimestamp().setFooter({ text: footerText });
+  const thumbUrl = helpConfig?.thumbnailUrl || botAvatarUrl;
+  if (thumbUrl) embed.setThumbnail(thumbUrl);
 
   switch (categoryKey) {
     case 'economy': {
-      embed.setTitle(`💼 ${aiName} • Economia, Negócios & Comércio`);
+      embed.setTitle(`${catEmoji} ${aiName} • Economia, Negócios & Comércio`);
       embed.setDescription(
         `Sistema completo de economia dinâmica com carteira, banco seguro, empregos, crimes e compras na loja.\n` +
         `*Todas as taxas e salários são gerenciados pelos administradores.*`
@@ -245,7 +327,7 @@ function buildCategoryEmbed(categoryKey, aiName = 'Jarvis', prefix = '+', botAva
     }
 
     case 'casino': {
-      embed.setTitle(`🎰 ${aiName} • Cassino & Jogos de Apostas`);
+      embed.setTitle(`${catEmoji} ${aiName} • Cassino & Jogos de Apostas`);
       embed.setDescription(
         `Jogos de aposta de alto risco e entretenimento. Configure limites e probabilidades no painel web!\n` +
         `*Aposte com sabedoria para não zerar sua carteira.*`
@@ -284,7 +366,7 @@ function buildCategoryEmbed(categoryKey, aiName = 'Jarvis', prefix = '+', botAva
     }
 
     case 'moderation': {
-      embed.setTitle(`🛡️ ${aiName} • Moderação, Punições & Segurança`);
+      embed.setTitle(`${catEmoji} ${aiName} • Moderação, Punições & Segurança`);
       embed.setDescription(
         `Ferramentas avançadas de moderação disciplinar com registro em histórico e auditoria com prints visuais.\n` +
         `*Requer cargos ou permissões administrativas adequadas.*`
@@ -343,7 +425,7 @@ function buildCategoryEmbed(categoryKey, aiName = 'Jarvis', prefix = '+', botAva
     }
 
     case 'tickets': {
-      embed.setTitle(`🎫 ${aiName} • Central de Atendimento & Tickets`);
+      embed.setTitle(`${catEmoji} ${aiName} • Central de Atendimento & Tickets`);
       embed.setDescription(
         `Sistema corporativo de tickets de suporte com salas privadas automáticas, transcrições e modais.`
       );
@@ -355,7 +437,7 @@ function buildCategoryEmbed(categoryKey, aiName = 'Jarvis', prefix = '+', botAva
     }
 
     case 'admin': {
-      embed.setTitle(`⚙️ ${aiName} • Administração, Inteligência Artificial & Configurações`);
+      embed.setTitle(`${catEmoji} ${aiName} • Administração, Inteligência Artificial & Configurações`);
       embed.setDescription(
         `Controles administrativos avançados e inteligência artificial conectada ao Google Gemini.`
       );
@@ -371,7 +453,19 @@ function buildCategoryEmbed(categoryKey, aiName = 'Jarvis', prefix = '+', botAva
     }
 
     default:
-      return buildHomeEmbed(aiName, prefix, botAvatarUrl);
+      return buildHomeEmbed(aiName, prefix, botAvatarUrl, null, helpConfig, guild, client);
+  }
+
+  if (client) {
+    if (embed.data.title) embed.data.title = resolveCustomEmojis(embed.data.title, client, guild?.id);
+    if (embed.data.description) embed.data.description = resolveCustomEmojis(embed.data.description, client, guild?.id);
+    if (Array.isArray(embed.data.fields)) {
+      embed.data.fields = embed.data.fields.map(f => ({
+        ...f,
+        name: resolveCustomEmojis(f.name, client, guild?.id),
+        value: resolveCustomEmojis(f.value, client, guild?.id)
+      }));
+    }
   }
 
   return embed;
@@ -386,7 +480,16 @@ function buildCategoryEmbed(categoryKey, aiName = 'Jarvis', prefix = '+', botAva
  * @param {string|null} [options.botAvatarUrl=null]
  * @param {Array<string>|Set<string>|null} [options.allowedModules=null]
  */
-function buildHelpResponse({ category = 'home', aiName = 'Jarvis', prefix = '+', botAvatarUrl = null, allowedModules = null } = {}) {
+function buildHelpResponse({
+  category = 'home',
+  aiName = 'Jarvis',
+  prefix = '+',
+  botAvatarUrl = null,
+  allowedModules = null,
+  helpConfig = null,
+  guild = null,
+  client = null
+} = {}) {
   let resolvedCategory = category;
   if (allowedModules && category !== 'home') {
     const allowedSet = allowedModules instanceof Set
@@ -400,16 +503,19 @@ function buildHelpResponse({ category = 'home', aiName = 'Jarvis', prefix = '+',
   }
 
   const embed = resolvedCategory === 'home'
-    ? buildHomeEmbed(aiName, prefix, botAvatarUrl, allowedModules)
-    : buildCategoryEmbed(resolvedCategory, aiName, prefix, botAvatarUrl);
+    ? buildHomeEmbed(aiName, prefix, botAvatarUrl, allowedModules, helpConfig, guild, client)
+    : buildCategoryEmbed(resolvedCategory, aiName, prefix, botAvatarUrl, helpConfig, guild, client);
 
-  const components = buildHelpComponents(resolvedCategory, allowedModules);
+  const components = buildHelpComponents(resolvedCategory, allowedModules, helpConfig, guild, client);
 
   return { embeds: [embed], components };
 }
 
 module.exports = {
   CATEGORIES,
+  parseHelpColor,
+  formatHelpText,
+  safeSetEmoji,
   buildHelpComponents,
   buildHomeEmbed,
   buildCategoryEmbed,

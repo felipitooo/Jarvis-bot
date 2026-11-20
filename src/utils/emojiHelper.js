@@ -24,13 +24,18 @@ function findInCache(cache, predicate) {
  * @param {string} [currentGuildId]
  * @returns {string}
  */
-function resolveCustomEmojis(text, client, currentGuildId = null) {
+function resolveCustomEmojis(text, clientOrGuild, currentGuildId = null) {
   if (!text || typeof text !== 'string') return text;
-  if (!client?.emojis?.cache) return text;
+  if (!clientOrGuild) return text;
 
-  const currentGuild = currentGuildId ? client.guilds?.cache?.get(currentGuildId) : null;
-  const currentEmojis = currentGuild?.emojis?.cache || null;
-  const allEmojis = client.emojis.cache;
+  // Support both Client (has guilds and/or emojis) and direct Guild (has emojis.cache)
+  const isGuildDirect = Boolean(clientOrGuild.emojis?.cache && clientOrGuild.id && !clientOrGuild.guilds);
+  const currentEmojis = isGuildDirect
+    ? clientOrGuild.emojis.cache
+    : (currentGuildId && clientOrGuild.guilds?.cache?.get ? clientOrGuild.guilds.cache.get(currentGuildId)?.emojis?.cache : null);
+  const allEmojis = clientOrGuild.emojis?.cache || currentEmojis;
+
+  if (!allEmojis && !currentEmojis) return text;
 
   // Match existing Discord emojis <a?:name:id> to preserve them, or match raw :emoji_name: to resolve them
   return text.replace(/<a?:([a-zA-Z0-9_~]+):(\d+)>|(?<!https?:\/\/[^\s]*):([a-zA-Z0-9_~]{2,32}):/g, (match, existingName, existingId, rawName) => {

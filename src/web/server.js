@@ -619,7 +619,26 @@ class WebServer {
                   role: inst.config?.personaRole || baseConfig.ai?.persona?.role
                 }
               },
-              theme: inst.config?.theme || baseConfig.theme
+              theme: inst.config?.theme || baseConfig.theme,
+              help: inst.config?.help || inst.config?.commands?.help || baseConfig.help || {
+                enabled: true,
+                title: `⚡ Central de Comandos — ${inst.name || 'Bot'}`,
+                description: '',
+                footer: `${inst.name || 'Bot'} • Use o menu abaixo para navegar entre as categorias`,
+                color: '#5865F2',
+                thumbnailUrl: '',
+                categoryEmojis: {
+                  home: '🏠',
+                  economy: '💼',
+                  casino: '🎰',
+                  music: '🎵',
+                  moderation: '🛡️',
+                  xp: '🎖️',
+                  fun: '🎉',
+                  tickets: '🎫',
+                  admin: '⚙️'
+                }
+              }
             };
             return this._sendJson(res, 200, isolatedConfig);
           }
@@ -688,6 +707,14 @@ class WebServer {
             if (body.theme && typeof body.theme === 'object') {
               cfg.theme = { ...(cfg.theme || {}), ...body.theme };
             }
+            if (body.help && typeof body.help === 'object') {
+              cfg.help = { ...(cfg.help || {}), ...body.help };
+              if (!cfg.commands) cfg.commands = {};
+              cfg.commands.help = { ...(cfg.commands.help || {}), ...body.help };
+              if (body.help.enabled !== undefined) {
+                mb.deployInstanceSlashCommands(targetBotId).catch(() => {});
+              }
+            }
             updates.config = cfg;
             mb.updateInstance(targetBotId, updates);
             if (body.presence) {
@@ -741,6 +768,24 @@ class WebServer {
               activityName: body.presence.activityText || `${updated.identity?.name || 'J.A.R.V.I.S.'} | ${updated.identity?.defaultPrefix || '+'}ajuda`,
               activityUrl: body.presence.activityUrl || ''
             });
+          } catch {}
+        }
+
+        // Synchronize Primary Bot slash commands if help enabled toggle was updated
+        if (body.help?.enabled !== undefined && this.botClient?.token && this.botClient?.user?.id) {
+          try {
+            const { commandRegistry } = require('../commands/commandRegistry');
+            const guildIds = this.botClient.guilds?.cache ? Array.from(this.botClient.guilds.cache.keys()) : [];
+            const gms = this.webPanelService?.services?.guildModuleService;
+            commandRegistry.deployCommands(
+              this.botClient.token,
+              this.botClient.user.id,
+              guildIds,
+              null,
+              updated.identity?.name || 'J.A.R.V.I.S.',
+              gms,
+              body.help.enabled !== false
+            ).catch(() => {});
           } catch {}
         }
 
@@ -1008,7 +1053,19 @@ class WebServer {
 
         const guildId = guildMatch[1];
         const subPath = guildMatch[2] || '';
-        const botGuild = this.botClient?.guilds?.cache?.get(guildId) || null;
+        let botGuild = this.botClient?.guilds?.cache?.get(guildId) || null;
+        if (!botGuild || (botGuild.memberCount || 0) === 0) {
+          const mb = this.webPanelService?.services?.multiBotManager;
+          if (mb?.activeInstances) {
+            for (const [, inst] of mb.activeInstances) {
+              const g = inst.client?.guilds?.cache?.get(guildId);
+              if (g && (g.memberCount || 0) > 0) {
+                botGuild = g;
+                break;
+              }
+            }
+          }
+        }
 
         // GET /api/guilds/:guildId - Overview
         if (subPath === '' && method === 'GET') {

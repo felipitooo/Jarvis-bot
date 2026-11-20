@@ -2938,7 +2938,7 @@ function renderDashboardHtml({
           <p>Informações operacionais do servidor conectado no Discord.</p>
           <div class="form-group">
             <label>Nome do Servidor</label>
-            <input type="text" id="guildNameDisplay" value="Carregando..." readonly>
+            <input type="text" id="guildNameDisplay" value="${escapeHtmlServer(initialServerName)}" readonly>
           </div>
           <div class="form-group">
             <label>Identidade Atual da IA</label>
@@ -7108,6 +7108,161 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           <div class="form-group">
             <label>Texto de Rodapé dos Embeds (Rodapé)</label>
             <input type="text" id="cfgEmbedFooter" placeholder="Ex: J.A.R.V.I.S. • Sistemas Centrais">
+          </div>
+        </div>
+
+        
+        <!-- CENTRAL DE COMANDOS & AJUDA (/ajuda & +ajuda) -->
+        <div class="card" style="grid-column: 1 / -1; background: linear-gradient(135deg, rgba(88, 101, 242, 0.08), rgba(0, 229, 255, 0.04)); border: 1px solid rgba(88, 101, 242, 0.35);">
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
+            <div>
+              <h2 style="margin: 0 0 0.35rem 0; display: flex; align-items: center; gap: 8px;">
+                <span>📖</span> Central de Comandos & Ajuda (/ajuda & +ajuda)
+              </h2>
+              <p style="margin: 0; color: var(--text-muted); font-size: 0.88rem;">
+                Ative ou desative o comando de ajuda e customize totalmente o título, descrição, cores, rodapé e emojis de cada categoria (suporta emojis do servidor).
+              </p>
+            </div>
+            <div style="display: flex; align-items: center; gap: 1rem;">
+              <label class="switch" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: 700; font-size: 0.9rem;">
+                <input type="checkbox" id="cfgHelpEnabled" checked style="accent-color: #5865F2; width: 18px; height: 18px;">
+                <span>Comando de Ajuda Ativo</span>
+              </label>
+              <button type="button" class="primary-btn" id="saveHelpConfigBtn" style="padding: 0.45rem 1.15rem; font-weight: 700; font-size: 0.82rem; background: #5865F2; border-color: #5865F2;">💾 Salvar Ajuda</button>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem;">
+            <!-- Título do Embed -->
+            <div class="form-group">
+              <label style="display: flex; justify-content: space-between; align-items: center;">
+                <span>Título do Menu</span>
+                <button type="button" class="emoji-input-trigger" onclick="openEmojiPicker('cfgHelpTitle')" title="Inserir Emoji">😀</button>
+              </label>
+              <input type="text" id="cfgHelpTitle" placeholder="⚡ Central de Comandos — {bot_name}">
+              <small style="color: var(--text-muted); font-size: 0.74rem;">Variáveis: {bot_name}, {prefix}, {guild_name}</small>
+            </div>
+
+            <!-- Cor do Embed -->
+            <div class="form-group">
+              <label>Cor Principal do Embed</label>
+              <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <input type="color" id="cfgHelpColor" value="#5865F2" style="width: 44px; height: 38px; padding: 2px; border-radius: 6px; cursor: pointer; background: transparent; border: 1px solid var(--border-color);">
+                <input type="text" id="cfgHelpColorText" value="#5865F2" placeholder="#5865F2" style="flex: 1;" oninput="document.getElementById('cfgHelpColor').value = this.value">
+              </div>
+            </div>
+
+            <!-- Thumbnail / Ícone URL -->
+            <div class="form-group">
+              <label>Thumbnail / Imagem (URL Opcional)</label>
+              <input type="text" id="cfgHelpThumbnail" placeholder="https://exemplo.com/icone.png (vazio = avatar do bot)">
+            </div>
+          </div>
+
+          <!-- Descrição Personalizada -->
+          <div class="form-group" style="margin-top: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+              <label style="margin: 0;">Mensagem / Descrição do Menu Principal</label>
+              <button type="button" class="secondary-btn btn-open-emoji-picker" onclick="openEmojiPicker('cfgHelpDescription')" style="padding: 0.2rem 0.55rem; font-size: 0.78rem; display: inline-flex; align-items: center; gap: 4px; background: rgba(88, 101, 242, 0.15); border-color: rgba(88, 101, 242, 0.4); color: #818cf8; font-weight: 600;">
+                😀 Emojis do Servidor
+              </button>
+            </div>
+            <textarea id="cfgHelpDescription" rows="3" placeholder="Deixe em branco para usar o texto padrão, ou personalize com suas próprias regras, links e instruções..."></textarea>
+            <small style="color: var(--text-muted); font-size: 0.74rem;">Suporta {bot_name}, {prefix}, {guild_name}, {member_count} e emojis do servidor como <:nome:id> ou :nome:</small>
+          </div>
+
+          <!-- Rodapé do Embed -->
+          <div class="form-group" style="margin-top: 0.75rem;">
+            <label style="display: flex; justify-content: space-between; align-items: center;">
+              <span>Texto do Rodapé (Footer)</span>
+              <button type="button" class="emoji-input-trigger" onclick="openEmojiPicker('cfgHelpFooter')" title="Inserir Emoji">😀</button>
+            </label>
+            <input type="text" id="cfgHelpFooter" placeholder="{bot_name} • Use o menu abaixo para navegar entre as categorias">
+          </div>
+
+          <!-- Emojis das Categorias (Grid Completo com Picker) -->
+          <div style="margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.08);">
+            <h4 style="margin: 0 0 0.4rem 0; color: #a5b4fc; font-size: 0.95rem; display: flex; align-items: center; gap: 6px;">
+              <span>🎭</span> Emojis Customizados por Categoria (Menu Suspenso & Embed)
+            </h4>
+            <p style="margin: 0 0 0.85rem 0; color: var(--text-muted); font-size: 0.8rem;">
+              Personalize o emoji de cada categoria. Clique no botão de emoji para escolher qualquer emoji do seu servidor ou da biblioteca!
+            </p>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.75rem;">
+              <!-- Home -->
+              <div class="form-group" style="margin: 0;">
+                <label style="font-size: 0.8rem;">Início & Visão Geral</label>
+                <div style="display: flex; gap: 0.3rem;">
+                  <input type="text" id="cfgHelpEmoji_home" value="🏠" style="text-align: center; font-size: 1.05rem;">
+                  <button type="button" class="secondary-btn" onclick="openEmojiPicker('cfgHelpEmoji_home')" title="Escolher Emoji" style="padding: 0.35rem 0.55rem;">😀</button>
+                </div>
+              </div>
+              <!-- Economia -->
+              <div class="form-group" style="margin: 0;">
+                <label style="font-size: 0.8rem;">Economia & Negócios</label>
+                <div style="display: flex; gap: 0.3rem;">
+                  <input type="text" id="cfgHelpEmoji_economy" value="💼" style="text-align: center; font-size: 1.05rem;">
+                  <button type="button" class="secondary-btn" onclick="openEmojiPicker('cfgHelpEmoji_economy')" title="Escolher Emoji" style="padding: 0.35rem 0.55rem;">😀</button>
+                </div>
+              </div>
+              <!-- Cassino -->
+              <div class="form-group" style="margin: 0;">
+                <label style="font-size: 0.8rem;">Cassino & Apostas</label>
+                <div style="display: flex; gap: 0.3rem;">
+                  <input type="text" id="cfgHelpEmoji_casino" value="🎰" style="text-align: center; font-size: 1.05rem;">
+                  <button type="button" class="secondary-btn" onclick="openEmojiPicker('cfgHelpEmoji_casino')" title="Escolher Emoji" style="padding: 0.35rem 0.55rem;">😀</button>
+                </div>
+              </div>
+              <!-- Música -->
+              <div class="form-group" style="margin: 0;">
+                <label style="font-size: 0.8rem;">Música & Player</label>
+                <div style="display: flex; gap: 0.3rem;">
+                  <input type="text" id="cfgHelpEmoji_music" value="🎵" style="text-align: center; font-size: 1.05rem;">
+                  <button type="button" class="secondary-btn" onclick="openEmojiPicker('cfgHelpEmoji_music')" title="Escolher Emoji" style="padding: 0.35rem 0.55rem;">😀</button>
+                </div>
+              </div>
+              <!-- Moderação -->
+              <div class="form-group" style="margin: 0;">
+                <label style="font-size: 0.8rem;">Moderação & Segurança</label>
+                <div style="display: flex; gap: 0.3rem;">
+                  <input type="text" id="cfgHelpEmoji_moderation" value="🛡️" style="text-align: center; font-size: 1.05rem;">
+                  <button type="button" class="secondary-btn" onclick="openEmojiPicker('cfgHelpEmoji_moderation')" title="Escolher Emoji" style="padding: 0.35rem 0.55rem;">😀</button>
+                </div>
+              </div>
+              <!-- XP -->
+              <div class="form-group" style="margin: 0;">
+                <label style="font-size: 0.8rem;">Níveis & XP</label>
+                <div style="display: flex; gap: 0.3rem;">
+                  <input type="text" id="cfgHelpEmoji_xp" value="🎖️" style="text-align: center; font-size: 1.05rem;">
+                  <button type="button" class="secondary-btn" onclick="openEmojiPicker('cfgHelpEmoji_xp')" title="Escolher Emoji" style="padding: 0.35rem 0.55rem;">😀</button>
+                </div>
+              </div>
+              <!-- Social / Diversão -->
+              <div class="form-group" style="margin: 0;">
+                <label style="font-size: 0.8rem;">Social & Diversão</label>
+                <div style="display: flex; gap: 0.3rem;">
+                  <input type="text" id="cfgHelpEmoji_fun" value="🎉" style="text-align: center; font-size: 1.05rem;">
+                  <button type="button" class="secondary-btn" onclick="openEmojiPicker('cfgHelpEmoji_fun')" title="Escolher Emoji" style="padding: 0.35rem 0.55rem;">😀</button>
+                </div>
+              </div>
+              <!-- Tickets -->
+              <div class="form-group" style="margin: 0;">
+                <label style="font-size: 0.8rem;">Atendimento & Tickets</label>
+                <div style="display: flex; gap: 0.3rem;">
+                  <input type="text" id="cfgHelpEmoji_tickets" value="🎫" style="text-align: center; font-size: 1.05rem;">
+                  <button type="button" class="secondary-btn" onclick="openEmojiPicker('cfgHelpEmoji_tickets')" title="Escolher Emoji" style="padding: 0.35rem 0.55rem;">😀</button>
+                </div>
+              </div>
+              <!-- Admin & IA -->
+              <div class="form-group" style="margin: 0;">
+                <label style="font-size: 0.8rem;">Administração & IA</label>
+                <div style="display: flex; gap: 0.3rem;">
+                  <input type="text" id="cfgHelpEmoji_admin" value="⚙️" style="text-align: center; font-size: 1.05rem;">
+                  <button type="button" class="secondary-btn" onclick="openEmojiPicker('cfgHelpEmoji_admin')" title="Escolher Emoji" style="padding: 0.35rem 0.55rem;">😀</button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -14012,6 +14167,42 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       setColorInputValue('cfgEmbedError', 'cfgEmbedErrorPicker', e.errorColor || '#EF4444');
       if (document.getElementById('cfgEmbedFooter')) document.getElementById('cfgEmbedFooter').value = e.footerText || '';
 
+      // 4.1 Help Menu Config
+      const h = cfg.help || cfg.commands?.help || {};
+      if (document.getElementById('cfgHelpEnabled')) {
+        document.getElementById('cfgHelpEnabled').checked = h.enabled !== false;
+      }
+      if (document.getElementById('cfgHelpTitle')) {
+        document.getElementById('cfgHelpTitle').value = h.title || '';
+      }
+      if (document.getElementById('cfgHelpDescription')) {
+        document.getElementById('cfgHelpDescription').value = h.description || '';
+      }
+      if (document.getElementById('cfgHelpFooter')) {
+        document.getElementById('cfgHelpFooter').value = h.footer || '';
+      }
+      const hColor = h.color || '#5865F2';
+      setColorInputValue('cfgHelpColorText', 'cfgHelpColor', hColor);
+      if (document.getElementById('cfgHelpThumbnail')) {
+        document.getElementById('cfgHelpThumbnail').value = h.thumbnailUrl || '';
+      }
+      const catEmojis = h.categoryEmojis || {};
+      const defaultCatEmojis = {
+        home: '🏠',
+        economy: '💼',
+        casino: '🎰',
+        music: '🎵',
+        moderation: '🛡️',
+        xp: '🎖️',
+        fun: '🎉',
+        tickets: '🎫',
+        admin: '⚙️'
+      };
+      ['home', 'economy', 'casino', 'music', 'moderation', 'xp', 'fun', 'tickets', 'admin'].forEach(k => {
+        const el = document.getElementById('cfgHelpEmoji_' + k);
+        if (el) el.value = catEmojis[k] || defaultCatEmojis[k] || '⚡';
+      });
+
       // 5. Panel Branding
       const b = cfg.panelBranding || {};
       if (document.getElementById('cfgPanelTitle')) document.getElementById('cfgPanelTitle').value = b.title || '';
@@ -14087,7 +14278,8 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       ['cfgEmbedPrimary', 'cfgEmbedPrimaryPicker', null],
       ['cfgEmbedSuccess', 'cfgEmbedSuccessPicker', null],
       ['cfgEmbedWarning', 'cfgEmbedWarningPicker', null],
-      ['cfgEmbedError', 'cfgEmbedErrorPicker', null]
+      ['cfgEmbedError', 'cfgEmbedErrorPicker', null],
+      ['cfgHelpColorText', 'cfgHelpColor', null]
     ].forEach(([textId, pickerId, cssVar]) => {
       const textInput = document.getElementById(textId);
       const pickerInput = document.getElementById(pickerId);
@@ -14278,6 +14470,25 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           badge: document.getElementById('cfgPanelBadge')?.value?.trim() || 'TECH CORE v2.0',
           subtitle: document.getElementById('cfgPanelSubtitle')?.value?.trim() || '',
           footerCopyright: document.getElementById('cfgPanelFooter')?.value?.trim() || ''
+        },
+        help: {
+          enabled: document.getElementById('cfgHelpEnabled') ? document.getElementById('cfgHelpEnabled').checked : true,
+          title: document.getElementById('cfgHelpTitle')?.value?.trim() || '',
+          description: document.getElementById('cfgHelpDescription')?.value || '',
+          footer: document.getElementById('cfgHelpFooter')?.value?.trim() || '',
+          color: document.getElementById('cfgHelpColor')?.value?.trim() || document.getElementById('cfgHelpColorText')?.value?.trim() || '#5865F2',
+          thumbnailUrl: document.getElementById('cfgHelpThumbnail')?.value?.trim() || '',
+          categoryEmojis: {
+            home: document.getElementById('cfgHelpEmoji_home')?.value?.trim() || '🏠',
+            economy: document.getElementById('cfgHelpEmoji_economy')?.value?.trim() || '💼',
+            casino: document.getElementById('cfgHelpEmoji_casino')?.value?.trim() || '🎰',
+            music: document.getElementById('cfgHelpEmoji_music')?.value?.trim() || '🎵',
+            moderation: document.getElementById('cfgHelpEmoji_moderation')?.value?.trim() || '🛡️',
+            xp: document.getElementById('cfgHelpEmoji_xp')?.value?.trim() || '🎖️',
+            fun: document.getElementById('cfgHelpEmoji_fun')?.value?.trim() || '🎉',
+            tickets: document.getElementById('cfgHelpEmoji_tickets')?.value?.trim() || '🎫',
+            admin: document.getElementById('cfgHelpEmoji_admin')?.value?.trim() || '⚙️'
+          }
         }
       };
 

@@ -229,25 +229,28 @@ class WebPanelService {
       const inst = mb.getInstance(botId);
       if (inst) {
         const cfg = inst.config || {};
-        const channels = this._extractChannels(botGuild);
-        const roles = this._extractRoles(botGuild);
+        const live = mb.activeInstances?.get(botId);
+        const effectiveGuild = (botGuild && (botGuild.memberCount || 0) > 0)
+          ? botGuild
+          : (live?.client?.guilds?.cache?.get(guildId) || this.botClient?.guilds?.cache?.get(guildId) || botGuild);
+        const channels = this._extractChannels(effectiveGuild);
+        const roles = this._extractRoles(effectiveGuild);
         const activeAiName = cfg.aiName || inst.name;
         const activePrefix = cfg.prefix || '+';
         const auditChan = cfg.audit?.channelId || cfg.moderation?.logChannelId || '';
 
-        const live = mb.activeInstances?.get(botId);
         const resolvedAvatar = (typeof live?.client?.user?.displayAvatarURL === 'function')
           ? live.client.user.displayAvatarURL({ extension: 'png', size: 128 })
           : (inst.avatarUrl || inst.config?.theme?.avatarUrl || ('/api/bot/avatar?botId=' + encodeURIComponent(botId)));
 
-        const guildIconUrl = botGuild?.iconURL
-          ? botGuild.iconURL({ extension: 'png', size: 128 })
-          : (botGuild?.icon ? `https://cdn.discordapp.com/icons/${botGuild.id}/${botGuild.icon}.png?size=128` : 'https://cdn.discordapp.com/embed/avatars/0.png');
+        const guildIconUrl = effectiveGuild?.iconURL
+          ? effectiveGuild.iconURL({ extension: 'png', size: 128 })
+          : (effectiveGuild?.icon ? `https://cdn.discordapp.com/icons/${effectiveGuild.id}/${effectiveGuild.icon}.png?size=128` : 'https://cdn.discordapp.com/embed/avatars/0.png');
 
         return {
           guildId,
-          guildName: botGuild?.name || 'Servidor',
-          memberCount: botGuild?.memberCount || 0,
+          guildName: effectiveGuild?.name || 'Servidor',
+          memberCount: effectiveGuild?.memberCount || 0,
           guildIconUrl,
           aiDisplayName: activeAiName,
           activeBotId: botId,
@@ -828,6 +831,28 @@ class WebPanelService {
             return {
               tempbans: this.services.modRepo ? this.services.modRepo.getActiveTempBans(guildId) : []
             };
+          case 'help':
+          case 'help_menu':
+          case 'ajuda':
+            return cfg.help || cfg.commands?.help || {
+              enabled: true,
+              title: `⚡ Central de Comandos — ${inst.name}`,
+              description: '',
+              footer: `${inst.name} • Use o menu abaixo para navegar entre as categorias`,
+              color: '#5865F2',
+              thumbnailUrl: '',
+              categoryEmojis: {
+                home: '🏠',
+                economy: '💼',
+                casino: '🎰',
+                music: '🎵',
+                moderation: '🛡️',
+                xp: '🎖️',
+                fun: '🎉',
+                tickets: '🎫',
+                admin: '⚙️'
+              }
+            };
           case 'anti_bot_scam':
           case 'antibotscam':
             return {
@@ -986,6 +1011,38 @@ class WebPanelService {
           enabled: isEnabled,
           action: ab.antiBotScamAction || ab.anti_bot_scam_action || 'TIMEOUT',
           timeoutDurationSeconds: ab.antiBotScamTimeoutSeconds || ab.anti_bot_scam_timeout_seconds || 86400
+        };
+      }
+      case 'help':
+      case 'help_menu':
+      case 'ajuda': {
+        try {
+          const row = this.services?.guildModuleService?.db?.get
+            ? this.services.guildModuleService.db.get('SELECT value FROM guild_settings WHERE guild_id = ? AND key = ?', [guildId, 'help_menu_config'])
+            : null;
+          if (row && row.value) {
+            return JSON.parse(row.value);
+          }
+        } catch {}
+        const { botConfig } = require('../config/botConfig');
+        return botConfig.getConfig()?.help || {
+          enabled: true,
+          title: '⚡ Central de Comandos — Jarvis',
+          description: '',
+          footer: 'Jarvis • Use o menu abaixo para navegar entre as categorias',
+          color: '#5865F2',
+          thumbnailUrl: '',
+          categoryEmojis: {
+            home: '🏠',
+            economy: '💼',
+            casino: '🎰',
+            music: '🎵',
+            moderation: '🛡️',
+            xp: '🎖️',
+            fun: '🎉',
+            tickets: '🎫',
+            admin: '⚙️'
+          }
         };
       }
       default:
@@ -1189,6 +1246,18 @@ class WebPanelService {
               module: 'social_alerts',
               alerts: repo ? repo.listAlerts(guildId) : []
             };
+          }
+          case 'help':
+          case 'help_menu':
+          case 'ajuda': {
+            cfg.help = { ...(cfg.help || {}), ...updates };
+            if (!cfg.commands) cfg.commands = {};
+            cfg.commands.help = { ...(cfg.commands.help || {}), ...updates };
+            mb.updateInstance(botId, { config: cfg });
+            if (updates.enabled !== undefined) {
+              mb.deployInstanceSlashCommands(botId).catch(() => {});
+            }
+            return { module: 'help', config: cfg.help };
           }
           case 'anti_bot_scam':
           case 'antibotscam': {
@@ -1991,6 +2060,38 @@ class WebPanelService {
         updated = {
           summaries: this.listChannelSummaries(session, guildId, 20)
         };
+        break;
+      }
+      case 'help':
+      case 'help_menu':
+      case 'ajuda': {
+        const { botConfig } = require('../config/botConfig');
+        const currentHelp = botConfig.getConfig()?.help || {};
+        const merged = { ...currentHelp, ...updates };
+        botConfig.updateSection('help', merged);
+        try {
+          const existing = this.settingsService?.getSetting?.(guildId, 'help_menu_config');
+          const existingObj = existing ? JSON.parse(existing) : {};
+          const updatedGuildHelp = { ...existingObj, ...updates };
+          this.settingsService?.setSetting?.(guildId, 'help_menu_config', JSON.stringify(updatedGuildHelp), session.userId);
+        } catch {}
+        if (updates.enabled !== undefined && this.botClient?.token && this.botClient?.user?.id) {
+          try {
+            const { commandRegistry } = require('../commands/commandRegistry');
+            const gms = this.services.guildModuleService;
+            const guildMods = gms?.getGuildModules ? gms.getGuildModules(guildId) : null;
+            const activeMods = guildMods ? Object.entries(guildMods).filter(([, v]) => v === true).map(([k]) => k) : null;
+            commandRegistry.deployGuildCommands(
+              this.botClient.token,
+              this.botClient.user.id,
+              guildId,
+              activeMods,
+              null,
+              updates.enabled !== false
+            ).catch(() => {});
+          } catch {}
+        }
+        updated = merged;
         break;
       }
       default:

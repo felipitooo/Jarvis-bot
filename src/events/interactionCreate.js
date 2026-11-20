@@ -1040,19 +1040,51 @@ module.exports = {
             : null;
 
           let allowedModules = null;
+          let helpConfig = null;
+          let activePrefix = '+';
+
           if (context.botInstanceId && context.multiBotManager) {
             const cfg = context.multiBotManager.getInstanceConfig?.(context.botInstanceId);
             if (cfg?.modules) {
               allowedModules = Object.entries(cfg.modules).filter(([, v]) => v === true).map(([k]) => k);
             }
+            helpConfig = cfg?.help || cfg?.commands?.help || null;
+            activePrefix = cfg?.prefix || cfg?.commands?.prefix || '+';
+          } else {
+            try {
+              const row = context.guildModuleService?.db?.get
+                ? context.guildModuleService.db.get('SELECT value FROM guild_settings WHERE guild_id = ? AND key = ?', [guild.id, 'help_menu_config'])
+                : null;
+              if (row && row.value) {
+                helpConfig = JSON.parse(row.value);
+              }
+            } catch {}
+            if (!helpConfig) {
+              const { botConfig } = require('../config/botConfig');
+              helpConfig = botConfig.getConfig()?.help || null;
+            }
+            activePrefix = context.settingsService?.getSetting?.(guild.id, 'prefix') || '+';
+          }
+
+          if (helpConfig?.enabled === false) {
+            const { EmbedBuilder } = require('discord.js');
+            const disabledEmbed = new EmbedBuilder()
+              .setColor(0xED4245)
+              .setTitle('⚠️ Central de Ajuda Desativada')
+              .setDescription(`A central de ajuda deste bot foi temporariamente desativada pela administração.`)
+              .setFooter({ text: `${aiName}` });
+            return interaction.reply({ embeds: [disabledEmbed], ephemeral: true });
           }
 
           const payload = buildHelpResponse({
             category: selected,
             aiName,
-            prefix: '+',
+            prefix: activePrefix,
             botAvatarUrl,
-            allowedModules
+            allowedModules,
+            helpConfig,
+            guild,
+            client: interaction.client
           });
 
           const updateResult = await interaction.update(payload).catch(async () => {
