@@ -843,34 +843,57 @@ class MultiBotManager {
    * @param {object} [params.embed]
    * @param {import('discord.js').Client} [fallbackClient]
    */
-  async speakWithInstance(botId, { guildId = null, channelId, content = '', embed = null }, fallbackClient = null) {
+  async speakWithInstance(botId, payloadOrChannelId, optionsOrFallback = {}, maybeFallback = null) {
+    let guildId = null;
+    let channelId = null;
+    let content = '';
+    let embed = null;
+    let fallbackClient = maybeFallback;
+
+    if (typeof payloadOrChannelId === 'string') {
+      channelId = payloadOrChannelId;
+      content = optionsOrFallback.content || '';
+      embed = optionsOrFallback.embed || null;
+      guildId = optionsOrFallback.guildId || null;
+      fallbackClient = optionsOrFallback.fallbackClient || maybeFallback;
+    } else if (payloadOrChannelId && typeof payloadOrChannelId === 'object') {
+      channelId = payloadOrChannelId.channelId;
+      content = payloadOrChannelId.content || '';
+      embed = payloadOrChannelId.embed || null;
+      guildId = payloadOrChannelId.guildId || null;
+      fallbackClient = (optionsOrFallback && typeof optionsOrFallback === 'object' && optionsOrFallback.guilds) ? optionsOrFallback : maybeFallback;
+    }
+
     if (!channelId) throw new ValidationError('Selecione um canal de texto para enviar a mensagem.');
 
     const inst = this.getInstance(botId);
     if (!inst) throw new ValidationError('Instância de bot não encontrada.');
 
     const live = this.activeInstances.get(botId);
-    const activeClient = live?.client || fallbackClient;
-    if (!activeClient || (!live && !fallbackClient)) {
-      throw new ValidationError(`A instância "${inst.name}" está atualmente OFFLINE. Inicie a instância antes de enviar mensagens por ela.`);
+    const clientsToTry = [live?.client, fallbackClient].filter(Boolean);
+    if (clientsToTry.length === 0) {
+      throw new ValidationError(`A instância "${inst.name}" está OFFLINE e nenhum cliente auxiliar está disponível para envio.`);
     }
 
     let channel = null;
-    if (guildId && activeClient.guilds?.cache?.has(guildId)) {
-      const g = activeClient.guilds.cache.get(guildId);
-      channel = g.channels?.cache?.get(channelId) || null;
-    }
-    if (!channel && activeClient.channels?.cache?.has(channelId)) {
-      channel = activeClient.channels.cache.get(channelId);
-    }
-    if (!channel && activeClient.channels?.fetch) {
-      try {
-        channel = await activeClient.channels.fetch(channelId);
-      } catch {}
+    for (const cli of clientsToTry) {
+      if (!channel && guildId && cli.guilds?.cache?.has(guildId)) {
+        const g = cli.guilds.cache.get(guildId);
+        channel = g.channels?.cache?.get(channelId) || null;
+      }
+      if (!channel && cli.channels?.cache?.has(channelId)) {
+        channel = cli.channels.cache.get(channelId);
+      }
+      if (!channel && cli.channels?.fetch) {
+        try {
+          channel = await cli.channels.fetch(channelId);
+        } catch {}
+      }
+      if (channel) break;
     }
 
     if (!channel || (typeof channel.isTextBased === 'function' && !channel.isTextBased())) {
-      throw new ValidationError(`Canal de texto (${channelId}) não encontrado ou sem acesso pela instância "${inst.name}".`);
+      throw new ValidationError(`Canal de texto (${channelId}) não encontrado ou sem permissão de envio.`);
     }
 
     const rawContent = content ? String(content).trim() : '';
@@ -880,7 +903,7 @@ class MultiBotManager {
       throw new ValidationError('Digite uma mensagem de texto ou preencha o título/descrição da Embed.');
     }
 
-    const guildObj = channel.guild || (guildId ? activeClient.guilds?.cache?.get(guildId) : null);
+    const guildObj = channel.guild || (guildId && fallbackClient ? fallbackClient.guilds?.cache?.get(guildId) : null);
     let processedContent = rawContent;
     if (guildObj && processedContent) {
       processedContent = processedContent
@@ -890,6 +913,17 @@ class MultiBotManager {
 
     const payload = {};
     if (processedContent) payload.content = processedContent;
+
+    const safeDisplayAvatar = (cli) => {
+      try {
+        if (typeof cli?.user?.displayAvatarURL === 'function') {
+          return cli.user.displayAvatarURL();
+        }
+      } catch {}
+      return undefined;
+    };
+    const botDisplayName = inst.config?.aiName || inst.name;
+    const botAvatarUrl = inst.avatarUrl || safeDisplayAvatar(live?.client) || safeDisplayAvatar(fallbackClient) || undefined;
 
     if (hasEmbed) {
       const eb = new EmbedBuilder();
@@ -915,8 +949,14 @@ class MultiBotManager {
           name: String(embed.author.name).slice(0, 256),
           iconURL: embed.author.icon || undefined
         });
+      } else {
+        eb.setAuthor({
+          name: botDisplayName,
+          iconURL: botAvatarUrl
+        });
       }
-      const footerTxt = embed.footer?.text || inst.config?.embeds?.footerText || `${inst.config?.aiName || inst.name}`;
+
+      const footerTxt = embed.footer?.text || inst.config?.embeds?.footerText || botDisplayName;
       if (footerTxt) {
         eb.setFooter({
           text: String(footerTxt).slice(0, 2048),
@@ -940,7 +980,41 @@ class MultiBotManager {
       payload.embeds = [eb];
     }
 
-    const sent = await channel.send(payload);
+    let sent = null;
+
+    // 1. Try sending directly from live client if member of channel guild
+    if (live?.client && channel.guild?.members?.cache?.has(live.client.user?.id)) {
+      try {
+        sent = await channel.send(payload);
+      } catch {}
+    }
+
+    // 2. Try sending via Webhook in channel for exact secondary bot persona (name + avatar)
+    if (!sent && typeof channel.fetchWebhooks === 'function') {
+      try {
+        const hooks = await channel.fetchWebhooks().catch(() => null);
+        let hook = hooks?.find(h => h.name === 'Jarvis-Speaker');
+        if (!hook && typeof channel.createWebhook === 'function') {
+          hook = await channel.createWebhook({
+            name: 'Jarvis-Speaker',
+            avatar: botAvatarUrl
+          }).catch(() => null);
+        }
+        if (hook && hook.send) {
+          sent = await hook.send({
+            ...payload,
+            username: botDisplayName,
+            avatarURL: botAvatarUrl
+          });
+        }
+      } catch {}
+    }
+
+    // 3. Fallback direct send via whichever client has channel access
+    if (!sent) {
+      sent = await channel.send(payload);
+    }
+
     this.addInstanceLog(
       botId,
       'INFO',
@@ -951,7 +1025,7 @@ class MultiBotManager {
     return {
       success: true,
       botId,
-      botName: inst.name,
+      botName: botDisplayName,
       channelId,
       channelName: channel.name || channelId,
       messageId: sent?.id || null

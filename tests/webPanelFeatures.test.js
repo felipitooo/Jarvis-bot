@@ -177,6 +177,41 @@ describe('Web Panel Speak & AI Forced Memories Features', () => {
     assert.equal(sentMessages[0].embeds.length, 1);
   });
 
+  test('bot_speak: successfully dispatches via secondary bot instance', async () => {
+    const session = webPanelService.createOAuthSession(
+      { id: 'user_admin', username: 'Stark' },
+      [{ id: 'guild_test_1', name: 'Test Guild', permissions: '32', owner: false }]
+    );
+    const mb = webPanelService.services.multiBotManager;
+    const inst = mb.createInstance({
+      name: 'Nala',
+      token: 'OTk5OTk5OTk5OTk5OTk5OTk5.Gxxxxx.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      assignedModules: ['economy'],
+      allowedGuilds: ['guild_test_1']
+    });
+
+    const result = await webPanelService.updateModuleConfig(
+      session,
+      'guild_test_1',
+      'bot_speak',
+      {
+        botId: inst.id,
+        channelId: 'channel_chat_1',
+        content: 'Olá da Nala!',
+        embed: {
+          title: 'Aviso da Nala',
+          description: 'Teste de transmissão da Nala'
+        }
+      },
+      session.csrfToken,
+      inst.id
+    );
+
+    assert.equal(result.status, 'success');
+    assert.equal(result.config.success, true);
+    assert.equal(result.config.botName, 'Nala');
+  });
+
   test('bot_speak: rejects invalid channel or empty payload', async () => {
     const session = webPanelService.createOAuthSession(
       { id: 'user_admin', username: 'Stark' },

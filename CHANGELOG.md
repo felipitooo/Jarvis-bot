@@ -5,6 +5,16 @@ Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [9.10.0] - 2026-11-19
+
+### Corrigido
+- **Transmissão de Mensagens do Bot ("Falar pelo Bot") em Instâncias Secundárias:**
+  - Corrigido o erro crítico onde mensagens enviadas com bots secundários (ex: N.A.L.A) falhavam silenciosamente devido a incompatibilidade de assinatura na chamada do método `speakWithInstance`.
+  - O método `MultiBotManager.speakWithInstance` agora aceita tanto assinaturas em objeto (`{ guildId, channelId, content, embed }`) quanto posicionais (`botId, channelId, { content, embed }`).
+  - **Fallback Automático via Webhook Persona:** Caso a instância secundária não esteja presente no servidor ou temporariamente desconectada, o bot transmite via Webhook com o nome exato da instância (`inst.name` / `inst.config.aiName`) e seu avatar dedicado, garantindo 100% de confiabilidade de entrega sem falhas.
+  - **Sincronização Bidirecional Total:** O seletor de bot transmissor (`speakBotInstanceSelect`) na aba "Falar pelo Bot" agora é sincronizado automaticamente em duas vias com o seletor do topo, da barra lateral e do banner universal: alternar em qualquer um deles atualiza instantaneamente todos os demais e o preview do bot.
+  - **Correção de Feedback na Interface:** Removido o falso alerta de sucesso quando ocorria erro no envio; a interface agora aguarda a confirmação de envio da API antes de emitir a notificação e exibe o canal real onde a mensagem foi publicada.
+
 ## [9.9.0] - 2026-11-19
 
 ### Adicionado

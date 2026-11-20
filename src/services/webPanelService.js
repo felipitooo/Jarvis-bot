@@ -1256,12 +1256,22 @@ class WebPanelService {
           case 'bot_speak':
           case 'botspeak':
           case 'send_message': {
-            if (typeof mb.speakWithInstance === 'function') {
-              const speakRes = await mb.speakWithInstance(botId, updates.channelId, {
-                content: updates.content,
-                embed: updates.embed
-              });
-              return { module: 'bot_speak', config: speakRes, status: 'success' };
+            const chosenBotId = (updates.botId && updates.botId !== 'MAIN' && updates.botId !== 'PRIMARY')
+              ? updates.botId
+              : (botId && botId !== 'MAIN' && botId !== 'PRIMARY' ? botId : null);
+
+            if (chosenBotId && mb && typeof mb.speakWithInstance === 'function') {
+              const speakRes = await mb.speakWithInstance(
+                chosenBotId,
+                {
+                  guildId,
+                  channelId: updates.channelId,
+                  content: updates.content,
+                  embed: updates.embed
+                },
+                this.botClient
+              );
+              return { module: 'bot_speak', config: speakRes, status: 'success', success: true };
             }
             break;
           }
@@ -1763,9 +1773,13 @@ class WebPanelService {
       case 'botspeak':
       case 'send_message': {
         // Support sending via a specific Multi-Bot instance when botId is selected
-        if (updates.botId && updates.botId !== 'MAIN' && this.services?.multiBotManager) {
+        const targetInstanceId = (updates.botId && updates.botId !== 'MAIN' && updates.botId !== 'PRIMARY')
+          ? updates.botId
+          : (botId && botId !== 'MAIN' && botId !== 'PRIMARY' ? botId : null);
+
+        if (targetInstanceId && this.services?.multiBotManager) {
           const speakRes = await this.services.multiBotManager.speakWithInstance(
-            updates.botId,
+            targetInstanceId,
             {
               guildId,
               channelId: updates.channelId,

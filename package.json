@@ -1,7 +1,7 @@
 {
   "name": "jarvis-discord-bot",
-  "version": "9.9.0",
-  "description": "Unified Modular Discord Bot (Jarvis) - Production Release v9.9.0 Active Bot LocalStorage Persistence across Reloads, AI Chat Summary & Extended Sidebar Module Compatibility",
+  "version": "9.10.0",
+  "description": "Unified Modular Discord Bot (Jarvis) - Production Release v9.10.0 Full Multi-Bot Speak Dispatch, Webhook Persona Fallback & Bidirectional Active Bot Selector Sync",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",

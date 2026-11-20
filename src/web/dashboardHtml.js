@@ -9407,7 +9407,9 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
             window.csrfToken = resJson.csrfToken;
             currentCsrfToken = resJson.csrfToken;
           }
-          showToast('Configurações de ' + friendlyName + ' salvas e sincronizadas.', 'success', 'Salvo com Sucesso!');
+          if (moduleName !== 'bot_speak' && moduleName !== 'botspeak') {
+            showToast('Configurações de ' + friendlyName + ' salvas e sincronizadas.', 'success', 'Salvo com Sucesso!');
+          }
           return resJson;
         } else {
           const err = await res.json().catch(() => ({}));
@@ -10073,6 +10075,16 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         previewChannelTag.innerText = selectedOpt && selectedOpt.value ? '# ' + selectedOpt.text.replace(/^[#\s]+/, '') : '# geral';
       }
 
+      const spkSel = document.getElementById('speakBotInstanceSelect');
+      const spkNamePreview = document.getElementById('speakBotNamePreview');
+      if (spkSel && spkNamePreview) {
+        const selOpt = spkSel.selectedOptions ? spkSel.selectedOptions[0] : null;
+        if (selOpt) {
+          const rawName = selOpt.text.replace(/^[🤖\s]+/, '').replace(/\s*\(.*\)$/, '').trim();
+          spkNamePreview.innerText = rawName || 'Bot';
+        }
+      }
+
       const content = document.getElementById('speakContentInput')?.value || '';
       const previewContent = document.getElementById('speakPreviewContentText');
       if (previewContent) {
@@ -10374,16 +10386,19 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
 
       try {
         const selectedBotId = document.getElementById('speakBotInstanceSelect')?.value || 'MAIN';
-        await saveModule('bot_speak', {
+        const res = await saveModule('bot_speak', {
           botId: selectedBotId,
           channelId,
           content,
           embed
         });
-        showToast('Mensagem enviada com sucesso no canal!');
+        if (res && (res.status === 'success' || res.success || res.config?.success || res.messageId)) {
+          const chanText = document.getElementById('speakChannelSelect')?.selectedOptions?.[0]?.text || '';
+          showToast('Mensagem transmitida com sucesso no canal ' + chanText + '!', 'success', 'Transmitido!');
+        }
       } catch (err) {
         console.error('Falha ao enviar mensagem:', err);
-        alert('Erro ao enviar mensagem: ' + (err.message || err));
+        showToast('Erro ao enviar mensagem: ' + (err.message || err), 'error', 'Erro no Envio');
       } finally {
         if (sendBtn) {
           sendBtn.disabled = false;
@@ -15282,6 +15297,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       if (curTab === 'tab-settings' && typeof loadBotConfigTab === 'function') loadBotConfigTab();
       if (curTab === 'tab-summary' && typeof loadChannelSummaries === 'function') loadChannelSummaries();
       if (curTab === 'tab-multibot' && typeof loadMultiBotInstances === 'function') loadMultiBotInstances();
+      if (typeof updateBotSpeakPreview === 'function') updateBotSpeakPreview();
     }
 
     document.getElementById('globalBotSelector')?.addEventListener('change', (e) => {
@@ -15298,6 +15314,13 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
 
     document.getElementById('moduleTargetBotSelect')?.addEventListener('change', (e) => {
       handleActiveBotSwitch(e.target.value);
+    });
+
+    document.getElementById('speakBotInstanceSelect')?.addEventListener('change', (e) => {
+      const val = e.target.value;
+      const targetBot = val === 'MAIN' ? 'PRIMARY' : val;
+      handleActiveBotSwitch(targetBot);
+      if (typeof updateBotSpeakPreview === 'function') updateBotSpeakPreview();
     });
 
     // ==========================================
