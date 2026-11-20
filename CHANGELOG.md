@@ -5,6 +5,19 @@ Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [9.11.0] - 2026-11-19
+
+### Corrigido
+- **Isolamento Rígido de Identidade e Nomes entre Bot Principal e Bots Secundários:**
+  - Corrigido o bug onde salvar ou alterar o nome de um bot secundário (ex: N.A.L.A) no painel web alterava acidentalmente a identidade do bot principal (J.A.R.V.I.S) no servidor e nos footers de comandos do Discord (como `+bank`).
+  - O painel web agora protege os cabeçalhos globais (`headerAiName` e `overviewAiName`), alterando-os somente quando o bot principal estiver selecionado. Instâncias secundárias atualizam exclusivamente seus banners dedicados, seletores e prévias sem tocar nas configurações do servidor.
+  - O método `MultiBotManager.getInstance` e `updateInstance` agora suportam busca inteligente tanto pelo ID único quanto pelo nome (case-insensitive), prevenindo falhas de lookup que causavam desvios para o bot principal.
+  - Implementado bloqueio estrito em `updateGuildSettings` e `updateModuleConfig` para nunca recorrer ao bot base caso uma instância secundária seja solicitada.
+- **Sincronização de Apelido em Tempo Real no Discord (Guild Nickname):**
+  - Tanto o bot principal quanto instâncias secundárias agora sincronizam automaticamente o apelido no servidor do Discord (`setNickname`) ao terem seus nomes alterados pelo painel web.
+- **Isolamento de Nome do Bot em Comandos de Prefixo:**
+  - `prefixCommandHandler` agora valida explicitamente se a execução ocorre sob o contexto de uma instância secundária antes de buscar o nome do bot, garantindo que o bot que responde use estritamente sua própria persona no rodapé e respostas.
+
 ## [9.10.0] - 2026-11-19
 
 ### Corrigido

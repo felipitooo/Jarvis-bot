@@ -8891,12 +8891,15 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
 
         // 1. AI Display Name
         if (data.aiDisplayName) {
-          const hName = document.getElementById('headerAiName');
-          if (hName) hName.innerText = data.aiDisplayName;
-          const topBread = document.getElementById('topHeaderBreadcrumbRoot');
-          if (topBread) topBread.innerText = data.aiDisplayName;
-          const oName = document.getElementById('overviewAiName');
-          if (oName) oName.value = data.aiDisplayName;
+          const isPrimary = !targetBot || targetBot === 'PRIMARY';
+          if (isPrimary) {
+            const hName = document.getElementById('headerAiName');
+            if (hName) hName.innerText = data.aiDisplayName;
+            const topBread = document.getElementById('topHeaderBreadcrumbRoot');
+            if (topBread) topBread.innerText = data.aiDisplayName;
+            const oName = document.getElementById('overviewAiName');
+            if (oName) oName.value = data.aiDisplayName;
+          }
           const aInp = document.getElementById('aiNameInput');
           if (aInp) aInp.value = data.aiDisplayName;
           const prevBot = document.getElementById('previewBotName');
@@ -12297,9 +12300,12 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           const resData = await res.json().catch(() => ({}));
           const savedName = resData.aiDisplayName || newName;
           showToast('Nome da IA atualizado para: ' + savedName + ' (Prefixo: ' + newPrefix + ')', 'success');
-          document.getElementById('headerAiName').innerText = savedName;
-          document.getElementById('overviewAiName').value = savedName;
-          if (targetBot && targetBot !== 'PRIMARY') {
+          if (!targetBot || targetBot === 'PRIMARY') {
+            document.getElementById('headerAiName').innerText = savedName;
+            document.getElementById('overviewAiName').value = savedName;
+          } else {
+            const uBannerName = document.getElementById('universalBannerBotName');
+            if (uBannerName) uBannerName.innerText = savedName;
             if (!window.botNamesMap) window.botNamesMap = {};
             window.botNamesMap[targetBot] = savedName;
             document.querySelectorAll('option[value="' + targetBot + '"]').forEach(opt => {
@@ -12310,6 +12316,8 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           if (pb) pb.innerText = savedName;
           const pwb = document.getElementById('previewWelcomeBotName');
           if (pwb) pwb.innerText = savedName;
+          const psb = document.getElementById('speakBotNamePreview');
+          if (psb) psb.innerText = savedName;
         } else {
           const err = await res.json().catch(() => ({}));
           showToast('Erro ao salvar nome: ' + (err.error || 'Erro desconhecido'), 'error');

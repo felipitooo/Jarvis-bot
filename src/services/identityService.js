@@ -73,6 +73,17 @@ class IdentityService {
 
     this.settingsService.setSetting(guildId, SETTING_KEYS.AI_DISPLAY_NAME, trimmed, actorId);
 
+    // Sync guild nickname on live Discord client if available
+    try {
+      if (this.botClient?.guilds?.cache) {
+        const guild = this.botClient.guilds.cache.get(guildId);
+        const me = guild?.members?.me;
+        if (me && typeof me.setNickname === 'function') {
+          me.setNickname(trimmed).catch(() => {});
+        }
+      }
+    } catch {}
+
     if (this.auditService) {
       this.auditService.logAction({
         guildId,

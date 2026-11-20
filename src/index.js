@@ -796,6 +796,9 @@ async function bootstrap() {
   });
 
   // Link WebServer and WebPanelService to live Discord client for guild & channel inspection
+  if (context.identityService) {
+    context.identityService.botClient = client;
+  }
   if (context.webPanelService) {
     context.webPanelService.setBotClient(client);
   }

@@ -320,7 +320,8 @@ class PrefixCommandHandler {
     if (mentionRegex && mentionRegex.test(rawContent)) {
       const afterMention = rawContent.replace(mentionRegex, '').trim();
       if (!afterMention) {
-        const aiName = context.identityService ? context.identityService.getDisplayName(guildId) : 'J.A.R.V.I.S';
+        const aiName = (context.botInstanceId && (context.botInstanceName || context.botInstanceConfig?.aiName || context.multiBotManager?.getInstance?.(context.botInstanceId)?.name))
+          || (context.identityService ? context.identityService.getDisplayName(guildId) : 'J.A.R.V.I.S');
         const displayPrefix = activePrefix ? `\`${activePrefix}\`` : '`Nenhum` *(Modo Sem Prefixo Ativado)*';
         await message.reply(
           `👋 Olá ${message.author}! Meu prefixo neste servidor é: ${displayPrefix}\n` +
@@ -450,7 +451,9 @@ class PrefixCommandHandler {
     const guild = message.guild;
     const author = message.author;
     const member = message.member;
-    const aiName = identityService?.getDisplayName(guild.id) || 'Jarvis';
+    const aiName = (context.botInstanceId && (context.botInstanceName || context.botInstanceConfig?.aiName || context.multiBotManager?.getInstance?.(context.botInstanceId)?.name))
+      || identityService?.getDisplayName(guild.id)
+      || 'Jarvis';
 
     // 1. Modular gating & command execution permissions (isolated per Multi-Bot instance or primary bot)
     if (context.botInstanceId && context.multiBotManager) {

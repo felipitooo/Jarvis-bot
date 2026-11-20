@@ -1,7 +1,7 @@
 {
   "name": "jarvis-discord-bot",
-  "version": "9.10.0",
-  "description": "Unified Modular Discord Bot (Jarvis) - Production Release v9.10.0 Full Multi-Bot Speak Dispatch, Webhook Persona Fallback & Bidirectional Active Bot Selector Sync",
+  "version": "9.11.0",
+  "description": "Unified Modular Discord Bot (Jarvis) - Production Release v9.11.0 Strict Multi-Bot Identity Isolation, Secondary Bot Lookup by Name/ID & Discord Guild Nickname Synchronization",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",

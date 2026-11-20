@@ -474,11 +474,12 @@ class MultiBotManager {
   }
 
   /**
-   * Retrieves single bot instance by ID with full 18-section config, memories, and logs.
-   * @param {string} id
+   * Retrieves single bot instance by ID or name with full 18-section config, memories, and logs.
+   * @param {string} idOrName
    */
-  getInstance(id) {
-    const row = this.db.get('SELECT * FROM bot_instances WHERE id = ?', [id]);
+  getInstance(idOrName) {
+    if (!idOrName) return null;
+    const row = this.db.get('SELECT * FROM bot_instances WHERE id = ? OR LOWER(name) = LOWER(?)', [idOrName, idOrName]);
     if (!row) return null;
     const formatted = this._formatInstanceRow(row);
     formatted.token = row.token;
@@ -488,14 +489,15 @@ class MultiBotManager {
   /**
    * Updates an instance's metadata and/or any of its 18 administrative configuration sections.
    * Strict isolation ensures updating Bot A never modifies Bot B.
-   * @param {string} id
+   * @param {string} idOrName
    * @param {object} updates
    */
-  updateInstance(id, updates = {}) {
-    const row = this.db.get('SELECT * FROM bot_instances WHERE id = ?', [id]);
+  updateInstance(idOrName, updates = {}) {
+    const row = this.db.get('SELECT * FROM bot_instances WHERE id = ? OR LOWER(name) = LOWER(?)', [idOrName, idOrName]);
     if (!row) throw new ValidationError('Instância de bot não encontrada.');
 
     const existing = this._formatInstanceRow(row);
+    const id = existing.id;
     const currentConfig = existing.config;
 
     const name = updates.name !== undefined ? String(updates.name).trim() : existing.name;
@@ -653,6 +655,19 @@ class MultiBotManager {
     }
 
     this.applyInstancePresence(botId, cfg, instName);
+
+    // Sync guild nickname on live Discord client if available
+    if (live.client?.guilds?.cache) {
+      for (const g of live.client.guilds.cache.values()) {
+        try {
+          const me = g.members?.me;
+          if (me && typeof me.setNickname === 'function') {
+            me.setNickname(instName).catch(() => {});
+          }
+        } catch {}
+      }
+    }
+
     return true;
   }
 

@@ -568,58 +568,60 @@ class WebPanelService {
 
     if (isSecondaryBot && mb) {
       const inst = mb.getInstance(botId);
-      if (inst) {
-        const cfg = { ...(inst.config || {}) };
-        let instanceName = inst.name;
-
-        if (updates.aiDisplayName !== undefined || updates.name !== undefined) {
-          const cleanName = String(updates.aiDisplayName ?? updates.name).trim();
-          if (cleanName) {
-            instanceName = cleanName;
-            cfg.aiName = cleanName;
-          }
-        }
-
-        if (updates.prefix !== undefined) {
-          cfg.prefix = String(updates.prefix).trim() || '+';
-          if (!cfg.commands) cfg.commands = {};
-          cfg.commands.prefix = cfg.prefix;
-        }
-
-        if (updates.prefixlessMode !== undefined) {
-          if (!cfg.commands) cfg.commands = {};
-          cfg.commands.prefixlessMode = Boolean(updates.prefixlessMode);
-        }
-
-        if (updates.aiChannelId !== undefined) {
-          if (!cfg.ai) cfg.ai = {};
-          cfg.ai.channelId = updates.aiChannelId || '';
-        }
-
-        mb.updateInstance(botId, { name: instanceName, config: cfg });
-
-        if (this.auditService) {
-          this.auditService.logAction({
-            guildId,
-            userId: session.userId,
-            action: 'WEB_PANEL_SETTINGS_UPDATE',
-            targetId: guildId,
-            details: { ...updates, botId, botName: instanceName }
-          });
-        }
-
-        return {
-          status: 'success',
-          botId,
-          aiDisplayName: cfg.aiName || instanceName,
-          settings: {
-            ai_display_name: cfg.aiName || instanceName,
-            ai_channel_id: cfg.ai?.channelId || '',
-            prefix: cfg.prefix || '+',
-            prefixless_mode: cfg.commands?.prefixlessMode ? 'true' : 'false'
-          }
-        };
+      if (!inst) {
+        throw new ValidationError(`Instância de bot "${botId}" não encontrada.`);
       }
+
+      const cfg = { ...(inst.config || {}) };
+      let instanceName = inst.name;
+
+      if (updates.aiDisplayName !== undefined || updates.name !== undefined) {
+        const cleanName = String(updates.aiDisplayName ?? updates.name).trim();
+        if (cleanName) {
+          instanceName = cleanName;
+          cfg.aiName = cleanName;
+        }
+      }
+
+      if (updates.prefix !== undefined) {
+        cfg.prefix = String(updates.prefix).trim() || '+';
+        if (!cfg.commands) cfg.commands = {};
+        cfg.commands.prefix = cfg.prefix;
+      }
+
+      if (updates.prefixlessMode !== undefined) {
+        if (!cfg.commands) cfg.commands = {};
+        cfg.commands.prefixlessMode = Boolean(updates.prefixlessMode);
+      }
+
+      if (updates.aiChannelId !== undefined) {
+        if (!cfg.ai) cfg.ai = {};
+        cfg.ai.channelId = updates.aiChannelId || '';
+      }
+
+      mb.updateInstance(inst.id, { name: instanceName, config: cfg });
+
+      if (this.auditService) {
+        this.auditService.logAction({
+          guildId,
+          userId: session.userId,
+          action: 'WEB_PANEL_SETTINGS_UPDATE',
+          targetId: guildId,
+          details: { ...updates, botId: inst.id, botName: instanceName }
+        });
+      }
+
+      return {
+        status: 'success',
+        botId: inst.id,
+        aiDisplayName: cfg.aiName || instanceName,
+        settings: {
+          ai_display_name: cfg.aiName || instanceName,
+          ai_channel_id: cfg.ai?.channelId || '',
+          prefix: cfg.prefix || '+',
+          prefixless_mode: cfg.commands?.prefixlessMode ? 'true' : 'false'
+        }
+      };
     }
 
     if (updates.aiDisplayName !== undefined) {
@@ -834,8 +836,11 @@ class WebPanelService {
               prefix: cfg.prefix || cfg.commands?.prefix || '+',
               prefixless: Boolean(cfg.commands?.prefixlessMode)
             };
+          default:
+            return cfg[mod] || {};
         }
       }
+      return null;
     }
     const {
       modRepo,
@@ -986,8 +991,10 @@ class WebPanelService {
 
     if (isSecondaryBot && mb) {
       const inst = mb.getInstance(botId);
-      if (inst) {
-        const cfg = { ...(inst.config || {}) };
+      if (!inst) {
+        throw new ValidationError(`Instância de bot "${botId}" não encontrada.`);
+      }
+      const cfg = { ...(inst.config || {}) };
         switch (mod) {
           case 'guild_modules':
           case 'modular_configs':
@@ -1281,7 +1288,6 @@ class WebPanelService {
             return { module: mod, config: cfg[mod] };
           }
         }
-      }
     }
     const {
       modRepo,
