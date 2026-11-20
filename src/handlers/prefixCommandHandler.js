@@ -4746,11 +4746,19 @@ class PrefixCommandHandler {
         case 'comandos': {
           const { buildHelpResponse } = require('../utils/helpMenuHelper');
           const botAvatarUrl = message.client?.user?.displayAvatarURL ? message.client.user.displayAvatarURL({ extension: 'png', size: 128 }) : null;
+          let allowedModules = null;
+          if (context.botInstanceId && context.multiBotManager) {
+            const cfg = context.multiBotManager.getInstanceConfig?.(context.botInstanceId);
+            if (cfg?.modules) {
+              allowedModules = Object.entries(cfg.modules).filter(([, v]) => v === true).map(([k]) => k);
+            }
+          }
           const payload = buildHelpResponse({
             category: 'home',
             aiName,
             prefix: activePrefix || '',
-            botAvatarUrl
+            botAvatarUrl,
+            allowedModules
           });
           await message.reply(payload);
           return true;

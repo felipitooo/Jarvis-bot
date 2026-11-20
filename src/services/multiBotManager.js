@@ -283,10 +283,13 @@ class MultiBotManager {
    * @param {Array<string>} [assignedModules=null]
    */
   getInstanceConfig(botId, botName = 'J.A.R.V.I.S.', assignedModules = null) {
-    if (!botName || botName === 'J.A.R.V.I.S.') {
+    if (!botName || botName === 'J.A.R.V.I.S.' || !assignedModules) {
       try {
-        const row = this.db?.get?.('SELECT name FROM bot_instances WHERE id = ?', [botId]);
-        if (row?.name) botName = row.name;
+        const row = this.db?.get?.('SELECT name, assigned_modules FROM bot_instances WHERE id = ?', [botId]);
+        if (row?.name && (!botName || botName === 'J.A.R.V.I.S.')) botName = row.name;
+        if (!assignedModules && row?.assigned_modules) {
+          assignedModules = safeJsonParse(row.assigned_modules, null);
+        }
       } catch {}
     }
     const defaults = buildDefaultInstanceConfig(botName, assignedModules);
@@ -638,6 +641,11 @@ class MultiBotManager {
     // Update live running instance immediately (presence, AI name, model, modules, prefix, permissions)
     this._syncLiveInstance(id, newConfig, name);
 
+    // Re-deploy module-filtered slash commands to Discord immediately on configuration changes
+    this.deployInstanceSlashCommands(id).catch(err => {
+      mbLogger.warn(`Asynchronous slash commands deployment for instance ${id} failed: ${err.message}`);
+    });
+
     return this.getInstance(id);
   }
 
@@ -735,6 +743,48 @@ class MultiBotManager {
       );
     }
     return applied;
+  }
+
+  /**
+   * Deploys and synchronizes slash commands directly to Discord for a live bot instance,
+   * strictly filtered by the instance's active modules and personalized by its name.
+   * @param {string} botId
+   * @returns {Promise<boolean>}
+   */
+  async deployInstanceSlashCommands(botId) {
+    const live = this.activeInstances.get(botId);
+    if (!live || !live.client || !live.client.user) return false;
+
+    const inst = this.getInstance(botId);
+    const cfg = live.config || inst?.config || this.getInstanceConfig(botId);
+    const token = live.token || inst?.token;
+    const clientId = live.client.user.id;
+    const botName = inst?.name || cfg?.aiName || live.client.user.username;
+
+    if (!token || !clientId) return false;
+
+    const activeModules = Object.entries(cfg?.modules || {})
+      .filter(([, val]) => val === true)
+      .map(([key]) => key);
+
+    const guildIds = live.client.guilds?.cache ? Array.from(live.client.guilds.cache.keys()) : [];
+
+    try {
+      const { commandRegistry } = require('../commands/commandRegistry');
+      const deployed = await commandRegistry.deployCommands(token, clientId, guildIds, activeModules, botName);
+      this.addInstanceLog(
+        botId,
+        'INFO',
+        'COMMANDS',
+        `Comandos Slash sincronizados no Discord (${deployed.length} comandos para ${activeModules.length} módulos ativos: ${activeModules.join(', ')}).`
+      );
+      mbLogger.info(`Successfully deployed ${deployed.length} slash commands to Discord for instance "${botName}" (${clientId}) across ${guildIds.length} guilds.`);
+      return true;
+    } catch (err) {
+      this.addInstanceLog(botId, 'WARN', 'COMMANDS', `Falha ao sincronizar Comandos Slash no Discord: ${err.message}`);
+      mbLogger.warn(`Failed to deploy slash commands for instance "${botName}": ${err.message}`);
+      return false;
+    }
   }
 
   /**
@@ -1257,6 +1307,7 @@ class MultiBotManager {
         childContext.botInstanceName = inst.name;
         childContext.botInstanceToken = inst.token;
         childContext.botInstanceConfig = inst.config;
+        childContext.botInstanceAssignedModules = inst.assignedModules;
         childContext.multiBotManager = this;
         childContext.client = client;
 

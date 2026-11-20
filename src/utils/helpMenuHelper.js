@@ -64,16 +64,42 @@ const CATEGORIES = {
   }
 };
 
+const CATEGORY_REQUIRED_MODULES = {
+  home: [],
+  economy: ['economy'],
+  casino: ['casino'],
+  music: ['music'],
+  moderation: ['moderation', 'auto_protection'],
+  xp: ['xp', 'voice_xp'],
+  fun: ['social', 'marriages', 'fun_commands', 'reputation', 'gifs'],
+  tickets: ['tickets'],
+  admin: ['ai_chat', 'ai_memory', 'ai_tools']
+};
+
 /**
- * Builds the interactive select menu.
+ * Builds the interactive select menu, optionally filtered by allowed modules.
  * @param {string} currentCategory
+ * @param {Array<string>|Set<string>|null} [allowedModules=null]
  */
-function buildHelpComponents(currentCategory = 'home') {
+function buildHelpComponents(currentCategory = 'home', allowedModules = null) {
+  let allowedSet = null;
+  if (allowedModules) {
+    allowedSet = allowedModules instanceof Set
+      ? allowedModules
+      : new Set(Array.isArray(allowedModules) ? allowedModules.map(m => String(m).toLowerCase().trim()) : Object.keys(allowedModules));
+  }
+
+  const entries = Object.entries(CATEGORIES).filter(([key]) => {
+    if (!allowedSet) return true;
+    const reqs = CATEGORY_REQUIRED_MODULES[key] || [];
+    return reqs.length === 0 || reqs.some(m => allowedSet.has(m.toLowerCase()));
+  });
+
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId('help_category_select')
     .setPlaceholder('📂 Escolha uma categoria para navegar...')
     .addOptions(
-      Object.entries(CATEGORIES).map(([key, cat]) =>
+      entries.map(([key, cat]) =>
         new StringSelectMenuOptionBuilder()
           .setLabel(cat.label)
           .setValue(key)
@@ -88,60 +114,87 @@ function buildHelpComponents(currentCategory = 'home') {
 }
 
 /**
- * Builds the Home / Overview Embed
+ * Builds the Home / Overview Embed, filtering sections if allowedModules is specified.
+ * @param {string} [aiName='Jarvis']
+ * @param {string} [prefix='+']
+ * @param {string|null} [botAvatarUrl=null]
+ * @param {Array<string>|Set<string>|null} [allowedModules=null]
  */
-function buildHomeEmbed(aiName = 'Jarvis', prefix = '+', botAvatarUrl = null) {
+function buildHomeEmbed(aiName = 'Jarvis', prefix = '+', botAvatarUrl = null, allowedModules = null) {
+  let allowedSet = null;
+  if (allowedModules) {
+    allowedSet = allowedModules instanceof Set
+      ? allowedModules
+      : new Set(Array.isArray(allowedModules) ? allowedModules.map(m => String(m).toLowerCase().trim()) : Object.keys(allowedModules));
+  }
+
+  const allCategoryFields = [
+    {
+      category: 'economy',
+      name: '💼 Economia & Negócios (13 cmds)',
+      value: '`+work` `+daily` `+weekly` `+bank` `+dep` `+sac` `+pay` `+crime` `+slut` `+rob` `+shop` `+inv` `+rich`',
+      inline: false
+    },
+    {
+      category: 'casino',
+      name: '🎰 Cassino & Apostas (7 cmds)',
+      value: '`+bj` `+slots` `+roleta` `+dado` `+coinflip` `+bolao` `+cassino`',
+      inline: false
+    },
+    {
+      category: 'music',
+      name: '🎵 Música, Rádio & Voz (11 cmds)',
+      value: '`+play` `+pause` `+resume` `+skip` `+stop` `+queue` `+np` `+vol` `+loop` `+shuffle` `+tts`',
+      inline: false
+    },
+    {
+      category: 'moderation',
+      name: '🛡️ Moderação & Segurança (12 cmds)',
+      value: '`+ban` `+kick` `+mute` `+unmute` `+warn` `+advertir` `+warnlist` `+clearwarns` `+purge` `+lock` `+unlock` `+unban`',
+      inline: false
+    },
+    {
+      category: 'xp',
+      name: '🎖️ Níveis, XP & Recompensas (3 cmds)',
+      value: '`+rank` `+conquistas` `+leaderboard` • Recompensas automáticas de cargo por nível configuráveis.',
+      inline: false
+    },
+    {
+      category: 'fun',
+      name: '🎉 Social, Romance & Diversão (11 cmds)',
+      value: '`+fofoca` `+quiz` `+beijar` `+abracar` `+genero` `+marry` `+divorce` `+ship` `+8ball` `+interact` `+raffle`',
+      inline: false
+    },
+    {
+      category: 'tickets',
+      name: '🎫 Central de Atendimento & Tickets (1 cmd)',
+      value: '`+ticket` • Sistema completo com histórico, modais e logs privados.',
+      inline: false
+    },
+    {
+      category: 'admin',
+      name: '⚙️ Administração & Inteligência Artificial (9 cmds)',
+      value: '`+modo` `+backup` `+prefixo` `/ai-name` `/config` `/backup` `/memory` • IA Gemini com modos de humor.',
+      inline: false
+    }
+  ];
+
+  const visibleFields = allCategoryFields.filter(f => {
+    if (!allowedSet) return true;
+    const reqs = CATEGORY_REQUIRED_MODULES[f.category] || [];
+    return reqs.length === 0 || reqs.some(m => allowedSet.has(m.toLowerCase()));
+  });
+
   const embed = new EmbedBuilder()
     .setColor(0x5865F2)
     .setTitle(`⚡ Central de Comandos — ${aiName}`)
     .setDescription(
       `Olá! Eu sou o **${aiName}**, seu assistente modular de alta tecnologia para o Discord.\n\n` +
-      `✨ **73 Comandos disponíveis** distribuídos em módulos totalmente customizáveis.\n` +
+      `✨ **Módulos Ativos e Comandos configurados** para operar com total segurança.\n` +
       `⌨️ **Prefixos Suportados:** **\`${prefix}\`** (Texto) e **\`/\`** (Slash Commands da interface).\n\n` +
       `👇 **Selecione uma categoria no menu suspenso abaixo** para ver os comandos detalhados com exemplos!`
     )
-    .addFields(
-      {
-        name: '💼 Economia & Negócios (13 cmds)',
-        value: '`+work` `+daily` `+weekly` `+bank` `+dep` `+sac` `+pay` `+crime` `+slut` `+rob` `+shop` `+inv` `+rich`',
-        inline: false
-      },
-      {
-        name: '🎰 Cassino & Apostas (7 cmds)',
-        value: '`+bj` `+slots` `+roleta` `+dado` `+coinflip` `+bolao` `+cassino`',
-        inline: false
-      },
-      {
-        name: '🎵 Música, Rádio & Voz (11 cmds)',
-        value: '`+play` `+pause` `+resume` `+skip` `+stop` `+queue` `+np` `+vol` `+loop` `+shuffle` `+tts`',
-        inline: false
-      },
-      {
-        name: '🛡️ Moderação & Segurança (12 cmds)',
-        value: '`+ban` `+kick` `+mute` `+unmute` `+warn` `+advertir` `+warnlist` `+clearwarns` `+purge` `+lock` `+unlock` `+unban`',
-        inline: false
-      },
-      {
-        name: '🎖️ Níveis, XP & Recompensas (3 cmds)',
-        value: '`+rank` `+conquistas` `+leaderboard` • Recompensas automáticas de cargo por nível configuráveis.',
-        inline: false
-      },
-      {
-        name: '🎉 Social, Romance & Diversão (11 cmds)',
-        value: '`+fofoca` `+quiz` `+beijar` `+abracar` `+genero` `+marry` `+divorce` `+ship` `+8ball` `+interact` `+raffle`',
-        inline: false
-      },
-      {
-        name: '🎫 Central de Atendimento & Tickets (1 cmd)',
-        value: '`+ticket` • Sistema completo com histórico, modais e logs privados.',
-        inline: false
-      },
-      {
-        name: '⚙️ Administração & Inteligência Artificial (9 cmds)',
-        value: '`+modo` `+backup` `+prefixo` `/ai-name` `/config` `/backup` `/memory` • IA Gemini com modos de humor.',
-        inline: false
-      }
-    )
+    .addFields(visibleFields.length > 0 ? visibleFields : [{ name: 'ℹ️ Módulos', value: 'Nenhum módulo operacional ativo no momento.', inline: false }])
     .setFooter({ text: `${aiName} • Use o menu abaixo para navegar entre as categorias` })
     .setTimestamp();
 
@@ -326,13 +379,31 @@ function buildCategoryEmbed(categoryKey, aiName = 'Jarvis', prefix = '+', botAva
 
 /**
  * Builds the complete response payload for a help menu request.
+ * @param {object} [options={}]
+ * @param {string} [options.category='home']
+ * @param {string} [options.aiName='Jarvis']
+ * @param {string} [options.prefix='+']
+ * @param {string|null} [options.botAvatarUrl=null]
+ * @param {Array<string>|Set<string>|null} [options.allowedModules=null]
  */
-function buildHelpResponse({ category = 'home', aiName = 'Jarvis', prefix = '+', botAvatarUrl = null } = {}) {
-  const embed = category === 'home'
-    ? buildHomeEmbed(aiName, prefix, botAvatarUrl)
-    : buildCategoryEmbed(category, aiName, prefix, botAvatarUrl);
+function buildHelpResponse({ category = 'home', aiName = 'Jarvis', prefix = '+', botAvatarUrl = null, allowedModules = null } = {}) {
+  let resolvedCategory = category;
+  if (allowedModules && category !== 'home') {
+    const allowedSet = allowedModules instanceof Set
+      ? allowedModules
+      : new Set(Array.isArray(allowedModules) ? allowedModules.map(m => String(m).toLowerCase().trim()) : Object.keys(allowedModules));
+    const reqs = CATEGORY_REQUIRED_MODULES[category] || [];
+    const isAllowed = reqs.length === 0 || reqs.some(m => allowedSet.has(m.toLowerCase()));
+    if (!isAllowed) {
+      resolvedCategory = 'home';
+    }
+  }
 
-  const components = buildHelpComponents(category);
+  const embed = resolvedCategory === 'home'
+    ? buildHomeEmbed(aiName, prefix, botAvatarUrl, allowedModules)
+    : buildCategoryEmbed(resolvedCategory, aiName, prefix, botAvatarUrl);
+
+  const components = buildHelpComponents(resolvedCategory, allowedModules);
 
   return { embeds: [embed], components };
 }

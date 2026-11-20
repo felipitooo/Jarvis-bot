@@ -5,6 +5,29 @@ Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [9.17.0] - 2026-11-20
+
+### Corrigido & Aprimorado (Isolamento Restrito de Comandos Slash por Módulo & Sincronização Discord)
+- **Isolamento Completo de Comandos Slash no Discord (`/`) por Módulo Ativo:**
+  - Corrigido o bug onde instâncias secundárias (como `N.A.L.A`) registravam e exibiam comandos de módulos não habilitados no Discord (ex: `/8ball`, `/abracar`, `/ai-nome`, `/ai-status`, `/musica`, `/saldo`).
+  - O `CommandRegistry.getSlashCommandsJSON(allowedModules, botName)` agora filtra rigorosamente os comandos de acordo com os módulos autorizados da instância (`COMMAND_TO_MODULE_MAP`).
+  - Módulos inativos têm seus comandos slash completamente removidos do registro do Discord para aquele bot, impedindo poluição do menu `/` no chat.
+  - Comandos universais de infraestrutura (`ping`, `ajuda`, `prefixo`, `config`) continuam disponíveis globalmente para todas as instâncias.
+  - Comandos administrativos de gestão de canais, cargos e backups (`cargo`, `canal`, `backup`) foram vinculados ao módulo de `moderation`.
+- **Sincronização Imediata e em Tempo Real no Discord via REST API:**
+  - Em `multiBotManager.js`, implementado o método `deployInstanceSlashCommands(botId)` que consulta os módulos e guildas do bot ativo e efetua o deploy imediato das rotas de comandos slash via Discord REST API (`Routes.applicationGuildCommands`).
+  - Chamado automaticamente ao iniciar instâncias e sempre que houver atualização de configurações ou módulos (`updateInstance`), garantindo propagação instantânea das alterações para o Discord.
+  - Limpeza automática de duplicatas globais (`Routes.applicationCommands(clientId)` com `{ body: [] }`) para manter apenas os comandos da guilda com latência 0s.
+  - Sincronização inicial executada ao vivo com sucesso para a instância `N.A.L.A`, reduzindo de 83 comandos globais para os 14 comandos estritamente autorizados de moderação e utilitários.
+- **Personalização Dinâmica de Identidade & Branding nos Comandos (`botName`):**
+  - Substituição dinâmica de menções a `"Jarvis"` nos textos, descrições e subcomandos para o nome real da instância (ex: `N.A.L.A`) durante a serialização dos comandos slash.
+  - Atualizadas as descrições estáticas em `/ajuda` e `/ai-nome restaurar` para evitar hardcoding do nome da IA base.
+- **Menu de Ajuda (`/ajuda` e `+ajuda`) Modular e Inteligente:**
+  - `helpMenuHelper.js` agora recebe `allowedModules` e filtra as opções do menu suspenso (`StringSelectMenuBuilder`) e os campos do embed inicial (`buildHomeEmbed`), exibindo exclusivamente as categorias suportadas pelos módulos ativos daquela instância.
+  - Se um usuário requisitar uma categoria desabilitada para aquela instância, o sistema faz fallback seguro para a tela inicial (`home`).
+- **Suíte de Testes de Isolamento Multi-Bot:**
+  - Adicionado `tests/commandRegistryIsolation.test.js` com testes para verificação de filtragem de comandos slash, substituição dinâmica de branding e menus de ajuda isolados por módulos. 100% dos testes aprovados (399/399 testes em 85 suítes).
+
 ## [9.16.0] - 2026-11-20
 
 ### Corrigido & Aprimorado (Atualização Imediata Zero-Delay Sem F5 & Sincronização Total)

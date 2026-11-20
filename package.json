@@ -1,7 +1,7 @@
 {
   "name": "jarvis-discord-bot",
-  "version": "9.16.0",
-  "description": "Unified Modular Discord Bot (Jarvis) - Production Release v9.16.0: Zero-Delay Synchronous Multi-Bot State Updates (Breadcrumb, Hero Badge, Member Count, Prefixes & Triggers), Dynamic Inactive Module Tab Filtering in Member Modal & Avatar Synchronization",
+  "version": "9.17.0",
+  "description": "Unified Modular Discord Bot (Jarvis) - Production Release v9.17.0: Dynamic Multi-Bot Slash Command Module Isolation, Discord REST Guild Deployment Synchronization & Instance Help Personalization",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",

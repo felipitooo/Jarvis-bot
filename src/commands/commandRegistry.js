@@ -37,8 +37,65 @@ class CommandRegistry {
     return Array.from(this.commands.values());
   }
 
-  getSlashCommandsJSON() {
-    return this.getAll().map(cmd => cmd.data.toJSON());
+  /**
+   * Returns slash command JSON definitions, optionally filtered by allowed modules and customized by botName.
+   * @param {Array<string>|Set<string>|object|null} [allowedModules=null]
+   * @param {string|null} [botName=null]
+   */
+  getSlashCommandsJSON(allowedModules = null, botName = null) {
+    let allowedSet = null;
+    if (allowedModules) {
+      if (allowedModules instanceof Set) {
+        allowedSet = allowedModules;
+      } else if (Array.isArray(allowedModules)) {
+        allowedSet = new Set(allowedModules.map(m => String(m).toLowerCase().trim()));
+      } else if (typeof allowedModules === 'object') {
+        allowedSet = new Set(
+          Object.entries(allowedModules)
+            .filter(([, enabled]) => enabled === true)
+            .map(([k]) => String(k).toLowerCase().trim())
+        );
+      }
+    }
+
+    let commandToModuleMap = null;
+    try {
+      const { COMMAND_TO_MODULE_MAP } = require('../services/guildModuleService');
+      commandToModuleMap = COMMAND_TO_MODULE_MAP;
+    } catch {
+      commandToModuleMap = {};
+    }
+
+    const commands = this.getAll().filter(cmd => {
+      if (!cmd || !cmd.data || !cmd.data.name) return false;
+      if (!allowedSet) return true;
+
+      const cmdName = cmd.data.name.toLowerCase();
+      const mod = commandToModuleMap[cmdName];
+      if (!mod) {
+        // Infrastructure / Core utility commands (e.g., ping, ajuda, prefixo, config) are universal
+        return true;
+      }
+      return allowedSet.has(mod.toLowerCase());
+    });
+
+    const isCustomName = Boolean(botName && !['jarvis', 'j.a.r.v.i.s.'].includes(botName.toLowerCase().trim()));
+
+    return commands.map(cmd => {
+      const rawJson = typeof cmd.data.toJSON === 'function' ? cmd.data.toJSON() : JSON.parse(JSON.stringify(cmd.data));
+      if (!isCustomName) {
+        return rawJson;
+      }
+
+      // Replace hardcoded "Jarvis" / "J.A.R.V.I.S." with botName across descriptions and texts
+      const jsonStr = JSON.stringify(rawJson);
+      const replacedStr = jsonStr.replace(/\b(J\.A\.R\.V\.I\.S\.|Jarvis)\b/gi, botName);
+      try {
+        return JSON.parse(replacedStr);
+      } catch {
+        return rawJson;
+      }
+    });
   }
 
   /**
@@ -46,16 +103,18 @@ class CommandRegistry {
    * @param {string} token
    * @param {string} clientId
    * @param {Array<string>} [guildIds=[]]
+   * @param {Array<string>|Set<string>|object|null} [allowedModules=null]
+   * @param {string|null} [botName=null]
    */
-  async deployCommands(token, clientId, guildIds = []) {
+  async deployCommands(token, clientId, guildIds = [], allowedModules = null, botName = null) {
     if (!token || !clientId) {
       throw new Error('token and clientId are required to deploy slash commands.');
     }
 
     const rest = new REST({ version: '10' }).setToken(token);
-    const body = this.getSlashCommandsJSON();
+    const body = this.getSlashCommandsJSON(allowedModules, botName);
 
-    cmdLogger.info(`Started refreshing ${body.length} application (/) commands.`);
+    cmdLogger.info(`Started refreshing ${body.length} application (/) commands for client ${clientId} (botName: ${botName || 'Default'}, modules: ${allowedModules ? 'Filtered (' + body.length + ' commands)' : 'ALL'}).`);
 
     // 1. Deploy directly to connected guilds for INSTANT (0-second) appearance in Discord
     if (Array.isArray(guildIds) && guildIds.length > 0) {

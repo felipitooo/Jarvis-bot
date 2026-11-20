@@ -67,16 +67,31 @@ module.exports = {
       readyLogger.info('Company bankruptcy health worker started (checks every 10 minutes).');
     }
 
-    // Deploy slash commands directly to guilds (INSTANT) + globally using the correct token for this client
+    // Deploy slash commands directly to guilds (INSTANT) + globally using the correct token for this client (isolated & module-filtered per instance)
     const activeToken = context?.botInstanceToken || process.env.DISCORD_TOKEN;
     if (activeToken && client.user?.id) {
       try {
         const guildIds = Array.from(guilds.keys());
-        readyLogger.info(`Deploying application (/) slash commands to Discord for ${client.user.tag} (${guildIds.length} guilds + global)...`);
-        await commandRegistry.deployCommands(activeToken, client.user.id, guildIds);
-        readyLogger.info('All slash commands deployed successfully to Discord!');
+        let allowedModules = null;
+        let instName = null;
+
+        if (context?.botInstanceId) {
+          instName = context.botInstanceName || client.user?.username || defaultName;
+          const instCfg = context.multiBotManager?.getInstanceConfig?.(context.botInstanceId, instName) || context.botInstanceConfig;
+          if (instCfg?.modules && typeof instCfg.modules === 'object') {
+            allowedModules = Object.entries(instCfg.modules)
+              .filter(([, enabled]) => enabled === true)
+              .map(([modId]) => modId);
+          } else if (Array.isArray(context.botInstanceAssignedModules)) {
+            allowedModules = context.botInstanceAssignedModules;
+          }
+        }
+
+        readyLogger.info(`Deploying application (/) slash commands to Discord for ${client.user.tag} (${guildIds.length} guilds, modules: ${allowedModules ? allowedModules.join(', ') : 'ALL'})...`);
+        await commandRegistry.deployCommands(activeToken, client.user.id, guildIds, allowedModules, instName);
+        readyLogger.info(`All slash commands deployed successfully to Discord for ${client.user.tag}!`);
       } catch (deployErr) {
-        readyLogger.warn(`Slash commands deployment skipped or failed: ${deployErr.message}`);
+        readyLogger.warn(`Slash commands deployment skipped or failed for ${client.user?.tag || 'bot'}: ${deployErr.message}`);
       }
     }
 

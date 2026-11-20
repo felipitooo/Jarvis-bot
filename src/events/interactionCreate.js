@@ -1039,11 +1039,20 @@ module.exports = {
             ? interaction.client.user.displayAvatarURL({ extension: 'png', size: 128 })
             : null;
 
+          let allowedModules = null;
+          if (context.botInstanceId && context.multiBotManager) {
+            const cfg = context.multiBotManager.getInstanceConfig?.(context.botInstanceId);
+            if (cfg?.modules) {
+              allowedModules = Object.entries(cfg.modules).filter(([, v]) => v === true).map(([k]) => k);
+            }
+          }
+
           const payload = buildHelpResponse({
             category: selected,
             aiName,
             prefix: '+',
-            botAvatarUrl
+            botAvatarUrl,
+            allowedModules
           });
 
           const updateResult = await interaction.update(payload).catch(async () => {

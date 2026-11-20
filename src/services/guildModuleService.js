@@ -179,10 +179,11 @@ const MODULE_DEFINITIONS = [
       'warnlist', 'warns', 'warnings', 'advertencias',
       'unwarn', 'clearwarn', 'clearwarns', 'limparwarns',
       'mute', 'timeout', 'mutar', 'silenciar',
-      'unmute', 'untimeout', 'desmutar', 'desilenciar',
+      'unmute', 'untimeout', 'desmutar', 'desmultar', 'desilenciar',
       'limpar', 'clear', 'purge', 'limpar-mensagens',
       'slowmode', 'lock', 'lockdown', 'trancar', 'unlock', 'destrancar',
-      'config-mod', 'historico-membro', 'auditar'
+      'config-mod', 'historico-membro', 'auditar',
+      'cargo', 'canal', 'backup'
     ],
     events: ['interactionCreate'],
     automations: ['tempban_expiration_worker']
