@@ -1290,6 +1290,18 @@ class MultiBotManager {
         this._updateStatusInDb(id, 'ONLINE', null, liveMeta.memoryMb);
         this.applyInstancePresence(id, inst.config, inst.name);
 
+        try {
+          if (typeof client.user?.displayAvatarURL === 'function') {
+            const avUrl = client.user.displayAvatarURL({ extension: 'png', size: 256 });
+            const freshInst = this.getInstance(id);
+            if (freshInst) {
+              const freshCfg = { ...(freshInst.config || {}) };
+              freshCfg.theme = { ...(freshCfg.theme || {}), avatarUrl: avUrl };
+              this.updateInstance(id, { config: freshCfg });
+            }
+          }
+        } catch {}
+
         if (this.interBotBridge) {
           this.interBotBridge.registerBot({
             id,

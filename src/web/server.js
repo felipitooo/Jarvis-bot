@@ -324,7 +324,7 @@ class WebServer {
             const live = mb?.activeInstances?.get(inst.id);
             const secondaryAvatarUrl = (typeof live?.client?.user?.displayAvatarURL === 'function')
               ? live.client.user.displayAvatarURL({ extension: 'png', size: 256 })
-              : (inst.avatarUrl || 'https://cdn.discordapp.com/embed/avatars/0.png');
+              : (inst.config?.theme?.avatarUrl || inst.avatarUrl || 'https://cdn.discordapp.com/embed/avatars/0.png');
             res.writeHead(302, {
               Location: secondaryAvatarUrl,
               'Cache-Control': 'no-cache, no-store, must-revalidate'
@@ -633,6 +633,7 @@ class WebServer {
             if (body.identity?.defaultPrefix) {
               cfg.prefix = String(body.identity.defaultPrefix).trim();
               cfg.commands = { ...(cfg.commands || {}), prefix: cfg.prefix };
+              updates.prefix = cfg.prefix;
             }
             if (body.ai?.model) cfg.aiModel = body.ai.model;
             if (body.ai?.humorMode) cfg.humorMode = body.ai.humorMode;
@@ -657,14 +658,22 @@ class WebServer {
           this.webPanelService.identityService.defaultName = updated.identity.name;
         }
 
-        // Update global prefix in prefixCommandHandler if available
+        // Update global prefix in prefixCommandHandler and settingsService if available
         if (updated.identity?.defaultPrefix) {
+          const newPfx = updated.identity.defaultPrefix;
           try {
             const { prefixCommandHandler } = require('../handlers/prefixCommandHandler');
             if (prefixCommandHandler) {
-              prefixCommandHandler.prefix = updated.identity.defaultPrefix;
+              prefixCommandHandler.prefix = newPfx;
             }
           } catch {}
+          if (this.webPanelService?.services?.settingsService) {
+            const ss = this.webPanelService.services.settingsService;
+            const targetGuild = body.guildId || req.headers['x-guild-id'] || null;
+            if (targetGuild) {
+              try { ss.setSetting(targetGuild, 'prefix', newPfx, session.userId); } catch {}
+            }
+          }
         }
 
         // Update live Gemini model if available

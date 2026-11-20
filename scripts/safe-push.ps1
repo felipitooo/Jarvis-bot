@@ -3,7 +3,7 @@
 )
 
 Write-Host "==========================================" -ForegroundColor Cyan
-Write-Host "  JARVIS / CELL - SAFE GITHUB SYNC (ANTI-LEAK)" -ForegroundColor Cyan
+Write-Host "  JARVIS - SAFE GITHUB SYNC (ANTI-LEAK)" -ForegroundColor Cyan
 Write-Host "==========================================" -ForegroundColor Cyan
 
 Set-Location "C:\Jarvis"

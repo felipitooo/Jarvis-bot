@@ -27,7 +27,7 @@ function getNameRegexes(aiName, configName, configTriggers, isSecondaryBot = fal
   }
   const namesToCheck = isSecondaryBot
     ? Array.from(new Set([aiName, configName])).filter(Boolean)
-    : Array.from(new Set([aiName, configName, ...(configTriggers || []), 'Jarvis', 'J.A.R.V.I.S', 'Cell'])).filter(Boolean);
+    : Array.from(new Set([aiName, configName, ...(configTriggers || []), 'Jarvis', 'J.A.R.V.I.S'])).filter(Boolean);
   const escapedNames = namesToCheck.map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
   cachedRegexes = {
     nameWordRegex: new RegExp(`(^|\\s|[.,!?;:])(${escapedNames})($|\\s|[.,!?;:])`, 'i'),
@@ -264,7 +264,7 @@ module.exports = {
       cleanText = 'Por favor, analise a imagem/mídia/arquivo que enviei com atenção aos detalhes.';
     }
 
-    // If empty (e.g. user only mentioned @Cell or said "Cell"), reply with friendly greeting & guidance
+    // If empty (e.g. user only mentioned @Jarvis or said "Jarvis"), reply with friendly greeting & guidance
     if (!cleanText && message.attachments.size === 0) {
       await message.reply({
         content: `Às suas ordens, <@${message.author.id}>. Eu sou o **${aiName}**, assistente central com protocolos em plena prontidão.\n\nComo posso ser útil hoje, senhor? *Dica: Chame-me diretamente pelo meu nome ou digite \`/\` e \`+\` para acessar meus comandos.*`

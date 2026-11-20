@@ -93,6 +93,6 @@ describe('Identity & Dynamic AI Name Service', () => {
 
   test('technical internal identifier is distinct from display name', () => {
     assert.notEqual(identityService.getTechnicalIdentifier(), identityService.getDisplayName('guild_001'));
-    assert.equal(identityService.getTechnicalIdentifier(), 'cell-unified-core');
+    assert.equal(identityService.getTechnicalIdentifier(), 'jarvis-unified-core');
   });
 });

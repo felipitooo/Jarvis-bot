@@ -738,7 +738,7 @@ async function shutdown(signal = 'SIGTERM') {
  */
 async function bootstrap() {
   logger.setLevel(config.logLevel);
-  appLogger.info('Initializing Cell Discord Bot Foundation, AI Core, Admin, Moderation & XP System...');
+  appLogger.info('Initializing Jarvis Discord Bot Foundation, AI Core, Admin, Moderation & XP System...');
 
   // Setup global uncaught error listeners
   setupGlobalErrorHandlers(appLogger, () => shutdown('EMERGENCY'));

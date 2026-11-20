@@ -755,7 +755,7 @@ async function generateMessageProof(options = {}) {
 
     // 7. Watermark / Branding (Bottom Right)
     const cleanBotName = String(botName || 'Jarvis').replace(/#\d+$/, '').trim();
-    const article = (cleanBotName.toLowerCase().endsWith('a') || cleanBotName.toLowerCase().includes('cell')) ? 'a ' : 'o ';
+    const article = cleanBotName.toLowerCase().endsWith('a') ? 'a ' : 'o ';
     const prefix = `Feito com ${article}`;
 
     const botIconSize = 40;

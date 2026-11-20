@@ -6,8 +6,8 @@ O **J.A.R.V.I.S.** é uma plataforma modular de alta performance para Discord co
 
 ## 1. Identidade Global da IA
 
-- **Nome Padrão Inicial:** `Cell`
-- **Identificador Técnico Interno:** `cell-unified-core` (completamente desacoplado do nome de exibição).
+- **Nome Padrão Inicial:** `Jarvis`
+- **Identificador Técnico Interno:** `jarvis-unified-core` (completamente desacoplado do nome de exibição).
 - **Personalização Dinâmica:** Cada servidor possui sua própria chave de configuração `ai_display_name` no banco de dados.
 - **Configuração Multi-Canal:** O nome pode ser consultado, alterado ou restaurado dinamicamente via:
   1. **Painel Web:** Interface REST/HTML com validação CSRF (`/api/guilds/:id/settings`).
@@ -30,7 +30,7 @@ O **J.A.R.V.I.S.** é uma plataforma modular de alta performance para Discord co
 
 ```bash
 # 1. Clonar o repositório ou navegar até o diretório do projeto
-cd c:/Cell
+cd c:/Jarvis
 
 # 2. Instalar as dependências de produção
 npm install
@@ -97,7 +97,7 @@ DATABASE_PATH=./data/cell.sqlite
 LOG_LEVEL=info
 
 # Identidade Global Padrão da IA
-DEFAULT_AI_NAME=Cell
+DEFAULT_AI_NAME=Jarvis
 
 # Configuração da IA Gemini (Opcional - opera em modo simulado seguro caso ausente)
 GEMINI_API_KEY=sua_chave_gemini_aqui
@@ -123,7 +123,7 @@ GEMINI_MODEL=gemini-1.5-flash
 
 ### Painel Discord (`/config`)
 - **Navegação Interativa:** Menu dropdown com `StringSelectMenuBuilder` alternando entre módulos do servidor.
-- **Botões Dinâmicos:** Renomear IA, Restaurar nome padrão para "Cell", e atualizar exibição.
+- **Botões Dinâmicos:** Renomear IA, Restaurar nome padrão para "Jarvis", e atualizar exibição.
 - **Modais Nativos:** Entrada de novos valores diretamente no cliente Discord com respostas efêmeras (invisíveis para terceiros).
 
 ---
@@ -199,7 +199,7 @@ Recomenda-se gerenciar o processo do bot utilizando o PM2 para reinicialização
 npm install -g pm2
 
 # Iniciar o bot com reinício automático e monitoramento
-pm2 start src/index.js --name "cell-bot" --time
+pm2 start src/index.js --name "jarvis-bot" --time
 
 # Salvar a lista de processos para inicialização no boot do sistema
 pm2 save
@@ -266,9 +266,9 @@ sqlite3 ./data/cell.sqlite ".backup './data/backups/cell_$(date +%Y%m%d_%H%M%S).
 ```
 
 ### Restauração de Backup
-1. Interrompa o bot: `pm2 stop cell-bot`
+1. Interrompa o bot: `pm2 stop jarvis-bot`
 2. Substitua o banco atual pelo arquivo restaurado: `cp ./data/backups/cell_backup.sqlite ./data/cell.sqlite`
-3. Reinicie a aplicação: `pm2 start cell-bot`
+3. Reinicie a aplicação: `pm2 start jarvis-bot`
 
 ### Plano de Rollback de Código e Migrações
 Em caso de anomalia grave em nova versão:
@@ -283,7 +283,7 @@ Em caso de anomalia grave em nova versão:
 
 | Módulo / Recurso | Status | Observações / Limitações |
 | :--- | :---: | :--- |
-| **Identidade Dinâmica da IA** | ✅ **Completo** | O nome inicial é "Cell". Totalmente alterável por servidor via painel web, painel Discord ou `/ai-nome`. |
+| **Identidade Dinâmica da IA** | ✅ **Completo** | O nome inicial é "Jarvis". Totalmente alterável por servidor via painel web, painel Discord ou `/ai-nome`. |
 | **Banco de Dados SQLite Nativo** | ✅ **Completo** | Migrações atômicas, isolamento multi-tenant estrito e locks transacionais sem race conditions. |
 | **Moderação & Escalonamento** | ✅ **Completo** | Warns com prazos de expiração, punições automáticas e logs centralizados. |
 | **XP & Níveis** | ✅ **Completo** | Cooldowns, canais bloqueados, multiplicadores, cargos de recompensa e ranking. |
@@ -301,7 +301,7 @@ Em caso de anomalia grave em nova versão:
 
 ## 13. Verificação & Testes Automatizados
 
-A suíte de testes do Cell é executada nativamente pelo Node.js Test Runner:
+A suíte de testes do Jarvis é executada nativamente pelo Node.js Test Runner:
 
 ```bash
 # Executa os 164 testes em 38 suítes

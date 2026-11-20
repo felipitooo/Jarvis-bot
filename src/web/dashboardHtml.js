@@ -2576,7 +2576,7 @@ function renderDashboardHtml({
     <div class="sidebar-header">
       <div class="sidebar-brand">
         <div class="brand-avatar-box">
-          <img src="${botAvatarUrl}" class="brand-avatar-img" id="sidebarBotAvatar" alt="${aiDisplayName}" onerror="if(this.src!=='/api/bot/avatar'){this.src='/api/bot/avatar';}">
+          <img src="${botAvatarUrl}" class="brand-avatar-img" id="sidebarBotAvatar" alt="${aiDisplayName}" onerror="this.onerror=null; this.src='https://cdn.discordapp.com/embed/avatars/0.png';">
           <span class="brand-avatar-online"></span>
         </div>
         <div>
@@ -6816,7 +6816,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
             </div>
             <div class="form-group">
               <label>Gatilhos de Nome no Chat</label>
-              <input type="text" id="cfgTriggerNames" placeholder="Ex: Jarvis, J.A.R.V.I.S, Cell">
+              <input type="text" id="cfgTriggerNames" placeholder="Ex: Jarvis, J.A.R.V.I.S">
               <small style="color: var(--text-subtle); font-size: 0.75rem;">Separados por vírgula. Responde sem precisar de @menção.</small>
             </div>
           </div>
@@ -7231,6 +7231,12 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       if (stored) initialActiveBotId = stored;
     } catch (e) {}
     window.currentActiveBotId = initialActiveBotId;
+    if (initialActiveBotId !== 'PRIMARY') {
+      const sAv = document.getElementById('sidebarBotAvatar');
+      if (sAv) {
+        sAv.src = '/api/bot/avatar?botId=' + encodeURIComponent(initialActiveBotId);
+      }
+    }
 
     function escapeHtml(str) {
       if (str === null || str === undefined) return '';
@@ -8072,11 +8078,14 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         }
 
         // Custom Commands & Prefix
-        if (mods.serverPrefix) {
+        const effectivePrefix = mods.serverPrefix || data.serverPrefix || data.settings?.prefix;
+        if (effectivePrefix) {
           const sPref = document.getElementById('serverPrefixInput');
-          if (sPref) sPref.value = mods.serverPrefix;
+          if (sPref) sPref.value = effectivePrefix;
           const cPref = document.getElementById('cfgBotPrefix');
-          if (cPref) cPref.value = mods.serverPrefix;
+          if (cPref && (!cPref.value || (targetBot && targetBot !== 'PRIMARY'))) {
+            cPref.value = effectivePrefix;
+          }
         }
         const pCheck = document.getElementById('prefixlessModeCheckbox');
         if (pCheck) {
@@ -11419,6 +11428,8 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           const resData = await res.json().catch(() => ({}));
           const savedName = resData.aiDisplayName || newName;
           showToast('Nome da IA atualizado para: ' + savedName + ' (Prefixo: ' + newPrefix + ')', 'success');
+          const cPref = document.getElementById('cfgBotPrefix');
+          if (cPref) cPref.value = newPrefix;
           if (!targetBot || targetBot === 'PRIMARY') {
             document.getElementById('headerAiName').innerText = savedName;
             document.getElementById('overviewAiName').value = savedName;
@@ -11611,21 +11622,36 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
     });
 
     function applyBotAvatar(url) {
+      const targetBot = window.currentActiveBotId || 'PRIMARY';
+      const targetUrl = (targetBot !== 'PRIMARY')
+        ? (window.botAvatarsMap?.[targetBot] || ('/api/bot/avatar?botId=' + encodeURIComponent(targetBot)))
+        : (url || '/api/bot/avatar');
       const ids = ['sidebarBotAvatar', 'topHeaderBotAvatar', 'ticketBotAvatar', 'welcomeBotAvatar'];
       ids.forEach(id => {
         const img = document.getElementById(id);
-        if (img) img.src = '/api/bot/avatar';
+        if (img) img.src = targetUrl;
       });
       try {
         if (!document.querySelector('link[rel="icon"]')?.href?.startsWith('data:')) {
           const favicons = document.querySelectorAll('link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]');
-          favicons.forEach(fav => { fav.href = '/favicon.png?v=' + Date.now(); });
+          favicons.forEach(fav => { fav.href = (targetBot !== 'PRIMARY' ? targetUrl : ('/favicon.png?v=' + Date.now())); });
         }
       } catch {}
     }
 
     async function syncBotLiveAvatar() {
       try {
+        const targetBot = window.currentActiveBotId || 'PRIMARY';
+        if (targetBot !== 'PRIMARY') {
+          const sAv = document.getElementById('sidebarBotAvatar');
+          if (sAv) {
+            const expected = window.botAvatarsMap?.[targetBot] || ('/api/bot/avatar?botId=' + encodeURIComponent(targetBot));
+            if (!sAv.src.includes(targetBot) && sAv.src !== expected) {
+              sAv.src = expected;
+            }
+          }
+          return;
+        }
         const res = await fetch('/api/bot/info', { credentials: 'same-origin' });
         if (!res.ok) return;
         const data = await res.json();
@@ -13838,6 +13864,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         .filter(Boolean);
 
       const payload = {
+        guildId: currentGuildId,
         identity: {
           name: document.getElementById('cfgBotName')?.value?.trim() || 'J.A.R.V.I.S.',
           defaultPrefix: document.getElementById('cfgBotPrefix')?.value?.trim() || '+',
@@ -13905,6 +13932,12 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           const sMsg = currentLang === 'en' ? 'Configurations saved successfully!' : 'Configurações salvas com sucesso!';
           const sTitle = currentLang === 'en' ? 'Saved!' : 'Salvo!';
           showToast(sMsg, 'success', sTitle);
+
+          const savedPrefix = payload.identity?.defaultPrefix || '+';
+          const sPref = document.getElementById('serverPrefixInput');
+          if (sPref) sPref.value = savedPrefix;
+          const cPref = document.getElementById('cfgBotPrefix');
+          if (cPref) cPref.value = savedPrefix;
 
           // Apply live CSS variables to root immediately
           const r = document.documentElement;
@@ -14254,7 +14287,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         if (payload.definitions && Array.isArray(payload.definitions)) {
           allModuleDefinitions = payload.definitions;
         }
-        currentGuildModulesState = payload.settings || (payload.definitions ? {} : payload) || {};
+        window.currentGuildModulesState = currentGuildModulesState = payload.settings || (payload.definitions ? {} : payload) || {};
 
         const badge = document.getElementById('moduleTargetBotBadge');
         if (badge) {
@@ -14423,6 +14456,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       'tab-reviews': ['reviews'],
       'tab-identity': ['ai_chat'],
       'tab-aimemory': ['ai_memory'],
+      'tab-speak': ['ai_chat', 'automations'],
       'tab-customcommands': ['automations'],
       'tab-community': ['automations'],
       'tab-alerts': ['automations'],
@@ -14434,12 +14468,19 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
     };
 
     function isModuleActiveForCurrentBot(modId) {
-      const isPrimary = (window.currentActiveBotId || 'PRIMARY') === 'PRIMARY';
-      if (!window.currentGuildModulesState) return true;
-      if (isPrimary) {
-        return window.currentGuildModulesState[modId] !== false;
+      const activeBot = window.currentActiveBotId || 'PRIMARY';
+      if (activeBot !== 'PRIMARY') {
+        if (window.botModulesMap && window.botModulesMap[activeBot]) {
+          return window.botModulesMap[activeBot][modId] === true;
+        }
+        if (window.botAssignedModulesMap && window.botAssignedModulesMap[activeBot]) {
+          return window.botAssignedModulesMap[activeBot].includes(modId);
+        }
+        return false;
       }
-      return window.currentGuildModulesState[modId] === true;
+      const state = window.currentGuildModulesState || currentGuildModulesState;
+      if (!state || Object.keys(state).length === 0) return true;
+      return state[modId] !== false;
     }
 
     function syncSidebarModuleVisibility() {
@@ -14451,11 +14492,15 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         const tabId = btn.getAttribute('data-tab');
         const reqs = TAB_MODULE_REQUIREMENTS[tabId];
         if (!reqs) {
-          btn.style.display = '';
+          btn.style.removeProperty('display');
           return;
         }
         const isVisible = reqs.some(modId => isModuleActiveForCurrentBot(modId));
-        btn.style.display = isVisible ? '' : 'none';
+        if (isVisible) {
+          btn.style.removeProperty('display');
+        } else {
+          btn.style.setProperty('display', 'none', 'important');
+        }
         if (!isVisible && currentTab === tabId) {
           activeTabIsHidden = true;
         }
@@ -14475,7 +14520,11 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
             }
             next = next.nextElementSibling;
           }
-          title.style.display = hasVisibleChild ? '' : 'none';
+          if (hasVisibleChild) {
+            title.style.removeProperty('display');
+          } else {
+            title.style.setProperty('display', 'none', 'important');
+          }
         });
       }
 
@@ -14574,12 +14623,12 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
 
       // Update top-left brand avatar and name
       const sidebarAvatar = document.getElementById('sidebarBotAvatar');
-      if (sidebarAvatar) {
-        const newAvatar = (window.botAvatarsMap && window.botAvatarsMap[botId])
-          ? window.botAvatarsMap[botId]
-          : (botId === 'PRIMARY' ? '/api/bot/avatar' : ('/api/bot/avatar?botId=' + encodeURIComponent(botId)));
-        sidebarAvatar.src = newAvatar;
-      }
+      const topAvatar = document.getElementById('topHeaderBotAvatar');
+      const newAvatar = (window.botAvatarsMap && window.botAvatarsMap[botId])
+        ? window.botAvatarsMap[botId]
+        : (botId === 'PRIMARY' ? '/api/bot/avatar' : ('/api/bot/avatar?botId=' + encodeURIComponent(botId)));
+      if (sidebarAvatar) sidebarAvatar.src = newAvatar;
+      if (topAvatar) topAvatar.src = newAvatar;
       const headerAiName = document.getElementById('headerAiName');
       if (headerAiName) {
         headerAiName.innerText = (botName || 'J.A.R.V.I.S.').replace(' (Principal)', '');
@@ -14659,9 +14708,14 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
 
         window.botNamesMap = { 'PRIMARY': 'J.A.R.V.I.S. (Principal)' };
         window.botAvatarsMap = { 'PRIMARY': '/api/bot/avatar' };
+        window.botModulesMap = {};
+        window.botAssignedModulesMap = {};
+
         for (const inst of list) {
           window.botNamesMap[inst.id] = inst.name;
           window.botAvatarsMap[inst.id] = inst.avatarUrl || ('/api/bot/avatar?botId=' + encodeURIComponent(inst.id));
+          window.botModulesMap[inst.id] = inst.config?.modules || {};
+          window.botAssignedModulesMap[inst.id] = inst.assignedModules || [];
         }
 
         // Populate all 4 Bot Selectors (Top Header, Sidebar, Universal Tab Banner, Modules Hub)
@@ -14684,6 +14738,20 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
             }
           }
         });
+
+        const curActive = window.currentActiveBotId || 'PRIMARY';
+        if (curActive !== 'PRIMARY') {
+          const sAv = document.getElementById('sidebarBotAvatar');
+          if (sAv && window.botAvatarsMap[curActive]) {
+            sAv.src = window.botAvatarsMap[curActive];
+          }
+          const hName = document.getElementById('headerAiName');
+          if (hName && window.botNamesMap[curActive]) {
+            hName.innerText = window.botNamesMap[curActive];
+          }
+          applyBotTheme(curActive);
+        }
+        syncSidebarModuleVisibility();
 
         const activeBotName = window.botNamesMap?.[prevTargetVal] || (prevTargetVal === 'PRIMARY' ? 'J.A.R.V.I.S. (Principal)' : prevTargetVal);
         const uBannerName = document.getElementById('universalBannerBotName');

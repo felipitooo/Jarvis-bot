@@ -1,7 +1,7 @@
 {
   "name": "jarvis-discord-bot",
-  "version": "9.12.0",
-  "description": "Unified Modular Discord Bot (Jarvis) - Production Release v9.12.0 Dynamic Sidebar Module Visibility, Per-Bot Isolated Themes & Avatars, Clean Multi-Bot Manager & Multi-Bot Member PV DMs",
+  "version": "9.13.0",
+  "description": "Unified Modular Discord Bot (Jarvis) - Production Release v9.13.0 Complete Legacy Cell Removal, Absolute Persistence & Privacy Security, Dynamic Sidebar Module Visibility, Auto Avatar Sync & Universal Prefix Persistence",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
@@ -13,7 +13,7 @@
     "discord",
     "bot",
     "discordjs",
-    "cell"
+    "jarvis"
   ],
   "author": "",
   "license": "ISC",

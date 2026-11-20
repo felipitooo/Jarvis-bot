@@ -5,6 +5,24 @@ Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [9.13.0] - 2026-11-20
+
+### Corrigido & Aprimorado
+- **Persistência Definitiva do Prefixo de Comandos (Resolução do Revert de Prefixo):**
+  - Corrigida a condição de corrida entre `loadGuildDetails` e a configuração de identidade do bot (`#saveBotIdentityBtn`). O prefixo salvo no formulário agora sincroniza bidirecionalmente entre o banco de dados da instância (`bot_instance_configs`), a configuração geral (`bot_config.json`), o handler de prefixo em tempo real (`prefixCommandHandler`) e as configurações do servidor (`settingsService`). O prefixo configurado para instâncias como N.A.L.A e Jarvis permanece fixo e nunca mais reverte para `+`.
+- **Garantia de Ocultamento e Visibilidade Dinâmica de Abas Inativas:**
+  - Corrigida a referência de escopo de `currentGuildModulesState` no frontend do painel, conectando-a globalmente a `window.botModulesMap` e `window.botAssignedModulesMap`.
+  - Abas da barra lateral pertencentes a módulos inativos na instância (por exemplo, quando a N.A.L.A possui apenas Moderação e Proteção Anti-Bots, todas as outras 18 abas como Economia, Cassino, Tickets, Quiz, Níveis/XP, Falar pelo Bot, etc. são estritamente ocultadas com `display: none !important`).
+  - Cabeçalhos de grupos vazios da barra lateral são removidos automaticamente.
+- **Sincronização Imediata & Automática da Foto/Avatar do Bot Ativo:**
+  - O avatar circular no topo esquerdo da barra lateral (`#sidebarBotAvatar`) agora atualiza instantaneamente no carregamento inicial da página (F5) e ao trocar de bot no dropdown seletor, sem recair para o avatar padrão do Jarvis.
+  - O intervalo periódico `syncBotLiveAvatar` foi atualizado para respeitar a instância ativa e não sobrescrever o avatar da instância secundária.
+  - Removido o manipulador `onerror` regressivo que forçava o avatar da N.A.L.A de volta para o do Jarvis.
+- **Remoção Completa e Definitiva de Todas as Menções ao Nome Legado ("Cell"):**
+  - Varredura e substituição em todo o código-fonte, configurações (`constants.js`, `botConfig.js`, `identityService.js`, `package.json`, `README.md`, etc.) do nome antigo "Cell" por "Jarvis".
+  - Identificador técnico unificado para `jarvis-unified-core`.
+  - Confirmação de segurança: todos os arquivos dinâmicos (banco SQLite `cell.sqlite`, `bot_config.json`, uploads e avatares) residem estritamente dentro da pasta `data/` e protegidos pelo `.gitignore`.
+
 ## [9.12.0] - 2026-11-20
 
 ### Adicionado & Aprimorado
@@ -540,7 +558,7 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
   - Interface visual responsiva e acessível (`src/web/dashboardHtml.js`).
 - **Painel Interativo de Configuração Dentro do Discord (`/config`):**
   - Menu interativo com `StringSelectMenuBuilder` permitindo alternar entre módulos (`Identidade`, `Tickets`, `Boas-Vindas`, `Starboard`, `Briefing`).
-  - Botões para renomear assistente, restaurar nome padrão para "Cell" e atualizar painel.
+  - Botões para renomear assistente, restaurar nome padrão para "Jarvis" e atualizar painel.
   - Modais interativos (`ModalBuilder` e `TextInputBuilder`) para atualização de valores diretamente no cliente Discord com respostas efêmeras.
 - **Automações, Agendador & Produtividade da FRIDAY:**
   - `AutomationService` (`src/services/automationService.js`) & `AutomationRepository`:
@@ -575,7 +593,7 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 ### Adicionado
 - **Módulo de Suporte e Atendimento por Tickets (estilo Ticket Tool):**
   - `TicketService` (`src/services/ticketService.js`):
-    - Criação de canais privados de atendimento com permissões restritas (apenas o autor, equipe de suporte e Cell possuem acesso, `@everyone` bloqueado).
+    - Criação de canais privados de atendimento com permissões restritas (apenas o autor, equipe de suporte e Jarvis possuem acesso, `@everyone` bloqueado).
     - Enforçamento de limite máximo de tickets abertos simultâneos por membro (`maxOpenTicketsPerUser`).
     - Atribuição de atendimento (`claimTicket`) com prevenção de disputas e registro de atendente responsável.
     - Fechamento com motivo, geração automatizada de transcripts com histórico formatado das mensagens e reabertura de tickets arquivados.

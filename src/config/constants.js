@@ -2,7 +2,7 @@
  * Core constants and defaults for the Jarvis Discord bot.
  */
 
-const SYSTEM_IDENTIFIER = 'cell-unified-core';
+const SYSTEM_IDENTIFIER = 'jarvis-unified-core';
 const DEFAULT_AI_NAME = 'Jarvis';
 
 const SETTING_KEYS = Object.freeze({

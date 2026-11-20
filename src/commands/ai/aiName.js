@@ -24,7 +24,7 @@ module.exports = {
     .addSubcommand(sub =>
       sub
         .setName('restaurar')
-        .setDescription('Restaura o nome padrão de fábrica da IA ("Cell").')
+        .setDescription('Restaura o nome padrão de fábrica da IA ("Jarvis").')
     ),
 
   /**

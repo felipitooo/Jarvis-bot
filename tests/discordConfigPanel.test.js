@@ -37,7 +37,7 @@ describe('Discord In-Server /config Panel & Interactive Controls (Etapa 9)', () 
 
     const auditService = new AuditService(auditRepo);
     settingsService = new SettingsService(settingsRepo, auditService);
-    identityService = new IdentityService(settingsService, auditService, 'Cell');
+    identityService = new IdentityService(settingsService, auditService, 'Jarvis');
 
     mockGuild = {
       id: 'guild_discord_cfg',
@@ -83,7 +83,7 @@ describe('Discord In-Server /config Panel & Interactive Controls (Etapa 9)', () 
     assert.equal(replyPayload.embeds.length, 1);
     const embed = replyPayload.embeds[0];
     assert.ok(embed.data.title.includes('Discord Config Guild'));
-    assert.ok(embed.data.fields.some(f => f.name.includes('Identidade da IA') && f.value.includes('Cell')));
+    assert.ok(embed.data.fields.some(f => f.name.includes('Identidade da IA') && f.value.includes('Jarvis')));
 
     // Action rows with select menu and buttons
     assert.equal(replyPayload.components.length, 2);
@@ -115,8 +115,8 @@ describe('Discord In-Server /config Panel & Interactive Controls (Etapa 9)', () 
 
     await interactionCreateEvent.execute(mockButtonInteraction, eventContext);
 
-    assert.ok(replyText.includes('restaurado para o padrão **Cell**'));
-    assert.equal(identityService.getDisplayName('guild_discord_cfg'), 'Cell');
+    assert.ok(replyText.includes('restaurado para o padrão **Jarvis**'));
+    assert.equal(identityService.getDisplayName('guild_discord_cfg'), 'Jarvis');
   });
 
   test('select menu interaction returns module specific details', async () => {

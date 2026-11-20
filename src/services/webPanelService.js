@@ -254,6 +254,7 @@ class WebPanelService {
             audit_channel_id: auditChan
           },
           modules: {
+            serverPrefix: activePrefix,
             tickets: {
               transcriptChannelId: cfg.tickets?.transcriptChannelId || '',
               panelChannelId: cfg.tickets?.transcriptChannelId || '',
@@ -517,7 +518,7 @@ class WebPanelService {
         : (this.services.quizRepo ? (new (require('./quizService').QuizService)({ quizRepo: this.services.quizRepo })).getAllQuestions(guildId) : []),
       customCommands: this.services.customCommandRepo ? this.services.customCommandRepo.listCommands(guildId) : [],
       placeholders: this.services.customCommandService ? this.services.customCommandService.getPlaceholdersDocumentation() : [],
-      serverPrefix: this.services.settingsService ? this.services.settingsService.getSetting(guildId, 'prefix', '+') : '+',
+      serverPrefix: this.services.settingsService ? this.services.settingsService.getSetting(guildId, 'prefix', (require('../config/botConfig').botConfig.getConfig().identity?.defaultPrefix || '+')) : '+',
       prefixlessMode: this.services.settingsService ? (this.services.settingsService.getSetting(guildId, 'prefixless_mode', 'false') === 'true' || ['none', 'sem', 'nenhum', ''].includes(this.services.settingsService.getSetting(guildId, 'prefix', '+'))) : false,
       social: musicVoiceRepo ? musicVoiceRepo.getSocialConfig(guildId) : null,
       xp: xpRepo ? {

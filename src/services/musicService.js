@@ -905,10 +905,10 @@ class MusicService {
     // Fallback if ytdl is not available
     return {
       title: `Música: ${query}`,
-      url: `https://streams.cell-audio.local/track?q=${encodeURIComponent(query)}`,
+      url: `https://streams.jarvis-audio.local/track?q=${encodeURIComponent(query)}`,
       duration: 180,
       durationFormatted: '03:00',
-      author: 'Biblioteca Cell Audio',
+      author: 'Biblioteca Jarvis Audio',
       thumbnail: null,
       isLive: false,
       requestedBy: requestedBy?.username || 'Usuário',
@@ -1131,7 +1131,7 @@ class MusicService {
       url: ttsUrl,
       duration: Math.ceil(cleanText.length / 10),
       durationFormatted: `${Math.ceil(cleanText.length / 10)}s`,
-      author: 'Síntese de Voz Cell',
+      author: 'Síntese de Voz Jarvis',
       isTts: true,
       requestedBy: requestedBy?.username || 'Usuário',
       requestedById: requestedBy?.id || null

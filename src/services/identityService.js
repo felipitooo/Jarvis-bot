@@ -40,7 +40,7 @@ class IdentityService {
   }
 
   /**
-   * Alias for resetDisplayName to restore default name ('Cell').
+   * Alias for resetDisplayName to restore default name ('Jarvis').
    * @param {string} guildId
    * @param {string} [actorId]
    * @returns {string}
@@ -97,7 +97,7 @@ class IdentityService {
   }
 
   /**
-   * Resets the AI display name back to the system default ('Cell').
+   * Resets the AI display name back to the system default ('Jarvis').
    * @param {string} guildId
    * @param {string} [actorId]
    * @returns {string}
@@ -123,7 +123,7 @@ class IdentityService {
   }
 
   /**
-   * Alias for resetDisplayName to restore default name ('Cell').
+   * Alias for resetDisplayName to restore default name ('Jarvis').
    * @param {string} guildId
    * @param {string} [actorId]
    * @returns {string}
@@ -164,7 +164,7 @@ class IdentityService {
   }
 
   /**
-   * Alias for resetDisplayName to restore default name ('Cell').
+   * Alias for resetDisplayName to restore default name ('Jarvis').
    * @param {string} guildId
    * @param {string} [actorId]
    * @returns {string}

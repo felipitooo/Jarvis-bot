@@ -1063,7 +1063,7 @@ module.exports = {
 
         if (customId.startsWith('config_select_module_')) {
           const selected = values[0];
-          const aiName = context.identityService?.getDisplayName(guild.id) || 'Cell';
+          const aiName = context.identityService?.getDisplayName(guild.id) || 'Jarvis';
           const { EmbedBuilder } = require('discord.js');
           const embed = new EmbedBuilder()
             .setColor(0x5865F2)
