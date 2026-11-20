@@ -60,7 +60,7 @@ class DmTracker {
    * @param {string} params.sentText
    * @returns {object}
    */
-  registerOutboundDm({ userId, guildId = null, adminId = 'admin', adminUsername = 'Administrador', sentText = '' }) {
+  registerOutboundDm({ userId, guildId = null, adminId = 'admin', adminUsername = 'Administrador', sentText = '', botId = 'PRIMARY' }) {
     if (!userId) return null;
     const session = {
       id: `dm_${userId}_${Date.now()}`,
@@ -69,6 +69,7 @@ class DmTracker {
       adminUsername: String(adminUsername),
       sentText: String(sentText || ''),
       sentAt: new Date().toISOString(),
+      botId: String(botId || 'PRIMARY'),
       replies: [],
       maxReplies: 2,
       status: 'waiting'

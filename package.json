@@ -1,7 +1,7 @@
 {
   "name": "jarvis-discord-bot",
-  "version": "9.11.0",
-  "description": "Unified Modular Discord Bot (Jarvis) - Production Release v9.11.0 Strict Multi-Bot Identity Isolation, Secondary Bot Lookup by Name/ID & Discord Guild Nickname Synchronization",
+  "version": "9.12.0",
+  "description": "Unified Modular Discord Bot (Jarvis) - Production Release v9.12.0 Dynamic Sidebar Module Visibility, Per-Bot Isolated Themes & Avatars, Clean Multi-Bot Manager & Multi-Bot Member PV DMs",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",

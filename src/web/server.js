@@ -316,6 +316,23 @@ class WebServer {
 
       // 0.1 Live Bot Avatar Endpoint (Direct binary proxy with CDN fallback)
       if ((pathname === '/api/bot/avatar' || pathname === '/api/bot-avatar') && method === 'GET') {
+        const targetBotId = req.headers['x-bot-id'] || parsedUrl.searchParams.get('botId') || null;
+        if (targetBotId && targetBotId !== 'PRIMARY' && targetBotId !== 'MAIN') {
+          const mb = this.webPanelService?.services?.multiBotManager;
+          const inst = mb?.getInstance(targetBotId);
+          if (inst) {
+            const live = mb?.activeInstances?.get(inst.id);
+            const secondaryAvatarUrl = (typeof live?.client?.user?.displayAvatarURL === 'function')
+              ? live.client.user.displayAvatarURL({ extension: 'png', size: 256 })
+              : (inst.avatarUrl || 'https://cdn.discordapp.com/embed/avatars/0.png');
+            res.writeHead(302, {
+              Location: secondaryAvatarUrl,
+              'Cache-Control': 'no-cache, no-store, must-revalidate'
+            });
+            return res.end();
+          }
+        }
+
         const buf = await this._getBotAvatarBuffer(256);
         if (buf) {
           res.writeHead(200, {
@@ -586,7 +603,8 @@ class WebServer {
                   ...baseConfig.ai?.persona,
                   role: inst.config?.personaRole || baseConfig.ai?.persona?.role
                 }
-              }
+              },
+              theme: inst.config?.theme || baseConfig.theme
             };
             return this._sendJson(res, 200, isolatedConfig);
           }
@@ -619,6 +637,9 @@ class WebServer {
             if (body.ai?.model) cfg.aiModel = body.ai.model;
             if (body.ai?.humorMode) cfg.humorMode = body.ai.humorMode;
             if (body.ai?.persona?.role) cfg.personaRole = body.ai.persona.role;
+            if (body.theme && typeof body.theme === 'object') {
+              cfg.theme = { ...(cfg.theme || {}), ...body.theme };
+            }
             updates.config = cfg;
             mb.updateInstance(targetBotId, updates);
             return this._sendJson(res, 200, {

@@ -2670,22 +2670,31 @@ class WebPanelService {
         }
 
         let sentOk = false;
-        if (targetUser && typeof targetUser.send === 'function') {
-          try {
-            await targetUser.send(messageText.trim());
-            sentOk = true;
-          } catch (dmErr) {
-            throw new Error(`Não foi possível enviar a DM para o usuário (DMs podem estar bloqueadas): ${dmErr.message}`);
+        let activeClient = this.botClient;
+        const targetBotId = actionData.botId;
+        if (targetBotId && targetBotId !== 'PRIMARY' && targetBotId !== 'MAIN' && this.services?.multiBotManager) {
+          const instLive = this.services.multiBotManager.activeInstances.get(targetBotId);
+          if (instLive?.client?.users) {
+            activeClient = instLive.client;
           }
-        } else if (this.botClient?.users) {
+        }
+
+        if (activeClient?.users) {
           try {
-            const u = await this.botClient.users.fetch(userId);
+            const u = await activeClient.users.fetch(userId);
             if (u && typeof u.send === 'function') {
               await u.send(messageText.trim());
               sentOk = true;
             }
           } catch (dmErr) {
-            throw new Error(`Falha ao enviar mensagem privada: ${dmErr.message}`);
+            throw new Error(`Falha ao enviar mensagem privada pelo bot selecionado: ${dmErr.message}`);
+          }
+        } else if (targetUser && typeof targetUser.send === 'function') {
+          try {
+            await targetUser.send(messageText.trim());
+            sentOk = true;
+          } catch (dmErr) {
+            throw new Error(`Não foi possível enviar a DM para o usuário (DMs podem estar bloqueadas): ${dmErr.message}`);
           }
         } else {
           sentOk = true;
@@ -2696,7 +2705,8 @@ class WebPanelService {
           guildId,
           adminId: session.userId,
           adminUsername: session.userData?.username || 'Administrador',
-          sentText: messageText.trim()
+          sentText: messageText.trim(),
+          botId: targetBotId || 'PRIMARY'
         });
 
         if (this.auditService) {

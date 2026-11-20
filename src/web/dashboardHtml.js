@@ -60,7 +60,8 @@ function renderDashboardHtml({
         } else {
           document.documentElement.lang = 'pt-BR';
         }
-        const savedCustomTheme = localStorage.getItem('jarvis_custom_theme');
+        const activeBot = localStorage.getItem('jarvis_active_bot_id') || 'PRIMARY';
+        const savedCustomTheme = localStorage.getItem('jarvis_custom_theme_' + activeBot) || (activeBot === 'PRIMARY' ? localStorage.getItem('jarvis_custom_theme') : null);
         if (savedCustomTheme) {
           const th = JSON.parse(savedCustomTheme);
           const r = document.documentElement;
@@ -6694,13 +6695,14 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           </div>
 
           <div class="card">
-            <h3>📌 Administração Individual por Instância</h3>
+            <h3>💡 Como Funciona o Multi-Bot</h3>
             <p style="font-size: 0.85rem; color: #949ba4;">
-              Clique em <strong>"⚙️ Gerenciar Bot"</strong> em qualquer instância abaixo para abrir sua <strong>Página Administrativa Exclusiva</strong> com 18 seções isoladas:
+              Cadastre instâncias adicionais do Discord com token próprio. Ao ativar um bot no painel:
             </p>
             <ul style="font-size: 0.81rem; color: #cbd5e1; line-height: 1.55; padding-left: 1.2rem;">
-              <li><strong>Isolamento Total:</strong> Alterar configurações, IA, economia ou módulos no Bot A jamais afeta o Bot B ou o Bot Principal.</li>
-              <li><strong>18 Seções Dedicadas:</strong> Visão Geral, Presença, 26 Módulos, IA, Memórias, Comandos, Moderação, Economia/XP, Música, Tickets, Social, Automações, Embeds, Permissões, Integrações, Banco, Logs e Avançado.</li>
+              <li><strong>Barra Lateral Dinâmica:</strong> Apenas as abas dos módulos ativados para aquele bot são exibidas.</li>
+              <li><strong>Isolamento de Temas:</strong> Cada bot possui seu próprio tema de cores, avatar e identidade visual.</li>
+              <li><strong>Ações e DMs com a Persona Certa:</strong> Mensagens no PV, moderação e comandos operam com o bot selecionado.</li>
             </ul>
           </div>
 
@@ -6727,893 +6729,6 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         </div>
       </div>
 
-      <!-- VIEW 2: PÁGINA ADMINISTRATIVA INDIVIDUAL DO BOT (18 SEÇÕES ORGANIZADAS) -->
-      <div id="multiBotInstanceAdminView" style="display: none;">
-        <!-- Top Bar da Instância -->
-        <div class="card" style="margin-bottom: 1.25rem; background: linear-gradient(135deg, rgba(168, 85, 247, 0.16), rgba(56, 189, 248, 0.1)); border: 1px solid rgba(168, 85, 247, 0.4);">
-          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
-            <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
-              <button type="button" class="secondary-btn" id="mbBackToListBtn" style="padding: 0.5rem 0.9rem; font-weight: 700;">
-                ← Voltar às Instâncias
-              </button>
-              <div>
-                <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
-                  <h2 id="mbAdminHeaderName" style="margin: 0; color: #f8fafc; font-size: 1.3rem;">Bot Instance</h2>
-                  <span id="mbAdminHeaderStatus" class="badge" style="background: rgba(148, 163, 184, 0.2); color: #cbd5e1;">STOPPED</span>
-                  <code id="mbAdminHeaderId" style="font-size: 0.75rem; background: rgba(0,0,0,0.35); padding: 2px 8px; border-radius: 4px; color: #c084fc;">bot_id</code>
-                </div>
-                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
-                  Token: <code id="mbAdminHeaderToken">••••••••••••</code> • Namespace Isolado: <code id="mbAdminHeaderNamespace">tenant_bot</code>
-                </div>
-              </div>
-            </div>
-            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-              <button type="button" class="secondary-btn" id="mbAdminStartBtn" style="border-color: #10B981; color: #10B981;">▶️ Iniciar</button>
-              <button type="button" class="secondary-btn" id="mbAdminStopBtn" style="border-color: #F59E0B; color: #F59E0B;">⏹️ Parar</button>
-              <button type="button" class="secondary-btn" id="mbAdminRestartBtn">🔄 Reiniciar</button>
-              <button type="button" class="primary-btn" id="mbAdminSaveAllBtn" style="background: linear-gradient(135deg, #10b981, #059669); font-weight: 700; padding: 0.55rem 1.25rem;">
-                💾 Salvar Configurações deste Bot
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Menu de Navegação das 18 Seções da Instância -->
-        <div class="card" style="margin-bottom: 1.25rem; padding: 0.75rem;">
-          <div id="mbSubtabsNav" style="display: flex; flex-wrap: wrap; gap: 0.4rem;">
-            <button type="button" class="secondary-btn mb-subtab-btn active" data-mb-sec="mb-sec-overview" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">1. Visão Geral</button>
-            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-presence" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">2. Status & Presença</button>
-            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-modules" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">3. Módulos (26)</button>
-            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-ai" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">4. Inteligência Artificial</button>
-            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-memory" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">5. Memória</button>
-            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-commands" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">6. Comandos</button>
-            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-moderation" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">7. Moderação</button>
-            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-economy" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">8. Economia & XP</button>
-            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-music" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">9. Música</button>
-            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-tickets" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">10. Tickets</button>
-            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-social" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">11. Sistemas Sociais</button>
-            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-automations" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">12. Automações</button>
-            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-embeds" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">13. Embeds & Imagens</button>
-            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-permissions" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">14. Permissões</button>
-            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-integrations" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">15. Integrações</button>
-            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-database" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">16. Banco de Dados</button>
-            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-logs" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">17. Logs & Erros</button>
-            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-advanced" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">18. Avançado</button>
-            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-botspeak" style="font-size: 0.78rem; padding: 0.4rem 0.75rem; border-color: rgba(56, 189, 248, 0.45); color: #38bdf8;">19. 🔊 Falar pelo Bot</button>
-            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-antibot" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">20. 🛡️ Anti-Bots & Scams</button>
-            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-welcome" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">21. 👋 Boas-Vindas & AutoRole</button>
-            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-starboard" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">22. ⭐ Starboard</button>
-            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-casino-quiz" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">23. 🎰 Cassino & Quiz</button>
-            <button type="button" class="secondary-btn mb-subtab-btn" data-mb-sec="mb-sec-summary" style="font-size: 0.78rem; padding: 0.4rem 0.75rem;">24. 🧠 Resumo Inteligente</button>
-          </div>
-        </div>
-
-        <!-- SEÇÃO 1: VISÃO GERAL -->
-        <div id="mb-sec-overview" class="mb-admin-section">
-          <div class="grid">
-            <div class="card">
-              <h3>🏠 Identificação & Credenciais da Instância</h3>
-              <div class="form-group">
-                <label>Nome Oficial desta Instância</label>
-                <input type="text" id="mbCfgName" placeholder="Ex: Jarvis Security">
-              </div>
-              <div class="form-group">
-                <label>Substituir Token Discord (Opcional — deixe em branco para manter o atual)</label>
-                <input type="password" id="mbCfgToken" placeholder="Mantendo token atual protegido (••••••••••••)">
-              </div>
-              <div class="form-group">
-                <label>Inicialização Automática com o Sistema</label>
-                <select id="mbCfgEnabled">
-                  <option value="true">🟢 Habilitada (Iniciar junto com o servidor)</option>
-                  <option value="false">🔴 Desabilitada (Apenas manual)</option>
-                </select>
-              </div>
-            </div>
-            <div class="card">
-              <h3>📊 Telemetria Isolada da Instância</h3>
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-                <div style="background: rgba(0,0,0,0.25); padding: 0.85rem; border-radius: 8px;">
-                  <div style="font-size: 0.75rem; color: var(--text-muted);">Módulos Ativos</div>
-                  <div id="mbStatActiveModules" style="font-size: 1.25rem; font-weight: 700; color: #10B981;">26 / 26</div>
-                </div>
-                <div style="background: rgba(0,0,0,0.25); padding: 0.85rem; border-radius: 8px;">
-                  <div style="font-size: 0.75rem; color: var(--text-muted);">Consumo RAM</div>
-                  <div id="mbStatRam" style="font-size: 1.25rem; font-weight: 700; color: #38bdf8;">0 MB</div>
-                </div>
-                <div style="background: rgba(0,0,0,0.25); padding: 0.85rem; border-radius: 8px;">
-                  <div style="font-size: 0.75rem; color: var(--text-muted);">Memórias Isoladas</div>
-                  <div id="mbStatMemories" style="font-size: 1.25rem; font-weight: 700; color: #c084fc;">0</div>
-                </div>
-                <div style="background: rgba(0,0,0,0.25); padding: 0.85rem; border-radius: 8px;">
-                  <div style="font-size: 0.75rem; color: var(--text-muted);">Eventos no Log</div>
-                  <div id="mbStatLogs" style="font-size: 1.25rem; font-weight: 700; color: #fbbf24;">0</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- SEÇÃO 2: STATUS E PRESENÇA -->
-        <div id="mb-sec-presence" class="mb-admin-section" style="display: none;">
-          <div class="card">
-            <h3>🟢 Status & Presença Individual no Discord</h3>
-            <p style="font-size: 0.84rem; color: var(--text-muted);">Configure o status e recado exibidos exclusivamente no perfil desta instância.</p>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
-              <div class="form-group">
-                <label>Status de Conexão</label>
-                <select id="mbCfgPresenceStatus">
-                  <option value="online">🟢 Online</option>
-                  <option value="idle">🟡 Ausente (Idle)</option>
-                  <option value="dnd">🔴 Não Perturbe (DND)</option>
-                  <option value="invisible">⚪ Invisível</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Tipo de Atividade</label>
-                <select id="mbCfgPresenceType">
-                  <option value="Custom">💬 Personalizado</option>
-                  <option value="Playing">🎮 Jogando</option>
-                  <option value="Listening">🎧 Ouvindo</option>
-                  <option value="Watching">📺 Assistindo</option>
-                  <option value="Competing">🏆 Competindo</option>
-                  <option value="Streaming">🔴 Transmitindo</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Frase de Atividade</label>
-                <div style="display: flex; gap: 0.4rem;">
-                  <input type="text" id="mbCfgPresenceText" placeholder="Ex: Protegendo o Servidor | +ajuda" style="flex: 1;">
-                  <button type="button" class="emoji-input-trigger" onclick="openEmojiPicker('mbCfgPresenceText')" title="Inserir Emoji">😀</button>
-                </div>
-              </div>
-              <div class="form-group">
-                <label>URL de Transmissão (Opcional)</label>
-                <input type="text" id="mbCfgPresenceUrl" placeholder="https://twitch.tv/...">
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- SEÇÃO 3: MÓDULOS DA INSTÂNCIA (26 MÓDULOS) -->
-        <div id="mb-sec-modules" class="mb-admin-section" style="display: none;">
-          <div class="card" style="margin-bottom: 1rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-              <div>
-                <h3 style="margin: 0;">🧩 Distribuição de Módulos desta Instância (26 Módulos Reais)</h3>
-                <p style="margin: 0.25rem 0 0 0; font-size: 0.82rem; color: var(--text-muted);">Escolha quais módulos esta instância executará. As configurações desta instância são 100% independentes dos demais bots.</p>
-              </div>
-              <div style="display: flex; gap: 0.5rem;">
-                <button type="button" class="secondary-btn" id="mbEnableAllModsBtn">✅ Ativar Todos</button>
-                <button type="button" class="secondary-btn" id="mbDisableAllModsBtn">🚫 Desativar Todos</button>
-              </div>
-            </div>
-          </div>
-          <div id="mbInstanceModulesGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0.85rem;"></div>
-        </div>
-
-        <!-- SEÇÃO 4: INTELIGÊNCIA ARTIFICIAL -->
-        <div id="mb-sec-ai" class="mb-admin-section" style="display: none;">
-          <div class="card">
-            <h3>🤖 Inteligência Artificial & Personalidade Própria</h3>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem;">
-              <div class="form-group">
-                <label>Nome de Exibição da IA desta Instância</label>
-                <div style="display: flex; gap: 0.4rem;">
-                  <input type="text" id="mbCfgAiName" placeholder="Ex: FRIDAY" style="flex: 1;">
-                  <button type="button" class="emoji-input-trigger" onclick="openEmojiPicker('mbCfgAiName')" title="Inserir Emoji">😀</button>
-                </div>
-              </div>
-              <div class="form-group">
-                <label>Modelo Gemini</label>
-                <select id="mbCfgAiModel">
-                  <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite</option>
-                  <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-                  <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Modo de Humor</label>
-                <select id="mbCfgAiHumor">
-                  <option value="normal">⚖️ Normal / Equilibrado</option>
-                  <option value="zoeiro">🤣 Zoeiro & Comediante</option>
-                  <option value="sarcastico">😏 Sarcástico & Debochado</option>
-                  <option value="amigavel">💖 Amigável & Acolhedor</option>
-                  <option value="sabio">🧙‍♂️ Sábio & Filosófico</option>
-                  <option value="serio">🤖 Sério & Técnico</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Temperatura / Criatividade (0.0 a 1.0)</label>
-                <input type="number" id="mbCfgAiTemp" min="0" max="1" step="0.05" value="0.65">
-              </div>
-            </div>
-            <div class="form-group">
-              <label>Papel / Função da Persona</label>
-              <input type="text" id="mbCfgAiRole" placeholder="Ex: Especialista em segurança e moderação tática.">
-            </div>
-            <div class="form-group">
-              <label>Tom de Voz</label>
-              <input type="text" id="mbCfgAiTone" placeholder="Ex: Direto, vigilante e analítico.">
-            </div>
-          </div>
-        </div>
-
-        <!-- SEÇÃO 5: MEMÓRIA ISOLADA -->
-        <div id="mb-sec-memory" class="mb-admin-section" style="display: none;">
-          <div class="grid">
-            <div class="card">
-              <h3>🧠 Gravar Memória Exclusiva nesta Instância</h3>
-              <p style="font-size: 0.82rem; color: var(--text-muted);">Fatos gravados aqui pertencem somente à memória desta instância de bot.</p>
-              <div class="form-group">
-                <label>Chave / Identificador</label>
-                <input type="text" id="mbMemKeyInput" placeholder="Ex: diretriz_principal">
-              </div>
-              <div class="form-group">
-                <label>Conteúdo da Memória</label>
-                <textarea id="mbMemValInput" rows="4" placeholder="Descreva a informação que este bot deve memorizar..."></textarea>
-              </div>
-              <button type="button" class="primary-btn" id="mbSaveMemoryBtn" style="width: 100%;">💾 Salvar Memória na Instância</button>
-            </div>
-            <div class="card">
-              <h3>📋 Memórias Ativas desta Instância</h3>
-              <div id="mbMemoriesListContainer" style="display: flex; flex-direction: column; gap: 0.6rem; max-height: 360px; overflow-y: auto;"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- SEÇÃO 6: COMANDOS -->
-        <div id="mb-sec-commands" class="mb-admin-section" style="display: none;">
-          <div class="card">
-            <h3>⚡ Configuração de Comandos da Instância</h3>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem;">
-              <div class="form-group">
-                <label>Prefixo Exclusivo desta Instância</label>
-                <input type="text" id="mbCfgPrefix" placeholder="Ex: !, +, $">
-              </div>
-              <div class="form-group">
-                <label>Modo Sem Prefixo (Triggers Diretos)</label>
-                <select id="mbCfgPrefixless">
-                  <option value="false">🔴 Desativado (Exigir prefixo)</option>
-                  <option value="true">🟢 Ativado</option>
-                </select>
-              </div>
-            </div>
-            <div class="form-group">
-              <label>Comandos Bloqueados nesta Instância (Separados por vírgula)</label>
-              <input type="text" id="mbCfgDisabledCommands" placeholder="Ex: crime, slut, roubar">
-            </div>
-          </div>
-        </div>
-
-        <!-- SEÇÃO 7: MODERAÇÃO -->
-        <div id="mb-sec-moderation" class="mb-admin-section" style="display: none;">
-          <div class="card">
-            <h3>🛡️ Políticas de Moderação & Anti-Abuso da Instância</h3>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem;">
-              <div class="form-group">
-                <label>ID do Canal de Logs Disciplinares</label>
-                <input type="text" id="mbCfgModLogChannel" placeholder="ID do canal Discord">
-              </div>
-              <div class="form-group">
-                <label>Proteção Anti-Spam</label>
-                <select id="mbCfgAntiSpam">
-                  <option value="true">🟢 Ativada</option>
-                  <option value="false">🔴 Desativada</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Máx. Mensagens por Intervalo (5s)</label>
-                <input type="number" id="mbCfgAntiSpamMax" min="2" max="30" value="5">
-              </div>
-              <div class="form-group">
-                <label>Proteção Anti-Bot / Golpes (MrBeast, Phishing)</label>
-                <select id="mbCfgAntiBotScam">
-                  <option value="true">🟢 Ativada</option>
-                  <option value="false">🔴 Desativada</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Ação Anti-Bot / Scam</label>
-                <select id="mbCfgAntiBotAction">
-                  <option value="TIMEOUT">⏱️ Timeout (Castigo)</option>
-                  <option value="KICK">👢 Kick (Expulsão)</option>
-                  <option value="BAN">🔨 Ban Permanente</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Worker de Expiração TempBan</label>
-                <select id="mbCfgTempBanWorker">
-                  <option value="true">🟢 Ativo</option>
-                  <option value="false">🔴 Inativo</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- SEÇÃO 8: ECONOMIA E XP -->
-        <div id="mb-sec-economy" class="mb-admin-section" style="display: none;">
-          <div class="card">
-            <h3>💰 Parâmetros de Economia & Níveis de XP da Instância</h3>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-              <div class="form-group">
-                <label>Nome da Moeda</label>
-                <input type="text" id="mbCfgEcoName" placeholder="StarkCoins">
-              </div>
-              <div class="form-group">
-                <label>Símbolo da Moeda</label>
-                <div style="display: flex; gap: 0.4rem;">
-                  <input type="text" id="mbCfgEcoSymbol" placeholder="🪙" style="flex: 1;">
-                  <button type="button" class="emoji-input-trigger" onclick="openEmojiPicker('mbCfgEcoSymbol')" title="Escolher Emoji">😀</button>
-                </div>
-              </div>
-              <div class="form-group">
-                <label>Recompensa Diária (+daily)</label>
-                <input type="number" id="mbCfgEcoDaily" value="500">
-              </div>
-              <div class="form-group">
-                <label>Trabalho Mínimo (+work)</label>
-                <input type="number" id="mbCfgEcoWorkMin" value="50">
-              </div>
-              <div class="form-group">
-                <label>Trabalho Máximo (+work)</label>
-                <input type="number" id="mbCfgEcoWorkMax" value="200">
-              </div>
-              <div class="form-group">
-                <label>XP Mínimo por Mensagem</label>
-                <input type="number" id="mbCfgXpMin" value="15">
-              </div>
-              <div class="form-group">
-                <label>XP Máximo por Mensagem</label>
-                <input type="number" id="mbCfgXpMax" value="25">
-              </div>
-              <div class="form-group">
-                <label>XP por Minuto em Voz</label>
-                <input type="number" id="mbCfgVoiceXp" value="10">
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- SEÇÃO 9: MÚSICA -->
-        <div id="mb-sec-music" class="mb-admin-section" style="display: none;">
-          <div class="card">
-            <h3>🎵 Configurações de Música & Áudio da Instância</h3>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
-              <div class="form-group">
-                <label>Volume Padrão (1 a 100%)</label>
-                <input type="number" id="mbCfgMusicVol" min="1" max="100" value="80">
-              </div>
-              <div class="form-group">
-                <label>Tamanho Máximo da Fila</label>
-                <input type="number" id="mbCfgMusicQueue" min="5" max="500" value="100">
-              </div>
-              <div class="form-group">
-                <label>Desconexão por Inatividade (Minutos)</label>
-                <input type="number" id="mbCfgMusicDisconnect" min="1" max="60" value="5">
-              </div>
-              <div class="form-group">
-                <label>ID do Cargo de DJ</label>
-                <input type="text" id="mbCfgMusicDjRole" placeholder="Livre para todos se vazio">
-              </div>
-              <div class="form-group">
-                <label>Idioma de Voz TTS</label>
-                <select id="mbCfgMusicTtsLang">
-                  <option value="pt-BR">🇧🇷 Português (pt-BR)</option>
-                  <option value="en-US">🇺🇸 Inglês (en-US)</option>
-                  <option value="es-ES">🇪🇸 Espanhol (es-ES)</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- SEÇÃO 10: TICKETS -->
-        <div id="mb-sec-tickets" class="mb-admin-section" style="display: none;">
-          <div class="card">
-            <h3>🎫 Central de Atendimento & Tickets da Instância</h3>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem;">
-              <div class="form-group">
-                <label>Título do Painel de Tickets</label>
-                <div style="display: flex; gap: 0.4rem;">
-                  <input type="text" id="mbCfgTicketTitle" placeholder="🎫 Central de Atendimento" style="flex: 1;">
-                  <button type="button" class="emoji-input-trigger" onclick="openEmojiPicker('mbCfgTicketTitle')" title="Inserir Emoji">😀</button>
-                </div>
-              </div>
-              <div class="form-group">
-                <label>Limite de Tickets Abertos por Usuário</label>
-                <input type="number" id="mbCfgTicketMax" min="1" max="10" value="1">
-              </div>
-              <div class="form-group">
-                <label>ID do Canal de Transcrições</label>
-                <input type="text" id="mbCfgTicketTranscript" placeholder="ID do canal Discord">
-              </div>
-              <div class="form-group">
-                <label>ID do Cargo da Equipe de Suporte</label>
-                <input type="text" id="mbCfgTicketRole" placeholder="ID do cargo Discord">
-              </div>
-            </div>
-            <div class="form-group">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
-                <label style="margin: 0;">Descrição do Painel de Tickets</label>
-                <button type="button" class="emoji-input-trigger" onclick="openEmojiPicker('mbCfgTicketDesc')" title="Inserir Emoji" style="min-height: 28px; height: 28px; font-size: 0.85rem; padding: 0 0.5rem;">😀 Emojis</button>
-              </div>
-              <textarea id="mbCfgTicketDesc" rows="3"></textarea>
-            </div>
-          </div>
-        </div>
-
-        <!-- SEÇÃO 11: SISTEMAS SOCIAIS -->
-        <div id="mb-sec-social" class="mb-admin-section" style="display: none;">
-          <div class="card">
-            <h3>❤️ Sistemas Sociais, Casamentos & Diversão da Instância</h3>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
-              <div class="form-group">
-                <label>Sistema de Casamentos</label>
-                <select id="mbCfgSocialMarriage">
-                  <option value="true">🟢 Habilitado</option>
-                  <option value="false">🔴 Desabilitado</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Custo de Casamento (Moedas)</label>
-                <input type="number" id="mbCfgSocialCost" min="0" value="5000">
-              </div>
-              <div class="form-group">
-                <label>Comandos de Ship & Afeto</label>
-                <select id="mbCfgSocialShip">
-                  <option value="true">🟢 Habilitados</option>
-                  <option value="false">🔴 Desabilitados</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Comandos de Diversão & GIFs</label>
-                <select id="mbCfgSocialFun">
-                  <option value="true">🟢 Habilitados</option>
-                  <option value="false">🔴 Desabilitados</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- SEÇÃO 12: AUTOMAÇÕES -->
-        <div id="mb-sec-automations" class="mb-admin-section" style="display: none;">
-          <div class="card">
-            <h3>⏱️ Automações, Briefings & Lembretes da Instância</h3>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
-              <div class="form-group">
-                <label>Briefing Diário Automático</label>
-                <select id="mbCfgAutoBriefing">
-                  <option value="false">🔴 Desativado</option>
-                  <option value="true">🟢 Ativado</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Horário de Disparo (Hora UTC 0-23)</label>
-                <input type="number" id="mbCfgAutoHour" min="0" max="23" value="18">
-              </div>
-              <div class="form-group">
-                <label>Worker de Lembretes (+lembrete)</label>
-                <select id="mbCfgAutoReminders">
-                  <option value="true">🟢 Ativo</option>
-                  <option value="false">🔴 Inativo</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Monitoramento de Alertas Sociais</label>
-                <select id="mbCfgAutoAlerts">
-                  <option value="true">🟢 Ativo</option>
-                  <option value="false">🔴 Inativo</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- SEÇÃO 13: EMBEDS E IMAGENS -->
-        <div id="mb-sec-embeds" class="mb-admin-section" style="display: none;">
-          <div class="card">
-            <h3>🎨 Identidade Visual de Embeds & Cartões da Instância</h3>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-              <div class="form-group">
-                <label>Cor Primária (Hex)</label>
-                <input type="text" id="mbCfgEmbedPrimary" placeholder="#00E5FF">
-              </div>
-              <div class="form-group">
-                <label>Cor de Sucesso (Hex)</label>
-                <input type="text" id="mbCfgEmbedSuccess" placeholder="#10B981">
-              </div>
-              <div class="form-group">
-                <label>Cor de Aviso (Hex)</label>
-                <input type="text" id="mbCfgEmbedWarning" placeholder="#F59E0B">
-              </div>
-              <div class="form-group">
-                <label>Cor de Erro (Hex)</label>
-                <input type="text" id="mbCfgEmbedError" placeholder="#EF4444">
-              </div>
-            </div>
-            <div class="form-group">
-              <label>Assinatura de Rodapé Padrão dos Embeds</label>
-              <input type="text" id="mbCfgEmbedFooter" placeholder="Ex: FRIDAY • Sistemas Táticos">
-            </div>
-          </div>
-        </div>
-
-        <!-- SEÇÃO 14: PERMISSÕES -->
-        <div id="mb-sec-permissions" class="mb-admin-section" style="display: none;">
-          <div class="card">
-            <h3>🔒 Controle de Permissões & Servidores Autorizados</h3>
-            <div class="form-group">
-              <label>Restringir Atuação Apenas a Servidores Autorizados</label>
-              <select id="mbCfgPermRestrict">
-                <option value="false">🌐 Atuar em todos os servidores onde o bot estiver presente</option>
-                <option value="true">🔒 Restringir estritamente aos IDs listados abaixo</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>IDs de Servidores Autorizados (Separados por vírgula)</label>
-              <input type="text" id="mbCfgPermGuilds" placeholder="Ex: 112233445566778899, 998877665544332211">
-            </div>
-            <div class="form-group">
-              <label>IDs de Cargos Administrativos da Instância (Separados por vírgula)</label>
-              <input type="text" id="mbCfgPermAdmins" placeholder="IDs de cargos com acesso total aos comandos deste bot">
-            </div>
-          </div>
-        </div>
-
-        <!-- SEÇÃO 15: INTEGRAÇÕES -->
-        <div id="mb-sec-integrations" class="mb-admin-section" style="display: none;">
-          <div class="card">
-            <h3>🌐 Integrações Externas da Instância</h3>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
-              <div class="form-group">
-                <label>Alertas YouTube</label>
-                <select id="mbCfgIntYoutube">
-                  <option value="true">🟢 Habilitados</option>
-                  <option value="false">🔴 Desabilitados</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Alertas Twitch</label>
-                <select id="mbCfgIntTwitch">
-                  <option value="true">🟢 Habilitados</option>
-                  <option value="false">🔴 Desabilitados</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Alertas Reddit</label>
-                <select id="mbCfgIntReddit">
-                  <option value="true">🟢 Habilitados</option>
-                  <option value="false">🔴 Desabilitados</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Pesquisa na Web (DuckDuckGo IA)</label>
-                <select id="mbCfgIntWebSearch">
-                  <option value="true">🟢 Habilitada</option>
-                  <option value="false">🔴 Desabilitada</option>
-                </select>
-              </div>
-            </div>
-            <div class="form-group">
-              <label>Webhook Externo para Notificações de Eventos (Opcional)</label>
-              <input type="text" id="mbCfgIntWebhook" placeholder="https://discord.com/api/webhooks/...">
-            </div>
-          </div>
-        </div>
-
-        <!-- SEÇÃO 16: BANCO DE DADOS -->
-        <div id="mb-sec-database" class="mb-admin-section" style="display: none;">
-          <div class="card">
-            <h3>🗄️ Isolamento Lógico de Banco de Dados (SQLite Multi-Tenant)</h3>
-            <p style="font-size: 0.85rem; color: var(--text-muted);">Cada instância opera em uma partição lógica isolada por <code>bot_id</code> nas tabelas <code>bot_instances</code>, <code>bot_instance_configs</code>, <code>bot_instance_memories</code> e <code>bot_instance_logs</code>.</p>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-top: 1rem;">
-              <div style="background: rgba(0,0,0,0.28); padding: 1rem; border-radius: 8px; border: 1px solid rgba(56, 189, 248, 0.25);">
-                <div style="font-size: 0.76rem; color: var(--text-muted);">Namespace da Partição</div>
-                <div id="mbDbNamespace" style="font-size: 1rem; font-weight: 700; color: #38bdf8; margin-top: 4px; font-family: monospace;">tenant_bot</div>
-              </div>
-              <div style="background: rgba(0,0,0,0.28); padding: 1rem; border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.25);">
-                <div style="font-size: 0.76rem; color: var(--text-muted);">Modo de Persistência</div>
-                <div style="font-size: 1rem; font-weight: 700; color: #10B981; margin-top: 4px;">SQLite WAL Isolado</div>
-              </div>
-              <div style="background: rgba(0,0,0,0.28); padding: 1rem; border-radius: 8px; border: 1px solid rgba(168, 85, 247, 0.25);">
-                <div style="font-size: 0.76rem; color: var(--text-muted);">Registros de Memória</div>
-                <div id="mbDbMemoriesCount" style="font-size: 1rem; font-weight: 700; color: #c084fc; margin-top: 4px;">0 registros</div>
-              </div>
-              <div style="background: rgba(0,0,0,0.28); padding: 1rem; border-radius: 8px; border: 1px solid rgba(245, 158, 11, 0.25);">
-                <div style="font-size: 0.76rem; color: var(--text-muted);">Registros de Auditoria/Logs</div>
-                <div id="mbDbLogsCount" style="font-size: 1rem; font-weight: 700; color: #fbbf24; margin-top: 4px;">0 eventos</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- SEÇÃO 17: LOGS E ERROS -->
-        <div id="mb-sec-logs" class="mb-admin-section" style="display: none;">
-          <div class="card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.85rem;">
-              <div>
-                <h3 style="margin: 0;">📜 Console de Logs & Erros da Instância</h3>
-                <p style="margin: 0.2rem 0 0 0; font-size: 0.8rem; color: var(--text-muted);">Histórico operacional exclusivo desta instância.</p>
-              </div>
-              <div style="display: flex; gap: 0.5rem;">
-                <button type="button" class="secondary-btn" id="mbRefreshLogsBtn" style="padding: 0.35rem 0.75rem; font-size: 0.78rem;">🔄 Atualizar</button>
-                <button type="button" class="danger-btn" id="mbClearLogsBtn" style="padding: 0.35rem 0.75rem; font-size: 0.78rem;">🗑️ Limpar Logs</button>
-              </div>
-            </div>
-            <div id="mbLogsConsoleContainer" style="background: #090b10; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 1rem; max-height: 400px; overflow-y: auto; font-family: monospace; font-size: 0.8rem; display: flex; flex-direction: column; gap: 0.45rem;"></div>
-          </div>
-        </div>
-
-        <!-- SEÇÃO 18: CONFIGURAÇÕES AVANÇADAS -->
-        <div id="mb-sec-advanced" class="mb-admin-section" style="display: none;">
-          <div class="card">
-            <h3>⚙️ Controle de Concorrência, Limites & Recuperação</h3>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
-              <div class="form-group">
-                <label>Concorrência Máxima de Requisições IA</label>
-                <input type="number" id="mbCfgAdvConcurrency" min="1" max="50" value="5">
-              </div>
-              <div class="form-group">
-                <label>Rate Limit por Minuto (Comandos)</label>
-                <input type="number" id="mbCfgAdvRateLimit" min="10" max="600" value="60">
-              </div>
-              <div class="form-group">
-                <label>Teto de Alerta de Memória RAM (MB)</label>
-                <input type="number" id="mbCfgAdvMemLimit" min="128" max="4096" value="512">
-              </div>
-              <div class="form-group">
-                <label>Auto-Reinicialização em Caso de Queda</label>
-                <select id="mbCfgAdvAutoRestart">
-                  <option value="true">🟢 Ativada (Isolamento Resiliente)</option>
-                  <option value="false">🔴 Desativada</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Modo de Depuração Detalhado (Debug)</label>
-                <select id="mbCfgAdvDebug">
-                  <option value="false">🔴 Desativado</option>
-                  <option value="true">🟢 Ativado</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- SEÇÃO 19: FALAR PELO BOT (TRANSMISSOR EXCLUSIVO DA INSTÂNCIA) -->
-        <div id="mb-sec-botspeak" class="mb-admin-section" style="display: none;">
-          <div class="card">
-            <h3>🔊 Transmissor de Mensagens & Embeds — Falar por este Bot</h3>
-            <p style="font-size: 0.85rem; color: var(--text-muted);">Envie mensagens normais ou cards de Embed personalizados em qualquer canal de texto do servidor usando diretamente a conta Discord desta instância.</p>
-
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem;">
-              <div class="form-group">
-                <label>Canal de Destino no Servidor *</label>
-                <select id="mbSpeakChannelSelect" class="channel-select">
-                  <option value="">Selecione um canal...</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Cor da Barra Lateral da Embed</label>
-                <input type="text" id="mbSpeakEmbedColor" value="#00E5FF" placeholder="#00E5FF">
-              </div>
-            </div>
-
-            <div class="form-group">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
-                <label style="margin: 0;">Mensagem de Texto Normal (Suporta {server}, {members}, @everyone, @here)</label>
-                <button type="button" class="emoji-input-trigger" onclick="openEmojiPicker('mbSpeakContentInput')" title="Inserir Emoji" style="min-height: 28px; height: 28px; font-size: 0.85rem; padding: 0 0.5rem;">😀 Emojis</button>
-              </div>
-              <textarea id="mbSpeakContentInput" rows="3" placeholder="Digite a mensagem que este bot enviará no canal..."></textarea>
-            </div>
-
-            <div style="background: rgba(0,0,0,0.22); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 8px; padding: 1rem; margin-top: 0.75rem;">
-              <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer; font-weight: 700; color: #38bdf8; margin-bottom: 0.85rem;">
-                <input type="checkbox" id="mbSpeakUseEmbed" style="width: 18px; height: 18px; accent-color: #38bdf8;">
-                <span>✨ Incluir Card com Embed Personalizada</span>
-              </label>
-
-              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.85rem;">
-                <div class="form-group">
-                  <label>Título da Embed</label>
-                  <div style="display: flex; gap: 0.4rem;">
-                    <input type="text" id="mbSpeakEmbedTitle" placeholder="Ex: Comunicado Oficial" style="flex: 1;">
-                    <button type="button" class="emoji-input-trigger" onclick="openEmojiPicker('mbSpeakEmbedTitle')" title="Inserir Emoji">😀</button>
-                  </div>
-                </div>
-                <div class="form-group">
-                  <label>URL do Título (Opcional)</label>
-                  <input type="text" id="mbSpeakEmbedUrl" placeholder="https://...">
-                </div>
-                <div class="form-group">
-                  <label>Imagem Grande / Banner (URL Opcional)</label>
-                  <input type="text" id="mbSpeakEmbedImage" placeholder="https://...">
-                </div>
-                <div class="form-group">
-                  <label>Miniatura / Thumbnail (URL Opcional)</label>
-                  <input type="text" id="mbSpeakEmbedThumb" placeholder="https://...">
-                </div>
-              </div>
-
-              <div class="form-group">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
-                  <label style="margin: 0;">Descrição / Corpo da Embed (Suporta Markdown)</label>
-                  <button type="button" class="emoji-input-trigger" onclick="openEmojiPicker('mbSpeakEmbedDesc')" title="Inserir Emoji" style="min-height: 28px; height: 28px; font-size: 0.85rem; padding: 0 0.5rem;">😀 Emojis</button>
-                </div>
-                <textarea id="mbSpeakEmbedDesc" rows="3" placeholder="Escreva o conteúdo formatado da embed..."></textarea>
-              </div>
-
-              <div class="form-group" style="margin-bottom: 0;">
-                <label>Rodapé da Embed (Opcional)</label>
-                <div style="display: flex; gap: 0.4rem;">
-                  <input type="text" id="mbSpeakEmbedFooter" placeholder="Ex: Transmitido pela Instância" style="flex: 1;">
-                  <button type="button" class="emoji-input-trigger" onclick="openEmojiPicker('mbSpeakEmbedFooter')" title="Inserir Emoji">😀</button>
-                </div>
-              </div>
-            </div>
-
-            <div style="margin-top: 1rem; display: flex; justify-content: flex-end;">
-              <button type="button" class="primary-btn" id="mbSendSpeakBtn" style="background: linear-gradient(135deg, #0284c7, #38bdf8); font-weight: 700; padding: 0.7rem 1.5rem;">
-                🚀 Transmitir Mensagem no Canal com este Bot
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- SEÇÃO 20: PROTEÇÃO ANTI-BOTS & SCAMS DEDICADA -->
-        <div id="mb-sec-antibot" class="mb-admin-section" style="display: none;">
-          <div class="card">
-            <h3>🛡️ Central de Proteção Anti-Bots & Golpes (MrBeast, Fake Nitro, Phishing)</h3>
-            <p style="font-size: 0.85rem; color: var(--text-muted);">Configure como esta instância reage a bots comprometidos e golpes de falso sorteio/phishing.</p>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
-              <div class="form-group">
-                <label>Duração do Castigo / Timeout (Segundos)</label>
-                <select id="mbCfgAntiBotTimeout">
-                  <option value="300">5 Minutos (300s)</option>
-                  <option value="900">15 Minutos (900s)</option>
-                  <option value="3600">1 Hora (3600s)</option>
-                  <option value="86400" selected>24 Horas (86400s)</option>
-                  <option value="604800">7 Dias (604800s)</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Canais Ignorados pela Proteção (IDs separados por vírgula)</label>
-                <input type="text" id="mbCfgAntiBotIgnored" placeholder="Ex: 112233445566778899">
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- SEÇÃO 21: BOAS-VINDAS, DESPEDIDAS & AUTOROLE -->
-        <div id="mb-sec-welcome" class="mb-admin-section" style="display: none;">
-          <div class="card">
-            <h3>👋 Boas-Vindas, Despedidas & AutoRole da Instância</h3>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
-              <div class="form-group">
-                <label>ID do Canal de Boas-Vindas</label>
-                <input type="text" id="mbCfgWelcomeChannel" placeholder="ID do canal de chegada">
-              </div>
-              <div class="form-group">
-                <label>ID do Canal de Despedidas</label>
-                <input type="text" id="mbCfgGoodbyeChannel" placeholder="ID do canal de saída">
-              </div>
-              <div class="form-group">
-                <label>ID do Cargo Automático (AutoRole)</label>
-                <input type="text" id="mbCfgAutoRole" placeholder="ID do cargo entregue ao entrar">
-              </div>
-            </div>
-            <div class="form-group">
-              <label>Mensagem de Boas-Vindas (Tags: {user}, {username}, {server})</label>
-              <div style="display: flex; gap: 0.4rem;">
-                <input type="text" id="mbCfgWelcomeMsg" placeholder="Bem-vindo(a) {user} ao **{server}**! 🎉" style="flex: 1;">
-                <button type="button" class="emoji-input-trigger" onclick="openEmojiPicker('mbCfgWelcomeMsg')" title="Inserir Emoji">😀</button>
-              </div>
-            </div>
-            <div class="form-group">
-              <label>Mensagem de Despedida</label>
-              <div style="display: flex; gap: 0.4rem;">
-                <input type="text" id="mbCfgGoodbyeMsg" placeholder="**{username}** saiu do servidor." style="flex: 1;">
-                <button type="button" class="emoji-input-trigger" onclick="openEmojiPicker('mbCfgGoodbyeMsg')" title="Inserir Emoji">😀</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- SEÇÃO 22: STARBOARD (MURAL DE ESTRELAS) -->
-        <div id="mb-sec-starboard" class="mb-admin-section" style="display: none;">
-          <div class="card">
-            <h3>⭐ Starboard (Mural de Estrelas) da Instância</h3>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
-              <div class="form-group">
-                <label>ID do Canal do Starboard</label>
-                <input type="text" id="mbCfgStarChannel" placeholder="ID do canal de destaques">
-              </div>
-              <div class="form-group">
-                <label>Emoji Monitorado</label>
-                <div style="display: flex; gap: 0.4rem;">
-                  <input type="text" id="mbCfgStarEmoji" value="⭐" style="flex: 1;">
-                  <button type="button" class="emoji-input-trigger" onclick="openEmojiPicker('mbCfgStarEmoji')" title="Escolher Emoji">😀</button>
-                </div>
-              </div>
-              <div class="form-group">
-                <label>Mínimo de Estrelas para Destaque</label>
-                <input type="number" id="mbCfgStarMin" min="1" max="50" value="3">
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- SEÇÃO 23: CASSINO & QUIZ ARENA -->
-        <div id="mb-sec-casino-quiz" class="mb-admin-section" style="display: none;">
-          <div class="card">
-            <h3>🎰 Cassino, Apostas & Quiz Arena da Instância</h3>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-              <div class="form-group">
-                <label>Aposta Mínima no Cassino</label>
-                <input type="number" id="mbCfgCasinoMin" min="1" value="10">
-              </div>
-              <div class="form-group">
-                <label>Aposta Máxima no Cassino</label>
-                <input type="number" id="mbCfgCasinoMax" min="10" value="100000">
-              </div>
-              <div class="form-group">
-                <label>Prêmio Quiz Arena (Moedas)</label>
-                <input type="number" id="mbCfgQuizCoins" min="0" value="200">
-              </div>
-              <div class="form-group">
-                <label>Prêmio Quiz Arena (XP)</label>
-                <input type="number" id="mbCfgQuizXp" min="0" value="50">
-              </div>
-              <div class="form-group">
-                <label>Rodadas Padrão do Quiz</label>
-                <input type="number" id="mbCfgQuizRounds" min="1" max="20" value="5">
-              </div>
-              <div class="form-group">
-                <label>Tempo por Pergunta (Segundos)</label>
-                <input type="number" id="mbCfgQuizTimeout" min="10" max="60" value="25">
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- SEÇÃO 24: RESUMO INTELIGENTE DO CHAT -->
-        <div id="mb-sec-summary" class="mb-admin-section" style="display: none;">
-          <div class="card">
-            <h3>🧠 Resumo Inteligente do Chat (Até 300 Mensagens)</h3>
-            <p style="font-size: 0.85rem; color: var(--text-muted);">Extraia fatos, participantes e linha do tempo de qualquer canal do servidor e publique opcionalmente no Discord.</p>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
-              <div class="form-group">
-                <label>Canal de Texto a Resumir</label>
-                <select id="mbSummaryChannelSelect" class="channel-select">
-                  <option value="">Selecione um canal...</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Volume de Mensagens (20 a 300)</label>
-                <input type="number" id="mbSummaryCountInput" min="20" max="300" value="150">
-              </div>
-              <div class="form-group">
-                <label>Formato do Resumo</label>
-                <select id="mbSummaryTypeSelect">
-                  <option value="summary">📋 Resumo Executivo Factual</option>
-                  <option value="gossip">📰 Boletim de Fofoca & Resenha</option>
-                </select>
-              </div>
-            </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-top: 0.5rem;">
-              <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.85rem;">
-                <input type="checkbox" id="mbSummarySendDiscord" style="width: 16px; height: 16px; accent-color: #38bdf8;">
-                <span>Publicar o resumo gerado no canal do Discord</span>
-              </label>
-              <button type="button" class="primary-btn" id="mbGenerateSummaryBtn" style="font-weight: 700;">
-                ⚡ Gerar Resumo Agora
-              </button>
-            </div>
-            <div id="mbSummaryOutputBox" style="display: none; margin-top: 1rem; padding: 1rem; background: rgba(0,0,0,0.35); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 8px; white-space: pre-wrap; font-size: 0.85rem; color: #e2e8f0; max-height: 360px; overflow-y: auto;"></div>
-          </div>
-        </div>
-      </div>
     </div>
 
     <!-- TAB 21: CONFIGURAÇÕES GERAIS (WHITE-LABEL ENGINE) -->
@@ -9269,18 +8384,22 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
 
         // Bot Avatar Synchronization & Favicon
         if (data.botAvatarUrl) {
+          const targetBot = window.currentActiveBotId || 'PRIMARY';
+          const avatarEndpoint = (targetBot !== 'PRIMARY')
+            ? (window.botAvatarsMap?.[targetBot] || ('/api/bot/avatar?botId=' + encodeURIComponent(targetBot)))
+            : '/api/bot/avatar';
           const sAv = document.getElementById('sidebarBotAvatar');
-          if (sAv) sAv.src = '/api/bot/avatar';
+          if (sAv) sAv.src = avatarEndpoint;
           const thAv = document.getElementById('topHeaderBotAvatar');
-          if (thAv) thAv.src = '/api/bot/avatar';
+          if (thAv) thAv.src = avatarEndpoint;
           const tAv = document.getElementById('ticketBotAvatar');
-          if (tAv) tAv.src = '/api/bot/avatar';
+          if (tAv) tAv.src = avatarEndpoint;
           const wAv = document.getElementById('welcomeBotAvatar');
-          if (wAv) wAv.src = '/api/bot/avatar';
+          if (wAv) wAv.src = avatarEndpoint;
 
           // Set tab favicon directly to live bot avatar
           const favicons = document.querySelectorAll('link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]');
-          favicons.forEach(fav => { fav.href = '/api/bot/avatar?v=' + Date.now(); });
+          favicons.forEach(fav => { fav.href = avatarEndpoint + (avatarEndpoint.includes('?') ? '&' : '?') + 'v=' + Date.now(); });
         }
 
         // Server Icon & Details Synchronization
@@ -12871,11 +11990,38 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       if (xLvl) xLvl.innerText = mLevelNum;
       if (xTot) xTot.innerText = mTotalXp.toLocaleString('pt-BR') + ' XP';
 
-      // Abrir na aba de DM se houver sessão de DM ativa ou recente, ou na última aba visualizada
+      // Modular filtering of member subtabs based on active bot
+      const subtabRequirements = {
+        'msub-economy': ['economy'],
+        'msub-timeout': ['moderation'],
+        'msub-warn': ['moderation'],
+        'msub-verbal-warn': ['moderation'],
+        'msub-punish': ['moderation'],
+        'msub-roles': [],
+        'msub-xp': ['xp'],
+        'msub-memory': ['ai_memory'],
+        'msub-dm': []
+      };
+
+      let firstVisibleSubtab = null;
+      let activeSubtabStillVisible = false;
+      document.querySelectorAll('#mModalTabsNav .mmodal-tab-btn').forEach(btn => {
+        const subId = btn.getAttribute('data-subtab');
+        const reqs = subtabRequirements[subId] || [];
+        const isVisible = reqs.length === 0 || reqs.some(m => isModuleActiveForCurrentBot(m));
+        btn.style.display = isVisible ? '' : 'none';
+        if (isVisible) {
+          if (!firstVisibleSubtab) firstVisibleSubtab = subId;
+          if (subId === lastModalSubtab) activeSubtabStillVisible = true;
+        }
+      });
+
+      // Abrir na aba de DM se houver sessão de DM ativa ou recente, ou na última aba visualizada válida
       if (selectedMember.dmSession) {
         switchModalSubtab('msub-dm');
       } else {
-        switchModalSubtab(lastModalSubtab || 'msub-economy');
+        const targetSubtab = activeSubtabStillVisible ? lastModalSubtab : (firstVisibleSubtab || 'msub-roles');
+        switchModalSubtab(targetSubtab);
         const navTabs = document.getElementById('mModalTabsNav');
         if (navTabs) navTabs.scrollLeft = 0;
       }
@@ -14599,40 +13745,37 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       r.style.setProperty('--topbar-active-title', theme.topbarActiveTitle);
       r.style.setProperty('--topbar-border', theme.topbarBorder);
 
-      // 4. Save to localStorage for instant restoration on reload
+      // 4. Save to localStorage for instant restoration on reload (isolated per bot)
+      const targetBot = window.currentActiveBotId || 'PRIMARY';
+      const themeData = {
+        primary: theme.primary,
+        accent: theme.accent,
+        bgPage: theme.bgPage,
+        bgSurface: theme.bgSurface,
+        bgHeader: theme.bgHeader,
+        textMain: theme.textMain,
+        topbarBrand: theme.topbarBrand,
+        topbarActiveTitle: theme.topbarActiveTitle,
+        topbarBorder: theme.topbarBorder
+      };
       try {
-        localStorage.setItem('jarvis_custom_theme', JSON.stringify({
-          primary: theme.primary,
-          accent: theme.accent,
-          bgPage: theme.bgPage,
-          bgSurface: theme.bgSurface,
-          bgHeader: theme.bgHeader,
-          textMain: theme.textMain,
-          topbarBrand: theme.topbarBrand,
-          topbarActiveTitle: theme.topbarActiveTitle,
-          topbarBorder: theme.topbarBorder
-        }));
+        localStorage.setItem('jarvis_custom_theme_' + targetBot, JSON.stringify(themeData));
+        if (targetBot === 'PRIMARY') {
+          localStorage.setItem('jarvis_custom_theme', JSON.stringify(themeData));
+        }
       } catch(e) {}
 
       updateThemeLivePreview();
 
       // 5. Persist to backend and only show success toast AFTER backend confirmation
       try {
-        const res = await authFetch('/api/bot/config', {
+        const res = await authFetch('/api/bot/config' + (targetBot !== 'PRIMARY' ? '?botId=' + encodeURIComponent(targetBot) : ''), {
           method: 'POST',
+          headers: { 'X-Bot-Id': targetBot },
           body: JSON.stringify({
+            botId: targetBot,
             theme: {
-              panel: {
-                primary: theme.primary,
-                accent: theme.accent,
-                bgPage: theme.bgPage,
-                bgSurface: theme.bgSurface,
-                bgHeader: theme.bgHeader,
-                textMain: theme.textMain,
-                topbarBrand: theme.topbarBrand,
-                topbarActiveTitle: theme.topbarActiveTitle,
-                topbarBorder: theme.topbarBorder
-              }
+              panel: themeData
             }
           })
         });
@@ -14776,7 +13919,10 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           r.style.setProperty('--topbar-border', payload.theme.panel.topbarBorder);
 
           try {
-            localStorage.setItem('jarvis_custom_theme', JSON.stringify(payload.theme.panel));
+            localStorage.setItem('jarvis_custom_theme_' + targetBot, JSON.stringify(payload.theme.panel));
+            if (targetBot === 'PRIMARY') {
+              localStorage.setItem('jarvis_custom_theme', JSON.stringify(payload.theme.panel));
+            }
           } catch(e) {}
 
           const bRoot = document.getElementById('topHeaderBreadcrumbRoot');
@@ -15125,6 +14271,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         }
 
         renderModulesGrid(document.getElementById('moduleSearchInput')?.value || '');
+        syncSidebarModuleVisibility();
       } catch (err) {
         container.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: #ef4444;">Erro ao carregar módulos: ' + escapeHtml(err.message) + '</div>';
       }
@@ -15228,6 +14375,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           }
 
           renderModulesGrid(document.getElementById('moduleSearchInput')?.value || '');
+        syncSidebarModuleVisibility();
         });
       });
     }
@@ -15256,10 +14404,145 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       if (res && res.config) {
         currentGuildModulesState = res.config;
         renderModulesGrid(document.getElementById('moduleSearchInput')?.value || '');
+        syncSidebarModuleVisibility();
       }
+      syncSidebarModuleVisibility();
 
       if (sBtn) { sBtn.disabled = false; sBtn.innerText = '💾 Salvar Todos os Módulos'; }
     });
+
+    const TAB_MODULE_REQUIREMENTS = {
+      'tab-moderation': ['moderation'],
+      'tab-antibot': ['auto_protection'],
+      'tab-tempbans': ['moderation'],
+      'tab-welcome': ['welcome', 'goodbye', 'autorole'],
+      'tab-starboard': ['starboard'],
+      'tab-economy': ['economy'],
+      'tab-casino': ['casino'],
+      'tab-tickets': ['tickets'],
+      'tab-reviews': ['reviews'],
+      'tab-identity': ['ai_chat'],
+      'tab-aimemory': ['ai_memory'],
+      'tab-customcommands': ['automations'],
+      'tab-community': ['automations'],
+      'tab-alerts': ['automations'],
+      'tab-summary': ['ai_chat'],
+      'tab-quiz': ['quiz'],
+      'tab-social': ['social', 'marriages', 'reputation', 'fun_commands', 'gifs'],
+      'tab-xp': ['xp', 'voice_xp'],
+      'tab-music': ['music']
+    };
+
+    function isModuleActiveForCurrentBot(modId) {
+      const isPrimary = (window.currentActiveBotId || 'PRIMARY') === 'PRIMARY';
+      if (!window.currentGuildModulesState) return true;
+      if (isPrimary) {
+        return window.currentGuildModulesState[modId] !== false;
+      }
+      return window.currentGuildModulesState[modId] === true;
+    }
+
+    function syncSidebarModuleVisibility() {
+      const navItems = document.querySelectorAll('.sidebar-nav .nav-item[data-tab]');
+      let activeTabIsHidden = false;
+      const currentTab = document.querySelector('.tab-content.active')?.id;
+
+      navItems.forEach(btn => {
+        const tabId = btn.getAttribute('data-tab');
+        const reqs = TAB_MODULE_REQUIREMENTS[tabId];
+        if (!reqs) {
+          btn.style.display = '';
+          return;
+        }
+        const isVisible = reqs.some(modId => isModuleActiveForCurrentBot(modId));
+        btn.style.display = isVisible ? '' : 'none';
+        if (!isVisible && currentTab === tabId) {
+          activeTabIsHidden = true;
+        }
+      });
+
+      // Also hide empty menu-group-titles if all items in that group are hidden
+      const navContainer = document.querySelector('.sidebar-nav');
+      if (navContainer) {
+        const groupTitles = navContainer.querySelectorAll('.menu-group-title');
+        groupTitles.forEach(title => {
+          let next = title.nextElementSibling;
+          let hasVisibleChild = false;
+          while (next && !next.classList.contains('menu-group-title')) {
+            if (next.classList.contains('nav-item') && next.style.display !== 'none') {
+              hasVisibleChild = true;
+              break;
+            }
+            next = next.nextElementSibling;
+          }
+          title.style.display = hasVisibleChild ? '' : 'none';
+        });
+      }
+
+      // If the currently open tab was hidden, navigate smoothly to Visão Geral
+      if (activeTabIsHidden) {
+        const overviewBtn = document.querySelector('.nav-item[data-tab="tab-overview"]');
+        if (overviewBtn) overviewBtn.click();
+      }
+    }
+
+    function applyBotTheme(botId) {
+      const DEFAULT_THEME = {
+        primary: '#6366F1',
+        accent: '#38BDF8',
+        bgPage: '#0B0F19',
+        bgSurface: '#1E293B',
+        bgHeader: '#0F172A',
+        textMain: '#F8FAFC',
+        topbarBrand: '#38BDF8',
+        topbarActiveTitle: '#F8FAFC',
+        topbarBorder: 'rgba(255, 255, 255, 0.08)'
+      };
+      let savedTheme = null;
+      try {
+        const raw = localStorage.getItem('jarvis_custom_theme_' + botId) || (botId === 'PRIMARY' ? localStorage.getItem('jarvis_custom_theme') : null);
+        if (raw) savedTheme = JSON.parse(raw);
+      } catch (e) {}
+
+      const th = savedTheme || DEFAULT_THEME;
+      const r = document.documentElement;
+      if (th.primary) r.style.setProperty('--primary', th.primary);
+      if (th.accent) r.style.setProperty('--cyan', th.accent);
+      if (th.bgPage) r.style.setProperty('--bg-page', th.bgPage);
+      if (th.bgSurface) r.style.setProperty('--bg-surface', th.bgSurface);
+      if (th.bgHeader) r.style.setProperty('--bg-header', th.bgHeader);
+      if (th.textMain) r.style.setProperty('--text-main', th.textMain);
+      if (th.topbarBorder) r.style.setProperty('--topbar-border', th.topbarBorder);
+      if (th.topbarBrand) r.style.setProperty('--topbar-brand', th.topbarBrand);
+      if (th.topbarActiveTitle) r.style.setProperty('--topbar-active-title', th.topbarActiveTitle);
+
+      // If we don't have a cached theme for a secondary bot, fetch from server once
+      if (!savedTheme && botId !== 'PRIMARY') {
+        fetch('/api/bot/config?botId=' + encodeURIComponent(botId), {
+          headers: { 'X-Bot-Id': botId },
+          credentials: 'include'
+        })
+          .then(res => res.json())
+          .then(data => {
+            if (data?.theme?.panel && window.currentActiveBotId === botId) {
+              const p = data.theme.panel;
+              try {
+                localStorage.setItem('jarvis_custom_theme_' + botId, JSON.stringify(p));
+              } catch (e) {}
+              if (p.primary) r.style.setProperty('--primary', p.primary);
+              if (p.accent) r.style.setProperty('--cyan', p.accent);
+              if (p.bgPage) r.style.setProperty('--bg-page', p.bgPage);
+              if (p.bgSurface) r.style.setProperty('--bg-surface', p.bgSurface);
+              if (p.bgHeader) r.style.setProperty('--bg-header', p.bgHeader);
+              if (p.textMain) r.style.setProperty('--text-main', p.textMain);
+              if (p.topbarBorder) r.style.setProperty('--topbar-border', p.topbarBorder);
+              if (p.topbarBrand) r.style.setProperty('--topbar-brand', p.topbarBrand);
+              if (p.topbarActiveTitle) r.style.setProperty('--topbar-active-title', p.topbarActiveTitle);
+            }
+          })
+          .catch(() => {});
+      }
+    }
 
     function handleActiveBotSwitch(botId) {
       window.currentActiveBotId = botId;
@@ -15288,6 +14571,25 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
       if (uBannerName) {
         uBannerName.innerText = botName;
       }
+
+      // Update top-left brand avatar and name
+      const sidebarAvatar = document.getElementById('sidebarBotAvatar');
+      if (sidebarAvatar) {
+        const newAvatar = (window.botAvatarsMap && window.botAvatarsMap[botId])
+          ? window.botAvatarsMap[botId]
+          : (botId === 'PRIMARY' ? '/api/bot/avatar' : ('/api/bot/avatar?botId=' + encodeURIComponent(botId)));
+        sidebarAvatar.src = newAvatar;
+      }
+      const headerAiName = document.getElementById('headerAiName');
+      if (headerAiName) {
+        headerAiName.innerText = (botName || 'J.A.R.V.I.S.').replace(' (Principal)', '');
+      }
+
+      // Apply isolated theme for this bot
+      applyBotTheme(botId);
+
+      // Synchronize sidebar module visibility
+      syncSidebarModuleVisibility();
 
       if (botId === 'PRIMARY') {
         showToast('Alternado para Bot Principal (${aiDisplayName}). As alterações afetam a configuração base do servidor.', 'info', 'Bot Principal Selecionado');
@@ -15356,8 +14658,10 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         }
 
         window.botNamesMap = { 'PRIMARY': 'J.A.R.V.I.S. (Principal)' };
+        window.botAvatarsMap = { 'PRIMARY': '/api/bot/avatar' };
         for (const inst of list) {
           window.botNamesMap[inst.id] = inst.name;
+          window.botAvatarsMap[inst.id] = inst.avatarUrl || ('/api/bot/avatar?botId=' + encodeURIComponent(inst.id));
         }
 
         // Populate all 4 Bot Selectors (Top Header, Sidebar, Universal Tab Banner, Modules Hub)
@@ -15436,7 +14740,13 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         }).join('');
 
         tbody.querySelectorAll('.mb-manage-btn, .mb-open-admin-link').forEach(btn => {
-          btn.addEventListener('click', () => openMultiBotAdminPage(btn.getAttribute('data-instid')));
+          btn.addEventListener('click', () => {
+            const instId = btn.getAttribute('data-instid');
+            handleActiveBotSwitch(instId);
+            loadMultiBotInstances();
+            const ovTab = document.querySelector('.nav-item[data-tab="tab-overview"]');
+            if (ovTab) ovTab.click();
+          });
         });
         tbody.querySelectorAll('.mb-activate-bot-btn').forEach(btn => {
           btn.addEventListener('click', () => {
@@ -15482,668 +14792,18 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
           });
         });
 
-        // If user had an open bot admin page before F5, restore it automatically
+        // Sync active bot avatar on instances load if not PRIMARY
         try {
-          const savedBotId = localStorage.getItem('jarvis_active_multibot_id');
-          if (savedBotId && list.some(x => x.id === savedBotId) && document.getElementById('tab-multibot')?.classList.contains('active')) {
-            openMultiBotAdminPage(savedBotId);
+          const currentBot = window.currentActiveBotId || localStorage.getItem('jarvis_active_bot_id');
+          if (currentBot && currentBot !== 'PRIMARY' && window.botAvatarsMap?.[currentBot]) {
+            const sidebarAvatar = document.getElementById('sidebarBotAvatar');
+            if (sidebarAvatar) sidebarAvatar.src = window.botAvatarsMap[currentBot];
           }
         } catch {}
       } catch (err) {
         tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 1.5rem; color: #ef4444;">Erro ao carregar instâncias: ' + escapeHtml(err.message) + '</td></tr>';
       }
     }
-
-    // Switch between the 18 sub-sections of an individual bot instance
-    function switchMultiBotSubtab(secId) {
-      document.querySelectorAll('.mb-admin-section').forEach(sec => {
-        sec.style.display = sec.id === secId ? 'block' : 'none';
-      });
-      document.querySelectorAll('#mbSubtabsNav .mb-subtab-btn').forEach(btn => {
-        const isAct = btn.getAttribute('data-mb-sec') === secId;
-        btn.classList.toggle('active', isAct);
-        btn.style.background = isAct ? 'linear-gradient(135deg, #a855f7, #7e22ce)' : '';
-        btn.style.color = isAct ? '#fff' : '';
-      });
-      try { localStorage.setItem('jarvis_active_multibot_sec', secId); } catch {}
-    }
-
-    document.querySelectorAll('#mbSubtabsNav .mb-subtab-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        switchMultiBotSubtab(btn.getAttribute('data-mb-sec'));
-      });
-    });
-
-    document.getElementById('mbBackToListBtn')?.addEventListener('click', () => {
-      currentEditingBotId = null;
-      try { localStorage.removeItem('jarvis_active_multibot_id'); } catch {}
-      document.getElementById('multiBotInstanceAdminView').style.display = 'none';
-      document.getElementById('multiBotListView').style.display = 'block';
-      loadMultiBotInstances();
-    });
-
-    async function openMultiBotAdminPage(botId) {
-      if (!botId) return;
-      try {
-        const res = await fetch('/api/multi-bot/' + botId, {
-          headers: { 'X-Panel-Password': '1598' },
-          credentials: 'include'
-        });
-        if (!res.ok) throw new Error('Não foi possível carregar dados da instância.');
-        const data = await res.json();
-        const inst = data.instance;
-        if (!inst) throw new Error('Instância não encontrada.');
-
-        currentEditingBotId = inst.id;
-        currentEditingBotInstance = inst;
-        if (Array.isArray(data.moduleDefinitions) && data.moduleDefinitions.length > 0) {
-          multiBotModuleDefinitions = data.moduleDefinitions;
-        } else if (allModuleDefinitions.length > 0) {
-          multiBotModuleDefinitions = allModuleDefinitions;
-        }
-
-        try { localStorage.setItem('jarvis_active_multibot_id', inst.id); } catch {}
-
-        document.getElementById('multiBotListView').style.display = 'none';
-        document.getElementById('multiBotInstanceAdminView').style.display = 'block';
-
-        // Populate Header
-        document.getElementById('mbAdminHeaderName').innerText = inst.name;
-        document.getElementById('mbAdminHeaderStatus').innerText = inst.status;
-        document.getElementById('mbAdminHeaderId').innerText = inst.id;
-        document.getElementById('mbAdminHeaderToken').innerText = inst.maskedToken;
-        document.getElementById('mbAdminHeaderNamespace').innerText = inst.databaseStats?.logicalNamespace || ('tenant_' + inst.id);
-
-        const cfg = inst.config || {};
-        currentEditingBotModules = { ...(cfg.modules || {}) };
-
-        // 1. Overview
-        document.getElementById('mbCfgName').value = inst.name || '';
-        document.getElementById('mbCfgToken').value = '';
-        document.getElementById('mbCfgEnabled').value = String(Boolean(inst.isEnabled));
-        const activeCnt = Object.values(currentEditingBotModules).filter(Boolean).length;
-        document.getElementById('mbStatActiveModules').innerText = activeCnt + ' / ' + (multiBotModuleDefinitions.length || 26);
-        document.getElementById('mbStatRam').innerText = (inst.memoryMb || 0) + ' MB';
-        document.getElementById('mbStatMemories').innerText = String((data.memories || []).length);
-        document.getElementById('mbStatLogs').innerText = String((data.logs || []).length);
-
-        // 2. Presence
-        document.getElementById('mbCfgPresenceStatus').value = cfg.presenceStatus || 'online';
-        document.getElementById('mbCfgPresenceType').value = cfg.presenceActivityType || 'Custom';
-        document.getElementById('mbCfgPresenceText').value = cfg.presenceActivityText || '';
-        document.getElementById('mbCfgPresenceUrl').value = cfg.presenceActivityUrl || '';
-
-        // 3. Modules Grid (26 modules)
-        renderMultiBotModulesGrid();
-
-        // 4. AI
-        document.getElementById('mbCfgAiName').value = cfg.aiName || inst.name;
-        document.getElementById('mbCfgAiModel').value = cfg.aiModel || 'gemini-3.5-flash-lite';
-        document.getElementById('mbCfgAiHumor').value = cfg.aiHumorMode || 'normal';
-        document.getElementById('mbCfgAiTemp').value = cfg.aiTemperature ?? 0.65;
-        document.getElementById('mbCfgAiRole').value = cfg.aiPersonaRole || '';
-        document.getElementById('mbCfgAiTone').value = cfg.aiPersonaTone || '';
-
-        // 5. Memories
-        renderMultiBotMemories(data.memories || []);
-
-        // 6. Commands
-        document.getElementById('mbCfgPrefix').value = cfg.prefix || cfg.commands?.prefix || '+';
-        document.getElementById('mbCfgPrefixless').value = String(Boolean(cfg.commands?.prefixlessMode));
-        document.getElementById('mbCfgDisabledCommands').value = (cfg.commands?.disabledCommands || []).join(', ');
-
-        // 7. Moderation
-        document.getElementById('mbCfgModLogChannel').value = cfg.moderation?.logChannelId || '';
-        document.getElementById('mbCfgAntiSpam').value = String(cfg.moderation?.antiSpamEnabled !== false);
-        document.getElementById('mbCfgAntiSpamMax').value = cfg.moderation?.maxMessagesPerInterval ?? 5;
-        document.getElementById('mbCfgAntiBotScam').value = String(cfg.moderation?.antiBotScamEnabled !== false);
-        document.getElementById('mbCfgAntiBotAction').value = cfg.moderation?.antiBotScamAction || 'TIMEOUT';
-        document.getElementById('mbCfgTempBanWorker').value = String(cfg.moderation?.tempBanWorkerEnabled !== false);
-
-        // 8. Economy & XP
-        document.getElementById('mbCfgEcoName').value = cfg.economyXp?.currencyName || 'StarkCoins';
-        document.getElementById('mbCfgEcoSymbol').value = cfg.economyXp?.currencySymbol || '🪙';
-        document.getElementById('mbCfgEcoDaily').value = cfg.economyXp?.dailyAmount ?? 500;
-        document.getElementById('mbCfgEcoWorkMin').value = cfg.economyXp?.workMin ?? 50;
-        document.getElementById('mbCfgEcoWorkMax').value = cfg.economyXp?.workMax ?? 200;
-        document.getElementById('mbCfgXpMin').value = cfg.economyXp?.xpMin ?? 15;
-        document.getElementById('mbCfgXpMax').value = cfg.economyXp?.xpMax ?? 25;
-        document.getElementById('mbCfgVoiceXp').value = cfg.economyXp?.voiceXpPerMinute ?? 10;
-
-        // 9. Music
-        document.getElementById('mbCfgMusicVol').value = cfg.music?.defaultVolume ?? 80;
-        document.getElementById('mbCfgMusicQueue').value = cfg.music?.maxQueueSize ?? 100;
-        document.getElementById('mbCfgMusicDisconnect').value = cfg.music?.autoDisconnectMinutes ?? 5;
-        document.getElementById('mbCfgMusicDjRole').value = cfg.music?.djRoleId || '';
-        document.getElementById('mbCfgMusicTtsLang').value = cfg.music?.ttsLanguage || 'pt-BR';
-
-        // 10. Tickets
-        document.getElementById('mbCfgTicketTitle').value = cfg.tickets?.panelTitle || '';
-        document.getElementById('mbCfgTicketMax').value = cfg.tickets?.maxOpenTicketsPerUser ?? 1;
-        document.getElementById('mbCfgTicketTranscript').value = cfg.tickets?.transcriptChannelId || '';
-        document.getElementById('mbCfgTicketRole').value = cfg.tickets?.defaultSupportRoleId || '';
-        document.getElementById('mbCfgTicketDesc').value = cfg.tickets?.panelDescription || '';
-
-        // 11. Social
-        document.getElementById('mbCfgSocialMarriage').value = String(cfg.social?.marriageEnabled !== false);
-        document.getElementById('mbCfgSocialCost').value = cfg.social?.marriageCost ?? 5000;
-        document.getElementById('mbCfgSocialShip').value = String(cfg.social?.shippingEnabled !== false);
-        document.getElementById('mbCfgSocialFun').value = String(cfg.social?.funCommandsEnabled !== false);
-
-        // 12. Automations
-        document.getElementById('mbCfgAutoBriefing').value = String(Boolean(cfg.automations?.briefingEnabled));
-        document.getElementById('mbCfgAutoHour').value = cfg.automations?.briefingHourUtc ?? 18;
-        document.getElementById('mbCfgAutoReminders').value = String(cfg.automations?.remindersEnabled !== false);
-        document.getElementById('mbCfgAutoAlerts').value = String(cfg.automations?.socialAlertsEnabled !== false);
-
-        // 13. Embeds
-        document.getElementById('mbCfgEmbedPrimary').value = cfg.embeds?.primaryColor || '#00E5FF';
-        document.getElementById('mbCfgEmbedSuccess').value = cfg.embeds?.successColor || '#10B981';
-        document.getElementById('mbCfgEmbedWarning').value = cfg.embeds?.warningColor || '#F59E0B';
-        document.getElementById('mbCfgEmbedError').value = cfg.embeds?.errorColor || '#EF4444';
-        document.getElementById('mbCfgEmbedFooter').value = cfg.embeds?.footerText || '';
-
-        // 14. Permissions
-        document.getElementById('mbCfgPermRestrict').value = String(Boolean(cfg.permissions?.restrictToAllowedGuilds));
-        document.getElementById('mbCfgPermGuilds').value = (cfg.permissions?.allowedGuilds || inst.allowedGuilds || []).join(', ');
-        document.getElementById('mbCfgPermAdmins').value = (cfg.permissions?.adminRoleIds || []).join(', ');
-
-        // 15. Integrations
-        document.getElementById('mbCfgIntYoutube').value = String(cfg.integrations?.youtubeAlertsEnabled !== false);
-        document.getElementById('mbCfgIntTwitch').value = String(cfg.integrations?.twitchAlertsEnabled !== false);
-        document.getElementById('mbCfgIntReddit').value = String(cfg.integrations?.redditAlertsEnabled !== false);
-        document.getElementById('mbCfgIntWebSearch').value = String(cfg.integrations?.webSearchEnabled !== false);
-        document.getElementById('mbCfgIntWebhook').value = cfg.integrations?.webhookLogUrl || '';
-
-        // 16. Database
-        document.getElementById('mbDbNamespace').innerText = inst.databaseStats?.logicalNamespace || ('tenant_' + inst.id);
-        document.getElementById('mbDbMemoriesCount').innerText = (data.memories || []).length + ' registros';
-        document.getElementById('mbDbLogsCount').innerText = (data.logs || []).length + ' eventos';
-
-        // 17. Logs
-        renderMultiBotLogs(data.logs || []);
-
-        // 18. Advanced
-        document.getElementById('mbCfgAdvConcurrency').value = cfg.advanced?.maxConcurrency ?? 5;
-        document.getElementById('mbCfgAdvRateLimit').value = cfg.advanced?.rateLimitPerMinute ?? 60;
-        document.getElementById('mbCfgAdvMemLimit').value = cfg.advanced?.memoryLimitMb ?? 512;
-        document.getElementById('mbCfgAdvAutoRestart').value = String(cfg.advanced?.autoRestartOnCrash !== false);
-        document.getElementById('mbCfgAdvDebug').value = String(Boolean(cfg.advanced?.debugMode));
-
-        // 19. Falar pelo Bot defaults
-        if (document.getElementById('mbSpeakEmbedColor')) {
-          document.getElementById('mbSpeakEmbedColor').value = cfg.embeds?.primaryColor || '#00E5FF';
-        }
-        if (document.getElementById('mbSpeakEmbedFooter')) {
-          document.getElementById('mbSpeakEmbedFooter').value = cfg.embeds?.footerText || (cfg.aiName || inst.name);
-        }
-
-        // 20. Anti-Bots & Scams dedicated section
-        if (document.getElementById('mbCfgAntiBotTimeout')) {
-          document.getElementById('mbCfgAntiBotTimeout').value = String(cfg.moderation?.antiBotScamTimeoutSeconds ?? 86400);
-        }
-        if (document.getElementById('mbCfgAntiBotIgnored')) {
-          document.getElementById('mbCfgAntiBotIgnored').value = (cfg.moderation?.antiBotIgnoredChannels || []).join(', ');
-        }
-
-        // 21. Welcome, Goodbye & AutoRole
-        if (document.getElementById('mbCfgWelcomeChannel')) {
-          document.getElementById('mbCfgWelcomeChannel').value = cfg.social?.welcomeChannelId || '';
-          document.getElementById('mbCfgGoodbyeChannel').value = cfg.social?.goodbyeChannelId || '';
-          document.getElementById('mbCfgAutoRole').value = cfg.social?.autoRoleId || '';
-          document.getElementById('mbCfgWelcomeMsg').value = cfg.social?.welcomeMessage || 'Bem-vindo(a) {user} ao **{server}**! 🎉';
-          document.getElementById('mbCfgGoodbyeMsg').value = cfg.social?.goodbyeMessage || '**{username}** saiu do servidor.';
-        }
-
-        // 22. Starboard
-        if (document.getElementById('mbCfgStarChannel')) {
-          document.getElementById('mbCfgStarChannel').value = cfg.social?.starboardChannelId || '';
-          document.getElementById('mbCfgStarEmoji').value = cfg.social?.starboardEmoji || '⭐';
-          document.getElementById('mbCfgStarMin').value = cfg.social?.starboardMinStars ?? 3;
-        }
-
-        // 23. Casino & Quiz Arena
-        if (document.getElementById('mbCfgCasinoMin')) {
-          document.getElementById('mbCfgCasinoMin').value = cfg.economyXp?.casinoMinBet ?? 10;
-          document.getElementById('mbCfgCasinoMax').value = cfg.economyXp?.casinoMaxBet ?? 100000;
-          document.getElementById('mbCfgQuizCoins').value = cfg.economyXp?.quizRewardCoins ?? 200;
-          document.getElementById('mbCfgQuizXp').value = cfg.economyXp?.quizRewardXp ?? 50;
-          document.getElementById('mbCfgQuizRounds').value = cfg.economyXp?.quizDefaultRounds ?? 5;
-          document.getElementById('mbCfgQuizTimeout').value = cfg.economyXp?.quizTimeoutSeconds ?? 25;
-        }
-
-        let savedSec = 'mb-sec-overview';
-        try { savedSec = localStorage.getItem('jarvis_active_multibot_sec') || 'mb-sec-overview'; } catch {}
-        switchMultiBotSubtab(document.getElementById(savedSec) ? savedSec : 'mb-sec-overview');
-      } catch (err) {
-        showToast(err.message, 'error', 'Erro ao Abrir Instância');
-      }
-    }
-
-    function renderMultiBotModulesGrid() {
-      const grid = document.getElementById('mbInstanceModulesGrid');
-      if (!grid) return;
-      const defs = multiBotModuleDefinitions.length > 0 ? multiBotModuleDefinitions : allModuleDefinitions;
-
-      grid.innerHTML = defs.map(m => {
-        const isChecked = currentEditingBotModules[m.id] !== false;
-        const deps = Array.isArray(m.dependencies) && m.dependencies.length > 0 ? m.dependencies.join(', ') : null;
-        return '<div class="card" style="padding: 0.85rem; border: 1px solid ' + (isChecked ? 'rgba(16, 185, 129, 0.35)' : 'rgba(255,255,255,0.06)') + '; background: ' + (isChecked ? 'rgba(16, 185, 129, 0.05)' : 'rgba(0,0,0,0.2)') + ';">' +
-          '<div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">' +
-            '<div style="display: flex; align-items: center; gap: 0.45rem;">' +
-              '<span>' + (m.icon || '⚙️') + '</span>' +
-              '<div>' +
-                '<div style="font-weight: 700; font-size: 0.86rem; color: var(--text-main);">' + escapeHtml(m.name) + '</div>' +
-                '<div style="font-size: 0.68rem; color: var(--text-muted);"><code>' + m.id + '</code>' + (deps ? ' • Requer: ' + deps : '') + '</div>' +
-              '</div>' +
-            '</div>' +
-            '<input type="checkbox" class="mb-inst-mod-checkbox" data-modid="' + m.id + '" ' + (isChecked ? 'checked' : '') + ' style="width: 18px; height: 18px; accent-color: #10B981; cursor: pointer;">' +
-          '</div>' +
-        '</div>';
-      }).join('');
-
-      grid.querySelectorAll('.mb-inst-mod-checkbox').forEach(cb => {
-        cb.addEventListener('change', () => {
-          const mId = cb.getAttribute('data-modid');
-          const defsList = multiBotModuleDefinitions.length > 0 ? multiBotModuleDefinitions : allModuleDefinitions;
-          const modDef = defsList.find(x => x.id === mId);
-          currentEditingBotModules[mId] = cb.checked;
-
-          if (cb.checked && modDef && Array.isArray(modDef.dependencies)) {
-            for (const depId of modDef.dependencies) {
-              if (currentEditingBotModules[depId] === false) {
-                currentEditingBotModules[depId] = true;
-                showToast('Dependência "' + depId + '" ativada automaticamente para esta instância.', 'info');
-              }
-            }
-          }
-          if (!cb.checked) {
-            for (const other of defsList) {
-              if (Array.isArray(other.dependencies) && other.dependencies.includes(mId) && currentEditingBotModules[other.id] !== false) {
-                currentEditingBotModules[other.id] = false;
-                showToast('Módulo dependente "' + other.name + '" desativado automaticamente nesta instância.', 'warning');
-              }
-            }
-          }
-          renderMultiBotModulesGrid();
-        });
-      });
-    }
-
-    document.getElementById('mbEnableAllModsBtn')?.addEventListener('click', () => {
-      const defs = multiBotModuleDefinitions.length > 0 ? multiBotModuleDefinitions : allModuleDefinitions;
-      for (const m of defs) currentEditingBotModules[m.id] = true;
-      renderMultiBotModulesGrid();
-    });
-
-    document.getElementById('mbDisableAllModsBtn')?.addEventListener('click', () => {
-      const defs = multiBotModuleDefinitions.length > 0 ? multiBotModuleDefinitions : allModuleDefinitions;
-      for (const m of defs) currentEditingBotModules[m.id] = false;
-      renderMultiBotModulesGrid();
-    });
-
-    function renderMultiBotMemories(memories = []) {
-      const container = document.getElementById('mbMemoriesListContainer');
-      if (!container) return;
-      if (memories.length === 0) {
-        container.innerHTML = '<div style="text-align: center; padding: 1.5rem; color: var(--text-muted); font-size: 0.84rem;">Nenhuma memória isolada gravada para esta instância.</div>';
-        return;
-      }
-      container.innerHTML = memories.map(m => {
-        const k = m.memory_key || m.key;
-        const v = m.memory_value || m.value;
-        return '<div style="background: rgba(0,0,0,0.28); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 0.7rem; display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem;">' +
-          '<div>' +
-            '<code style="color: #c084fc; font-weight: 700;">' + escapeHtml(k) + '</code>' +
-            '<div style="font-size: 0.82rem; color: #e2e8f0; margin-top: 4px;">' + escapeHtml(v) + '</div>' +
-          '</div>' +
-          '<button type="button" class="danger-btn mb-del-mem-btn" data-memkey="' + escapeHtml(k) + '" style="padding: 0.2rem 0.5rem; font-size: 0.72rem;">🗑️</button>' +
-        '</div>';
-      }).join('');
-
-      container.querySelectorAll('.mb-del-mem-btn').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          const key = btn.getAttribute('data-memkey');
-          if (!currentEditingBotId) return;
-          const res = await fetch('/api/multi-bot/' + currentEditingBotId + '/memories', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-Panel-Password': '1598' },
-            credentials: 'include',
-            body: JSON.stringify({ action: 'DELETE', key })
-          });
-          const data = await res.json();
-          if (res.ok) {
-            renderMultiBotMemories(data.memories || []);
-            showToast('Memória removida da instância.', 'success');
-          }
-        });
-      });
-    }
-
-    document.getElementById('mbSaveMemoryBtn')?.addEventListener('click', async () => {
-      if (!currentEditingBotId) return;
-      const key = document.getElementById('mbMemKeyInput')?.value?.trim();
-      const value = document.getElementById('mbMemValInput')?.value?.trim();
-      if (!key || !value) return showToast('Preencha a chave e o conteúdo da memória!', 'warning');
-
-      try {
-        const res = await fetch('/api/multi-bot/' + currentEditingBotId + '/memories', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-Panel-Password': '1598' },
-          credentials: 'include',
-          body: JSON.stringify({ action: 'SAVE', key, value })
-        });
-        const data = await res.json();
-        if (res.ok) {
-          document.getElementById('mbMemKeyInput').value = '';
-          document.getElementById('mbMemValInput').value = '';
-          renderMultiBotMemories(data.memories || []);
-          showToast('Memória gravada exclusivamente nesta instância!', 'success', 'Memória Salva');
-        } else {
-          showToast(data.error || 'Erro ao gravar memória', 'error');
-        }
-      } catch (err) {
-        showToast(err.message, 'error');
-      }
-    });
-
-    function renderMultiBotLogs(logs = []) {
-      const container = document.getElementById('mbLogsConsoleContainer');
-      if (!container) return;
-      if (logs.length === 0) {
-        container.innerHTML = '<div style="color: #64748b; text-align: center; padding: 1.5rem;">Nenhum log registrado nesta instância.</div>';
-        return;
-      }
-      container.innerHTML = logs.map(l => {
-        const dt = l.created_at ? new Date(l.created_at).toLocaleTimeString('pt-BR') : '';
-        const color = l.level === 'ERROR' ? '#ef4444' : (l.level === 'WARN' ? '#f59e0b' : '#10b981');
-        return '<div style="border-bottom: 1px solid rgba(255,255,255,0.04); padding-bottom: 4px;">' +
-          '<span style="color: #64748b;">[' + dt + ']</span> ' +
-          '<span style="color: ' + color + '; font-weight: 700;">[' + escapeHtml(l.level) + ']</span> ' +
-          '<span style="color: #38bdf8;">[' + escapeHtml(l.category) + ']</span> ' +
-          '<span style="color: #e2e8f0;">' + escapeHtml(l.message) + '</span>' +
-        '</div>';
-      }).join('');
-    }
-
-    document.getElementById('mbRefreshLogsBtn')?.addEventListener('click', async () => {
-      if (!currentEditingBotId) return;
-      const res = await fetch('/api/multi-bot/' + currentEditingBotId + '/logs', {
-        headers: { 'X-Panel-Password': '1598' },
-        credentials: 'include'
-      });
-      if (res.ok) {
-        const data = await res.json();
-        renderMultiBotLogs(data.logs || []);
-        showToast('Logs da instância atualizados.', 'info');
-      }
-    });
-
-    document.getElementById('mbClearLogsBtn')?.addEventListener('click', async () => {
-      if (!currentEditingBotId) return;
-      const res = await fetch('/api/multi-bot/' + currentEditingBotId + '/clear-logs', {
-        method: 'POST',
-        headers: { 'X-Panel-Password': '1598' },
-        credentials: 'include'
-      });
-      if (res.ok) {
-        renderMultiBotLogs([]);
-        showToast('Histórico de logs desta instância limpo.', 'success');
-      }
-    });
-
-    document.getElementById('mbAdminStartBtn')?.addEventListener('click', () => {
-      if (currentEditingBotId) handleMultiBotAction(currentEditingBotId, 'start');
-    });
-    document.getElementById('mbAdminStopBtn')?.addEventListener('click', () => {
-      if (currentEditingBotId) handleMultiBotAction(currentEditingBotId, 'stop');
-    });
-    document.getElementById('mbAdminRestartBtn')?.addEventListener('click', () => {
-      if (currentEditingBotId) handleMultiBotAction(currentEditingBotId, 'restart');
-    });
-
-    document.getElementById('mbAdminSaveAllBtn')?.addEventListener('click', async () => {
-      if (!currentEditingBotId) return;
-      const saveBtn = document.getElementById('mbAdminSaveAllBtn');
-      if (saveBtn) { saveBtn.disabled = true; saveBtn.innerText = '⏳ Salvando no SQLite...'; }
-
-      const disabledCmds = (document.getElementById('mbCfgDisabledCommands')?.value || '')
-        .split(',').map(s => s.trim()).filter(Boolean);
-      const allowedGuilds = (document.getElementById('mbCfgPermGuilds')?.value || '')
-        .split(',').map(s => s.trim()).filter(Boolean);
-      const adminRoles = (document.getElementById('mbCfgPermAdmins')?.value || '')
-        .split(',').map(s => s.trim()).filter(Boolean);
-
-      const payload = {
-        name: document.getElementById('mbCfgName')?.value?.trim() || 'Bot Instance',
-        token: document.getElementById('mbCfgToken')?.value?.trim() || undefined,
-        isEnabled: document.getElementById('mbCfgEnabled')?.value === 'true',
-        allowedGuilds,
-        config: {
-          prefix: document.getElementById('mbCfgPrefix')?.value?.trim() || '+',
-          aiName: document.getElementById('mbCfgAiName')?.value?.trim() || 'J.A.R.V.I.S.',
-          aiModel: document.getElementById('mbCfgAiModel')?.value || 'gemini-3.5-flash-lite',
-          aiHumorMode: document.getElementById('mbCfgAiHumor')?.value || 'normal',
-          aiTemperature: parseFloat(document.getElementById('mbCfgAiTemp')?.value || '0.65'),
-          aiPersonaRole: document.getElementById('mbCfgAiRole')?.value || '',
-          aiPersonaTone: document.getElementById('mbCfgAiTone')?.value || '',
-          presenceStatus: document.getElementById('mbCfgPresenceStatus')?.value || 'online',
-          presenceActivityType: document.getElementById('mbCfgPresenceType')?.value || 'Custom',
-          presenceActivityText: document.getElementById('mbCfgPresenceText')?.value || '',
-          presenceActivityUrl: document.getElementById('mbCfgPresenceUrl')?.value || '',
-          modules: currentEditingBotModules,
-          commands: {
-            prefix: document.getElementById('mbCfgPrefix')?.value?.trim() || '+',
-            prefixlessMode: document.getElementById('mbCfgPrefixless')?.value === 'true',
-            disabledCommands: disabledCmds
-          },
-          moderation: {
-            logChannelId: document.getElementById('mbCfgModLogChannel')?.value?.trim() || '',
-            antiSpamEnabled: document.getElementById('mbCfgAntiSpam')?.value === 'true',
-            maxMessagesPerInterval: parseInt(document.getElementById('mbCfgAntiSpamMax')?.value || '5', 10),
-            antiBotScamEnabled: document.getElementById('mbCfgAntiBotScam')?.value === 'true',
-            antiBotScamAction: document.getElementById('mbCfgAntiBotAction')?.value || 'TIMEOUT',
-            antiBotScamTimeoutSeconds: parseInt(document.getElementById('mbCfgAntiBotTimeout')?.value || '86400', 10),
-            antiBotIgnoredChannels: (document.getElementById('mbCfgAntiBotIgnored')?.value || '').split(',').map(s => s.trim()).filter(Boolean),
-            tempBanWorkerEnabled: document.getElementById('mbCfgTempBanWorker')?.value === 'true'
-          },
-          economyXp: {
-            currencyName: document.getElementById('mbCfgEcoName')?.value?.trim() || 'StarkCoins',
-            currencySymbol: document.getElementById('mbCfgEcoSymbol')?.value?.trim() || '🪙',
-            dailyAmount: parseInt(document.getElementById('mbCfgEcoDaily')?.value || '500', 10),
-            workMin: parseInt(document.getElementById('mbCfgEcoWorkMin')?.value || '50', 10),
-            workMax: parseInt(document.getElementById('mbCfgEcoWorkMax')?.value || '200', 10),
-            xpMin: parseInt(document.getElementById('mbCfgXpMin')?.value || '15', 10),
-            xpMax: parseInt(document.getElementById('mbCfgXpMax')?.value || '25', 10),
-            voiceXpPerMinute: parseInt(document.getElementById('mbCfgVoiceXp')?.value || '10', 10),
-            casinoMinBet: parseInt(document.getElementById('mbCfgCasinoMin')?.value || '10', 10),
-            casinoMaxBet: parseInt(document.getElementById('mbCfgCasinoMax')?.value || '100000', 10),
-            quizRewardCoins: parseInt(document.getElementById('mbCfgQuizCoins')?.value || '200', 10),
-            quizRewardXp: parseInt(document.getElementById('mbCfgQuizXp')?.value || '50', 10),
-            quizDefaultRounds: parseInt(document.getElementById('mbCfgQuizRounds')?.value || '5', 10),
-            quizTimeoutSeconds: parseInt(document.getElementById('mbCfgQuizTimeout')?.value || '25', 10)
-          },
-          music: {
-            defaultVolume: parseInt(document.getElementById('mbCfgMusicVol')?.value || '80', 10),
-            maxQueueSize: parseInt(document.getElementById('mbCfgMusicQueue')?.value || '100', 10),
-            autoDisconnectMinutes: parseInt(document.getElementById('mbCfgMusicDisconnect')?.value || '5', 10),
-            djRoleId: document.getElementById('mbCfgMusicDjRole')?.value?.trim() || '',
-            ttsLanguage: document.getElementById('mbCfgMusicTtsLang')?.value || 'pt-BR'
-          },
-          tickets: {
-            panelTitle: document.getElementById('mbCfgTicketTitle')?.value?.trim() || '',
-            maxOpenTicketsPerUser: parseInt(document.getElementById('mbCfgTicketMax')?.value || '1', 10),
-            transcriptChannelId: document.getElementById('mbCfgTicketTranscript')?.value?.trim() || '',
-            defaultSupportRoleId: document.getElementById('mbCfgTicketRole')?.value?.trim() || '',
-            panelDescription: document.getElementById('mbCfgTicketDesc')?.value || ''
-          },
-          social: {
-            marriageEnabled: document.getElementById('mbCfgSocialMarriage')?.value === 'true',
-            marriageCost: parseInt(document.getElementById('mbCfgSocialCost')?.value || '5000', 10),
-            shippingEnabled: document.getElementById('mbCfgSocialShip')?.value === 'true',
-            funCommandsEnabled: document.getElementById('mbCfgSocialFun')?.value === 'true',
-            welcomeChannelId: document.getElementById('mbCfgWelcomeChannel')?.value?.trim() || '',
-            goodbyeChannelId: document.getElementById('mbCfgGoodbyeChannel')?.value?.trim() || '',
-            autoRoleId: document.getElementById('mbCfgAutoRole')?.value?.trim() || '',
-            welcomeMessage: document.getElementById('mbCfgWelcomeMsg')?.value || '',
-            goodbyeMessage: document.getElementById('mbCfgGoodbyeMsg')?.value || '',
-            starboardChannelId: document.getElementById('mbCfgStarChannel')?.value?.trim() || '',
-            starboardEmoji: document.getElementById('mbCfgStarEmoji')?.value?.trim() || '⭐',
-            starboardMinStars: parseInt(document.getElementById('mbCfgStarMin')?.value || '3', 10)
-          },
-          automations: {
-            briefingEnabled: document.getElementById('mbCfgAutoBriefing')?.value === 'true',
-            briefingHourUtc: parseInt(document.getElementById('mbCfgAutoHour')?.value || '18', 10),
-            remindersEnabled: document.getElementById('mbCfgAutoReminders')?.value === 'true',
-            socialAlertsEnabled: document.getElementById('mbCfgAutoAlerts')?.value === 'true'
-          },
-          embeds: {
-            primaryColor: document.getElementById('mbCfgEmbedPrimary')?.value?.trim() || '#00E5FF',
-            successColor: document.getElementById('mbCfgEmbedSuccess')?.value?.trim() || '#10B981',
-            warningColor: document.getElementById('mbCfgEmbedWarning')?.value?.trim() || '#F59E0B',
-            errorColor: document.getElementById('mbCfgEmbedError')?.value?.trim() || '#EF4444',
-            footerText: document.getElementById('mbCfgEmbedFooter')?.value?.trim() || ''
-          },
-          permissions: {
-            restrictToAllowedGuilds: document.getElementById('mbCfgPermRestrict')?.value === 'true',
-            allowedGuilds,
-            adminRoleIds: adminRoles
-          },
-          integrations: {
-            youtubeAlertsEnabled: document.getElementById('mbCfgIntYoutube')?.value === 'true',
-            twitchAlertsEnabled: document.getElementById('mbCfgIntTwitch')?.value === 'true',
-            redditAlertsEnabled: document.getElementById('mbCfgIntReddit')?.value === 'true',
-            webSearchEnabled: document.getElementById('mbCfgIntWebSearch')?.value === 'true',
-            webhookLogUrl: document.getElementById('mbCfgIntWebhook')?.value?.trim() || ''
-          },
-          advanced: {
-            maxConcurrency: parseInt(document.getElementById('mbCfgAdvConcurrency')?.value || '5', 10),
-            rateLimitPerMinute: parseInt(document.getElementById('mbCfgAdvRateLimit')?.value || '60', 10),
-            memoryLimitMb: parseInt(document.getElementById('mbCfgAdvMemLimit')?.value || '512', 10),
-            autoRestartOnCrash: document.getElementById('mbCfgAdvAutoRestart')?.value === 'true',
-            debugMode: document.getElementById('mbCfgAdvDebug')?.value === 'true'
-          }
-        }
-      };
-
-      try {
-        const res = await fetch('/api/multi-bot/' + currentEditingBotId + '/config', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-Panel-Password': '1598' },
-          credentials: 'include',
-          body: JSON.stringify(payload)
-        });
-        const data = await res.json();
-        if (res.ok && data.success) {
-          showToast('Todas as 24 seções da instância "' + payload.name + '" foram salvas no SQLite e sincronizadas no Discord em tempo real!', 'success', 'Instância Salva & Sincronizada');
-          openMultiBotAdminPage(currentEditingBotId);
-        } else {
-          showToast(data.error || 'Erro ao salvar configurações da instância.', 'error', 'Falha ao Salvar');
-        }
-      } catch (err) {
-        showToast(err.message, 'error', 'Erro de Conexão');
-      } finally {
-        if (saveBtn) { saveBtn.disabled = false; saveBtn.innerText = '💾 Salvar Configurações deste Bot'; }
-      }
-    });
-
-    // Multi-Bot Section 19: "Falar pelo Bot" directly from the instance administration page
-    document.getElementById('mbSendSpeakBtn')?.addEventListener('click', async () => {
-      if (!currentEditingBotId) return;
-      const channelId = document.getElementById('mbSpeakChannelSelect')?.value;
-      if (!channelId) {
-        return showToast('Selecione o canal de destino para enviar a mensagem!', 'warning', 'Canal Obrigatório');
-      }
-      const content = document.getElementById('mbSpeakContentInput')?.value?.trim() || '';
-      const useEmbed = document.getElementById('mbSpeakUseEmbed')?.checked || false;
-      let embed = null;
-      if (useEmbed) {
-        const title = document.getElementById('mbSpeakEmbedTitle')?.value?.trim() || '';
-        const url = document.getElementById('mbSpeakEmbedUrl')?.value?.trim() || '';
-        const description = document.getElementById('mbSpeakEmbedDesc')?.value?.trim() || '';
-        const color = document.getElementById('mbSpeakEmbedColor')?.value?.trim() || '#00E5FF';
-        const image = document.getElementById('mbSpeakEmbedImage')?.value?.trim() || '';
-        const thumbnail = document.getElementById('mbSpeakEmbedThumb')?.value?.trim() || '';
-        const footerText = document.getElementById('mbSpeakEmbedFooter')?.value?.trim() || '';
-        if (title || description || image || thumbnail) {
-          embed = {
-            title: title || undefined,
-            url: url || undefined,
-            description: description || undefined,
-            color,
-            image: image || undefined,
-            thumbnail: thumbnail || undefined,
-            footer: footerText ? { text: footerText } : undefined
-          };
-        }
-      }
-      if (!content && !embed) {
-        return showToast('Digite uma mensagem de texto ou configure o título/descrição da Embed!', 'warning');
-      }
-
-      const btn = document.getElementById('mbSendSpeakBtn');
-      if (btn) { btn.disabled = true; btn.innerText = '⏳ Transmitindo...'; }
-      try {
-        const res = await fetch('/api/multi-bot/' + currentEditingBotId + '/speak', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-Panel-Password': '1598' },
-          credentials: 'include',
-          body: JSON.stringify({
-            guildId: currentGuildId,
-            channelId,
-            content,
-            embed
-          })
-        });
-        const data = await res.json();
-        if (res.ok && data.success) {
-          showToast('Mensagem transmitida com sucesso pela instância "' + (data.botName || currentEditingBotId) + '"!', 'success', 'Transmitido');
-        } else {
-          showToast(data.error || 'Falha ao enviar mensagem pela instância.', 'error', 'Erro de Envio');
-        }
-      } catch (err) {
-        showToast(err.message, 'error', 'Erro de Conexão');
-      } finally {
-        if (btn) { btn.disabled = false; btn.innerText = '🚀 Transmitir Mensagem no Canal com este Bot'; }
-      }
-    });
-
-    // Multi-Bot Section 24: "Resumo Inteligente" directly from the instance administration page
-    document.getElementById('mbGenerateSummaryBtn')?.addEventListener('click', async () => {
-      if (!currentGuildId) return showToast('Selecione um servidor primeiro.', 'warning');
-      const channelId = document.getElementById('mbSummaryChannelSelect')?.value;
-      if (!channelId) return showToast('Selecione um canal de texto para resumir!', 'warning');
-      const messageCount = parseInt(document.getElementById('mbSummaryCountInput')?.value || '150', 10);
-      const type = document.getElementById('mbSummaryTypeSelect')?.value || 'summary';
-      const sendToDiscord = document.getElementById('mbSummarySendDiscord')?.checked || false;
-
-      const btn = document.getElementById('mbGenerateSummaryBtn');
-      const box = document.getElementById('mbSummaryOutputBox');
-      if (btn) { btn.disabled = true; btn.innerText = '⏳ Analisando Mensagens...'; }
-      if (box) { box.style.display = 'block'; box.innerText = '⏳ Extraindo e sintetizando histórico real do canal...'; }
-
-      try {
-        const res = await fetch('/api/guilds/' + currentGuildId + '/chat-summary', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-Panel-Password': '1598' },
-          credentials: 'include',
-          body: JSON.stringify({ channelId, messageCount, type, sendToDiscord })
-        });
-        const data = await res.json();
-        if (res.ok && (data.summary || data.text)) {
-          if (box) box.innerText = data.summary || data.text;
-          showToast('Resumo gerado e salvo com sucesso!', 'success', 'Resumo Concluído');
-        } else {
-          if (box) box.innerText = '❌ Erro: ' + (data.error || 'Falha ao processar resumo.');
-          showToast(data.error || 'Erro ao gerar resumo', 'error');
-        }
-      } catch (err) {
-        if (box) box.innerText = '❌ Erro: ' + err.message;
-        showToast(err.message, 'error');
-      } finally {
-        if (btn) { btn.disabled = false; btn.innerText = '⚡ Gerar Resumo Agora'; }
-      }
-    });
 
     async function handleMultiBotAction(id, action) {
       try {
@@ -16155,8 +14815,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
         const data = await res.json();
         if (res.ok) {
           showToast('Instância atualizada com sucesso!', 'success', 'Multi-Bot');
-          if (currentEditingBotId === id) openMultiBotAdminPage(id);
-          else loadMultiBotInstances();
+          loadMultiBotInstances();
         } else {
           showToast(data.error || 'Falha na ação da instância.', 'error', 'Erro');
         }
@@ -16207,6 +14866,7 @@ Dica: Você também pode usar {embed}, {delete}, {semprefixo}, {contem}, etc.!">
     loadGuilds();
     loadMultiBotInstances();
     restoreInitialTab();
+    syncSidebarModuleVisibility();
 
     // Apply Twemoji photo icons across initial DOM
     setTimeout(() => {

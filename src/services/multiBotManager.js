@@ -243,6 +243,9 @@ class MultiBotManager {
       assignedModules: assigned,
       allowedGuilds: guilds,
       status: live ? live.status : (r.status || 'STOPPED'),
+      avatarUrl: (typeof live?.client?.user?.displayAvatarURL === 'function')
+        ? live.client.user.displayAvatarURL({ extension: 'png', size: 128 })
+        : (config?.theme?.avatarUrl || 'https://cdn.discordapp.com/embed/avatars/0.png'),
       lastError: live?.lastError || r.last_error || null,
       memoryMb: live ? live.memoryMb : (r.memory_mb || 0),
       uptimeSeconds: live?.startedAt ? Math.floor((Date.now() - live.startedAt) / 1000) : 0,
@@ -588,6 +591,9 @@ class MultiBotManager {
     }
     if (incomingCfg.advanced && typeof incomingCfg.advanced === 'object') {
       newConfig.advanced = { ...newConfig.advanced, ...incomingCfg.advanced };
+    }
+    if (incomingCfg.theme && typeof incomingCfg.theme === 'object') {
+      newConfig.theme = { ...newConfig.theme, ...incomingCfg.theme };
     }
 
     const activeModuleList = Object.entries(newConfig.modules)

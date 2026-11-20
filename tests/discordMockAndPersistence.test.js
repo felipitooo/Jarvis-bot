@@ -992,7 +992,7 @@ describe('OPERAÇÃO DE CORREÇÃO TOTAL V8.5.0 — Persistência Real, Isolamen
       assert.ok(ov.modules.backups.some(b => (b.backup_name || b.name) === 'Snapshot_Auditoria_V85'));
     });
 
-    test('Verifica integridade da interface HTML do Painel (18 seções do Multi-Bot e ausência de módulos duplicados)', async () => {
+    test('Verifica integridade da interface HTML do Painel (Multi-Bot simplificado e ausência de módulos duplicados)', async () => {
       const htmlRes = await httpRequest(serverPort, 'GET', '/dashboard', null, { Cookie: authCookie });
       assert.equal(htmlRes.status, 200);
       const html = htmlRes.body;
@@ -1004,18 +1004,15 @@ describe('OPERAÇÃO DE CORREÇÃO TOTAL V8.5.0 — Persistência Real, Isolamen
       assert.ok(html.includes('id="tab-modules"'));
       assert.ok(html.includes('id="tab-multibot"'));
 
-      // Verificar presença da Página Administrativa Individual com todas as 24 seções (18 base + 6 operacionais)
-      const required24Sections = [
-        'mb-sec-overview', 'mb-sec-presence', 'mb-sec-modules', 'mb-sec-ai',
-        'mb-sec-memory', 'mb-sec-commands', 'mb-sec-moderation', 'mb-sec-economy',
-        'mb-sec-music', 'mb-sec-tickets', 'mb-sec-social', 'mb-sec-automations',
-        'mb-sec-embeds', 'mb-sec-permissions', 'mb-sec-integrations', 'mb-sec-database',
-        'mb-sec-logs', 'mb-sec-advanced', 'mb-sec-botspeak', 'mb-sec-antibot',
-        'mb-sec-welcome', 'mb-sec-starboard', 'mb-sec-casino-quiz', 'mb-sec-summary'
-      ];
-      for (const secId of required24Sections) {
-        assert.ok(html.includes(`id="${secId}"`), `HTML must include individual bot admin section #${secId}`);
-      }
+      // Verificar interface limpa do Multi-Bot Manager (focado em cadastro e gerenciamento das instâncias)
+      assert.ok(html.includes('id="multiBotListView"'));
+      assert.ok(html.includes('id="newBotName"'));
+      assert.ok(html.includes('id="newBotToken"'));
+      assert.ok(html.includes('id="multiBotTableBody"'));
+
+      // Verificar que as 24 sub-seções redundantes foram removidas para não poluir a aba
+      assert.ok(!html.includes('id="mb-sec-overview"'), 'Redundant #mb-sec-overview section was removed');
+      assert.ok(!html.includes('id="mb-sec-presence"'), 'Redundant #mb-sec-presence section was removed');
 
       // Verificar que os checkboxes duplicados de módulos na aba Configurações Gerais foram removidos
       assert.ok(!html.includes('<input type="checkbox" id="cfgModAiChat"'), 'Duplicate module checkboxes in general settings must be removed');

@@ -5,6 +5,28 @@ Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [9.12.0] - 2026-11-20
+
+### Adicionado & Aprimorado
+- **Visibilidade Dinâmica de Módulos na Barra Lateral (Sidebar):**
+  - O menu lateral agora reflete fielmente os módulos ativados para o bot selecionado. Se uma instância (como N.A.L.A) possui apenas determinados módulos ativos (ex: Moderação & Proteção Anti-Bots), as abas de módulos inativos (Economia, Cassino, Tickets, Quiz, Níveis/XP, etc.) são automaticamente ocultadas (`display: none`).
+  - Grupos inteiros do menu sem nenhum item visível têm seu título de grupo ocultado automaticamente.
+  - Ao ativar ou desativar qualquer módulo na Central de Módulos, a barra lateral sincroniza instantaneamente. Se a aba aberta no momento for desativada, a navegação é redirecionada de forma segura para a Visão Geral.
+- **Temas Isolados por Bot:**
+  - O tema visual do painel agora é 100% individual por bot. Escolher um tema (ex: Verônica) para N.A.L.A o mantém estritamente nela; ao alternar para o Jarvis (ou outro bot), o tema correspondente daquele bot é carregado e restaurado.
+  - Os temas são persistidos de forma independente tanto no `localStorage` (`jarvis_custom_theme_<botId>`) quanto no banco SQLite via `instances.json` (`inst.config.theme`).
+- **Limpeza Total do Multi-Bot Manager:**
+  - Removidas as 24 sub-seções redundantes que duplicavam o painel inteiro dentro da aba `tab-multibot`, deixando a aba limpa e dedicada exclusivamente ao cadastro de novas instâncias e gerenciamento da tabela de instâncias.
+  - O botão "⚙️ Gerenciar" na tabela de instâncias agora ativa o bot diretamente no painel e abre a Visão Geral com navegação unificada.
+- **Sincronização de Avatar / Foto do Bot no Topo Esquerdo:**
+  - O avatar circular no canto superior esquerdo da barra lateral (`#sidebarBotAvatar`) agora sincroniza dinamicamente em tempo real com a foto real do bot ativo (ex: foto de perfil da N.A.L.A quando selecionada e do Jarvis quando selecionado).
+  - O endpoint `/api/bot/avatar` redireciona diretamente para o avatar Discord CDN da instância solicitada (`?botId=` ou header `x-bot-id`).
+- **Ações e PV (DM) com Interceptador de 2 Respostas no Contexto Multi-Bot:**
+  - Ao enviar uma DM privada a um membro através do modal de membros (`SEND_DM`), a mensagem é enviada pelo cliente Discord da instância ativa selecionada, garantindo que o membro receba a mensagem com a identidade e persona correta.
+  - O monitor de 2 respostas (`dmTracker`) rastreia o bot originador e silencia a IA corretamente durante o monitoramento de respostas.
+- **Filtragem Modular no Modal de Gerenciamento de Membros:**
+  - Ao abrir as configurações de um membro na aba Membros, as sub-abas do modal (Economia, Mute/Timeout, Warns, Nível & XP, Memórias IA) adaptam-se aos módulos ativos do bot selecionado, exibindo apenas as funcionalidades pertinentes.
+
 ## [9.11.0] - 2026-11-19
 
 ### Corrigido
