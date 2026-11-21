@@ -7,3 +7,6 @@ Toda vez que houver qualquer atualização, melhoria, nova funcionalidade ou cor
 3. **Atualização do `CHANGELOG.md`:** Documentar as mudanças sob a nova versão com a data atual.
 4. **Verificação de Testes:** Executar `npm test` e garantir 100% dos testes aprovados antes de enviar.
 5. **Deploy Automático no GitHub:** Fazer o commit com a tag/versão correspondente e publicar no GitHub imediatamente via `npm run push` (script seguro `scripts/safe-push.ps1`).
+
+## 🗺️ Mapa do Código
+Antes de procurar qualquer funcionalidade, consulte `docs/CODEMAP.md` (fluxo painel → API → service → banco, regra PRIMARY vs instância Multi-Bot e índice de funcionalidades). Atualize o mapa sempre que mover/criar arquivos.

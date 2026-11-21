@@ -1,5 +1,11 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { buildHelpResponse } = require('../../utils/helpMenuHelper');
+const {
+  resolveBotName,
+  getInstanceConfig,
+  resolvePrefix,
+  resolveHelpConfig
+} = require('../../utils/botContextResolver');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -27,41 +33,18 @@ module.exports = {
    * @param {object} context
    */
   async execute(interaction, context) {
-    const { identityService, multiBotManager, botInstanceId } = context || {};
-    const aiName = (botInstanceId && (context?.botInstanceName || interaction.client?.user?.username || multiBotManager?.getInstance?.(botInstanceId)?.name))
-      ? (context?.botInstanceName || interaction.client?.user?.username || multiBotManager?.getInstance?.(botInstanceId)?.name)
-      : (identityService?.getDisplayName(interaction.guildId) || 'Jarvis');
+    const aiName = resolveBotName(context, interaction.guildId, interaction.client);
     const category = interaction.options.getString('categoria') || 'home';
     const botAvatarUrl = interaction.client?.user?.displayAvatarURL
       ? interaction.client.user.displayAvatarURL({ extension: 'png', size: 128 })
       : null;
 
-    let allowedModules = null;
-    let helpConfig = null;
-    let activePrefix = '+';
-
-    if (botInstanceId && multiBotManager) {
-      const cfg = multiBotManager.getInstanceConfig?.(botInstanceId);
-      if (cfg?.modules) {
-        allowedModules = Object.entries(cfg.modules).filter(([, v]) => v === true).map(([k]) => k);
-      }
-      helpConfig = cfg?.help || cfg?.commands?.help || null;
-      activePrefix = cfg?.prefix || cfg?.commands?.prefix || '+';
-    } else {
-      try {
-        const row = context?.guildModuleService?.db?.get
-          ? context.guildModuleService.db.get('SELECT value FROM guild_settings WHERE guild_id = ? AND key = ?', [interaction.guildId, 'help_menu_config'])
-          : null;
-        if (row && row.value) {
-          helpConfig = JSON.parse(row.value);
-        }
-      } catch {}
-      if (!helpConfig) {
-        const { botConfig } = require('../../config/botConfig');
-        helpConfig = botConfig.getConfig()?.help || null;
-      }
-      activePrefix = context?.settingsService?.getSetting?.(interaction.guildId, 'prefix') || '+';
-    }
+    const instCfg = getInstanceConfig(context);
+    const allowedModules = instCfg?.modules
+      ? Object.entries(instCfg.modules).filter(([, v]) => v === true).map(([k]) => k)
+      : null;
+    const helpConfig = resolveHelpConfig(context, interaction.guildId);
+    const activePrefix = resolvePrefix(context, interaction.guildId);
 
     if (helpConfig?.enabled === false) {
       const { EmbedBuilder } = require('discord.js');

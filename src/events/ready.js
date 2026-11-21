@@ -1,6 +1,7 @@
 const { Events, ActivityType } = require('discord.js');
 const { logger } = require('../utils/logger');
 const { commandRegistry } = require('../commands/commandRegistry');
+const { isHelpEnabledForInstanceConfig } = require('../utils/botContextResolver');
 
 const readyLogger = logger.forContext('Event:Ready');
 
@@ -86,11 +87,7 @@ module.exports = {
           } else if (Array.isArray(context.botInstanceAssignedModules)) {
             allowedModules = context.botInstanceAssignedModules;
           }
-          if (instCfg?.commands?.help?.enabled !== undefined) {
-            isHelpEnabled = instCfg.commands.help.enabled !== false;
-          } else if (instCfg?.help?.enabled !== undefined) {
-            isHelpEnabled = instCfg.help.enabled !== false;
-          }
+          isHelpEnabled = isHelpEnabledForInstanceConfig(instCfg);
         } else {
           const { botConfig } = require('../config/botConfig');
           isHelpEnabled = botConfig.getConfig()?.help?.enabled !== false;

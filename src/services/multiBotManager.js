@@ -8,6 +8,7 @@ const {
   INTERACTION_PREFIX_TO_MODULE_MAP
 } = require('./guildModuleService');
 const { applyBotPresence } = require('../utils/presenceHelper');
+const { isHelpEnabledForInstanceConfig } = require('../utils/botContextResolver');
 
 const mbLogger = logger.forContext('MultiBotManager');
 
@@ -807,7 +808,7 @@ class MultiBotManager {
 
     const guildIds = live.client.guilds?.cache ? Array.from(live.client.guilds.cache.keys()) : [];
 
-    const isHelpEnabled = cfg?.commands?.help?.enabled !== false && cfg?.help?.enabled !== false;
+    const isHelpEnabled = isHelpEnabledForInstanceConfig(cfg);
 
     try {
       const { commandRegistry } = require('../commands/commandRegistry');

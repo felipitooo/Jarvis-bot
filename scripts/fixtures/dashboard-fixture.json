@@ -1,0 +1,135 @@
+{
+  "isUnlocked": true,
+  "aiDisplayName": "J.A.R.V.I.S",
+  "botAvatarUrl": "https://cdn.discordapp.com/embed/avatars/0.png",
+  "botAvatarDataUri": null,
+  "csrfToken": "fixture_csrf_token_001",
+  "sessionToken": "fixture_session_token_001",
+  "initialGuilds": [
+    {
+      "id": "1514033548422545470",
+      "name": "Nova Era",
+      "icon": null
+    },
+    {
+      "id": "999999999999999999",
+      "name": "Servidor Teste",
+      "icon": null
+    }
+  ],
+  "initialServerName": "Nova Era",
+  "initialServerIconUrl": "https://cdn.discordapp.com/embed/avatars/0.png",
+  "initialUptimeStr": "1h 15m",
+  "initialHeapUsedMb": "42 MB",
+  "initialMemberCount": "23",
+  "initialServerId": "1514033548422545470",
+  "botConfig": {
+    "identity": {
+      "name": "J.A.R.V.I.S",
+      "systemId": "jarvis-core",
+      "defaultPrefix": "+",
+      "triggerNames": [
+        "Jarvis",
+        "J.A.R.V.I.S"
+      ]
+    },
+    "ai": {
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "temperature": 1,
+      "maxTokens": 1024,
+      "humorMode": "normal",
+      "persona": {
+        "role": "Inteligência artificial central e assistente pessoal de alta fidelidade.",
+        "tone": "Aristocrático, elegante, polido britânico, com humor seco e sarcasmo refinado.",
+        "salutation": "Senhor / Senhora",
+        "guidelines": [
+          "Responda com calma técnica inabalável, elegância executiva e clareza analítica.",
+          "Priorize respostas concisas e objetivas (1 a 3 parágrafos curtos no máximo).",
+          "Comunique-se em português impecável, mantendo a postura de mordomo executivo."
+        ]
+      }
+    },
+    "theme": {
+      "panel": {
+        "bgPage": "#040914",
+        "bgHeader": "#061224",
+        "bgSurface": "#0A192F",
+        "bgInput": "#0F172A",
+        "primary": "#00E5FF",
+        "primaryHover": "#4F46E5",
+        "accent": "#38BDF8",
+        "textMain": "#E0F2FE",
+        "textMuted": "#94A3B8",
+        "borderColor": "rgba(255, 255, 255, 0.08)",
+        "shadowGlow": "rgba(56, 189, 248, 0.22)",
+        "topbarBrand": "#00E5FF",
+        "topbarBorder": "rgba(0, 229, 255, 0.4)",
+        "topbarActiveTitle": "#BAE6FD"
+      },
+      "discordEmbeds": {
+        "primaryColor": "#63cff2",
+        "successColor": "#10B981",
+        "warningColor": "#F59E0B",
+        "errorColor": "#EF4444",
+        "footerText": "J.A.R.V.I.S. • Sistemas Centrais"
+      }
+    },
+    "panelBranding": {
+      "title": "Painel de Controle",
+      "badge": "TECH CORE v2.0",
+      "subtitle": "Sistemas Centrais e Gestão de Servidores",
+      "footerCopyright": "© 2026 Lipe Industries. Todos os direitos reservados."
+    },
+    "help": {
+      "enabled": true,
+      "title": "⚡ Central de Comandos — {bot_name}",
+      "description": "",
+      "footer": "{bot_name} • Use o menu abaixo para navegar entre as categorias",
+      "color": "#5865f2",
+      "thumbnailUrl": "",
+      "categoryEmojis": {
+        "home": "🏠",
+        "economy": "💼",
+        "casino": "🎰",
+        "music": "🎵",
+        "moderation": "🛡️",
+        "xp": "🎖️",
+        "fun": "🎉",
+        "tickets": "🎫",
+        "admin": "⚙️"
+      }
+    },
+    "modules": {
+      "aiChat": true,
+      "music": true,
+      "economy": true,
+      "levelingAndXp": true,
+      "moderation": true,
+      "tickets": true,
+      "quizArena": true,
+      "webDashboard": true
+    },
+    "botId": "PRIMARY",
+    "guildId": "1514033548422545470"
+  },
+  "initialMultiBots": [
+    {
+      "id": "bot_x",
+      "name": "N.A.L.A",
+      "status": "ONLINE",
+      "avatarUrl": "",
+      "assignedModules": [
+        "moderation",
+        "auto_protection"
+      ],
+      "config": {
+        "prefix": "!",
+        "modules": {
+          "moderation": true,
+          "auto_protection": true
+        }
+      }
+    }
+  ]
+}

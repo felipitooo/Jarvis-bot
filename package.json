@@ -1,7 +1,7 @@
 {
   "name": "jarvis-discord-bot",
-  "version": "9.23.0",
-  "description": "Unified Modular Discord Bot (Jarvis) - Production Release v9.23.0: Warn Escalation Rules Fix for Multi-Bot Instances",
+  "version": "9.24.0",
+  "description": "Unified Modular Discord Bot (Jarvis) - Production Release v9.24.0: Reorganização do código: CODEMAP, resolver central, painel dividido por abas",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",

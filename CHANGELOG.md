@@ -5,6 +5,14 @@ Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [9.24.0] - 2026-11-21
+
+### Refatorado (sem mudança funcional)
+- Criado `docs/CODEMAP.md` (mapa do código, fluxo painel→API→service→banco, regra PRIMARY vs instância e índice de funcionalidades), referenciado em `AGENTS.md` e `GEMINI.md`.
+- Criado `src/utils/botContextResolver.js`, centralizando resolução de nome, prefixo e configuração de ajuda, aplicado em `/ajuda`, `+ajuda`, menu de ajuda, saudação, `ready.js` e `multiBotManager`.
+- Dividido `src/web/dashboardHtml.js` em módulos sob `src/web/dashboard/` (`parts/`, 27 `tabs/`, 16 `client/`), com saída HTML verificada byte-a-byte via `scripts/dashboard-snapshot.js`.
+- Adicionados novos testes unitários em `tests/botContextResolver.test.js` e `tests/dashboardRender.test.js`.
+
 ## [9.23.0] - 2026-11-20
 
 ### Corrigido (Sistema de Escalonamento de Advertencias)

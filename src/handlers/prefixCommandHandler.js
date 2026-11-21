@@ -4745,30 +4745,13 @@ class PrefixCommandHandler {
         case 'help':
         case 'comandos': {
           const { buildHelpResponse } = require('../utils/helpMenuHelper');
+          const { getInstanceConfig, resolveHelpConfig } = require('../utils/botContextResolver');
           const botAvatarUrl = message.client?.user?.displayAvatarURL ? message.client.user.displayAvatarURL({ extension: 'png', size: 128 }) : null;
-          let allowedModules = null;
-          let helpConfig = null;
-
-          if (context.botInstanceId && context.multiBotManager) {
-            const cfg = context.multiBotManager.getInstanceConfig?.(context.botInstanceId);
-            if (cfg?.modules) {
-              allowedModules = Object.entries(cfg.modules).filter(([, v]) => v === true).map(([k]) => k);
-            }
-            helpConfig = cfg?.help || cfg?.commands?.help || null;
-          } else {
-            try {
-              const row = context.guildModuleService?.db?.get
-                ? context.guildModuleService.db.get('SELECT value FROM guild_settings WHERE guild_id = ? AND key = ?', [guild.id, 'help_menu_config'])
-                : null;
-              if (row && row.value) {
-                helpConfig = JSON.parse(row.value);
-              }
-            } catch {}
-            if (!helpConfig) {
-              const { botConfig } = require('../config/botConfig');
-              helpConfig = botConfig.getConfig()?.help || null;
-            }
-          }
+          const instCfg = getInstanceConfig(context);
+          const allowedModules = instCfg?.modules
+            ? Object.entries(instCfg.modules).filter(([, v]) => v === true).map(([k]) => k)
+            : null;
+          const helpConfig = resolveHelpConfig(context, guild.id);
 
           if (helpConfig?.enabled === false) {
             // Help disabled: stay completely silent (do NOT speak in chat)
