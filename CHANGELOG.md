@@ -5,6 +5,23 @@ Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [9.25.0] - 2026-11-21
+
+### Refatorado & Modularizado (Arquitetura Limpa & Desacoplada)
+- **Modularização dos Comandos de Prefixo (`src/handlers/prefix/`):**
+  - O arquivo monolítico `src/handlers/prefixCommandHandler.js` (anteriormente com mais de 5.380 linhas) foi reduzido para um roteador leve e limpo (~350 linhas).
+  - Comandos distribuídos em sub-handlers dedicados por categoria sob `src/handlers/prefix/`: `helpCommands.js`, `economyCommands.js`, `moderationCommands.js`, `musicCommands.js`, `xpCommands.js`, `socialCommands.js`, `customCommands.js`, `utilityCommands.js`, `prefixUtils.js` e orquestrador `index.js`.
+- **Modularização da API de Configurações do Painel Web (`src/services/panelModules/`):**
+  - O serviço `src/services/webPanelService.js` (anteriormente com mais de 3.250 linhas) foi refatorado para ~1.880 linhas, eliminando mais de 1.400 linhas de blocos de `switch` redundantes.
+  - Criada arquitetura modular em `src/services/panelModules/` com dispatchers universais (`dispatchGetModuleConfig` e `dispatchUpdateModuleConfig`) e 12 módulos especializados (`moderationModule.js`, `economyModule.js`, `musicModule.js`, `ticketsModule.js`, `welcomeModule.js`, `starboardModule.js`, `auditModule.js`, `levelingModule.js`, `socialModule.js`, `backupModule.js`, `helpModule.js`, `generalModules.js`).
+- **Correção no Salvamento de Snapshots do Servidor:**
+  - Corrigida a criação de snapshots que gravavam 0 canais e 0 cargos quando os caches do Discord.js v14 ainda não haviam sido populados; adicionado fallback determinístico com fetch automático de canais e roles em `backupModule.js`.
+- **Correção e Teste no Sistema de Escalonamento de Advertências (Warns):**
+  - Garantida passagem e mapeamento correto de parâmetros em formato de objeto para `createEscalationRule`, permitindo adição e exclusão em tempo real de regras de punições automáticas via painel.
+- **Documentação e Testes:**
+  - `docs/CODEMAP.md` atualizado com a nova topologia de arquivos e guias de extensão.
+  - 100% da suíte de testes aprovada (417 testes unitários e de integração com 0 falhas).
+
 ## [9.24.0] - 2026-11-21
 
 ### Refatorado (sem mudança funcional)

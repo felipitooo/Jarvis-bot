@@ -74,8 +74,10 @@ describe('Web Panel Speak & AI Forced Memories Features', () => {
 
     const { MultiBotManager } = require('../src/services/multiBotManager');
     const { SocialAlertRepository } = require('../src/database/repositories/socialAlertRepository');
+    const { ModerationRepository } = require('../src/database/repositories/moderationRepository');
     const multiBotManager = new MultiBotManager(db, auditService);
     const socialAlertsRepo = new SocialAlertRepository(db);
+    const modRepo = new ModerationRepository(db);
 
     webPanelService = new WebPanelService({
       webSessionRepo,
@@ -85,7 +87,8 @@ describe('Web Panel Speak & AI Forced Memories Features', () => {
       services: {
         memoryRepo,
         multiBotManager,
-        socialAlertsRepo
+        socialAlertsRepo,
+        modRepo
       },
       botClient: mockBotClient
     });
@@ -365,5 +368,50 @@ describe('Web Panel Speak & AI Forced Memories Features', () => {
     assert.ok(overview.modules.socialAlerts.some(a => a.source_id === 'lipe_stream'));
     assert.ok(Array.isArray(overview.modules.aiMemories));
     assert.ok(overview.modules.aiMemories.some(m => m.key === 'criador'));
+  });
+
+  test('moderation: can add and delete warn escalation rules via panel for primary bot', async () => {
+    const session = webPanelService.createOAuthSession(
+      { id: 'user_admin', username: 'Stark' },
+      [{ id: 'guild_test_1', name: 'Test Guild', permissions: '32', owner: false }]
+    );
+
+    // 1. Add warn rule
+    const addRes = await webPanelService.updateModuleConfig(
+      session,
+      'guild_test_1',
+      'moderation',
+      {
+        addRule: {
+          thresholdWarns: 3,
+          action: 'TIMEOUT',
+          durationMinutes: 60,
+          windowDays: 30
+        }
+      },
+      session.csrfToken
+    );
+
+    assert.equal(addRes.status, 'success');
+    assert.ok(Array.isArray(addRes.config.warnRules));
+    const createdRule = addRes.config.warnRules.find(r => r.threshold_warns === 3 && r.action === 'TIMEOUT');
+    assert.ok(createdRule, 'Created warn escalation rule should be returned in warnRules');
+    assert.equal(createdRule.duration_seconds, 3600);
+    assert.equal(createdRule.window_days, 30);
+
+    // 2. Delete warn rule
+    const delRes = await webPanelService.updateModuleConfig(
+      session,
+      'guild_test_1',
+      'moderation',
+      {
+        deleteRuleId: createdRule.id
+      },
+      session.csrfToken
+    );
+
+    assert.equal(delRes.status, 'success');
+    const stillExists = delRes.config.warnRules.some(r => r.id === createdRule.id);
+    assert.equal(stillExists, false, 'Deleted rule should no longer be present');
   });
 });

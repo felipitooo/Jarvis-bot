@@ -16,8 +16,10 @@ Guia rápido de arquitetura para localizar qualquer funcionalidade, rota, servi�
 | `src/database/migrations/` | 37 migrações SQLite incrementais (`001` a `037`) |
 | `src/database/repositories/` | Camada de acesso SQL (`economyRepository.js`, `moderationRepository.js`, `backupRepository.js`, etc.) |
 | `src/events/` | Listeners do Discord.js (`ready.js`, `messageCreate.js`, `interactionCreate.js`, etc.) |
-| `src/handlers/` | Interpretador de comandos por prefixo (`prefixCommandHandler.js`) |
-| `src/services/` | Regras de negócio, orquestração Multi-Bot (`multiBotManager.js`), módulos por servidor (`guildModuleService.js`) e API do painel (`webPanelService.js`) |
+| `src/handlers/` | Interpretador de comandos por prefixo (`prefixCommandHandler.js` router) e sub-handlers modulares em `src/handlers/prefix/` |
+| `src/handlers/prefix/` | Módulos de comandos de prefixo (`helpCommands.js`, `economyCommands.js`, `moderationCommands.js`, `musicCommands.js`, `xpCommands.js`, `socialCommands.js`, `customCommands.js`, `utilityCommands.js`, `prefixUtils.js`, `index.js`) |
+| `src/services/` | Regras de negócio, orquestração Multi-Bot (`multiBotManager.js`), módulos por servidor (`guildModuleService.js`), API do painel (`webPanelService.js`) e módulos de configuração em `panelModules/` |
+| `src/services/panelModules/` | Módulos desacoplados de configuração do painel web (`moderationModule.js`, `economyModule.js`, `musicModule.js`, `ticketsModule.js`, `welcomeModule.js`, `starboardModule.js`, `auditModule.js`, `levelingModule.js`, `socialModule.js`, `backupModule.js`, `helpModule.js`, `generalModules.js`, `index.js`) |
 | `src/utils/` | Utilitários compartilhados: resolver central de contexto (`botContextResolver.js`), ajuda (`helpMenuHelper.js`), presença (`presenceHelper.js`), etc. |
 | `src/web/` | Servidor HTTP do painel (`server.js`) e montador do dashboard (`dashboardHtml.js`) |
 | `src/web/dashboard/` | Dashboard modular: `index.js`, `parts/` (`head`, `styles`, `layoutStart`, `layoutEnd`), `tabs/` (27 abas isoladas) e `client/` (16 módulos JS numerados `01` a `16`) |
@@ -35,7 +37,7 @@ Exemplo de ponta a ponta ao salvar uma configuração de módulo no painel:
    - Módulos por servidor/instância: bloco `moduleMatch` (`/api/guilds/:guildId/modules/:module`, linha ~1138).
    - Config universal (identidade, presença, IA, tema, ajuda): `/api/bot/config` `GET`/`POST` (linhas ~601 e ~670).
    - Ciclo de vida Multi-Bot: `/api/multi-bot` e `/api/multi-bot/:id/*` (linhas ~872–1035).
-4. **Serviço do Painel** em `src/services/webPanelService.js` → `getGuildOverview` (linha ~222), `getModuleConfig` (linha ~702) e `updateModuleConfig` (linha ~1064).
+4. **Serviço do Painel** em `src/services/webPanelService.js` → `getGuildOverview` (linha ~222), despachando `getModuleConfig` e `updateModuleConfig` diretamente para os módulos especializados em `src/services/panelModules/` (`dispatchGetModuleConfig` e `dispatchUpdateModuleConfig`).
 5. **Repositório & SQLite** → `src/database/repositories/*` gravando nas tabelas de `data/cell.sqlite` (ou `bot_instance_configs` via `multiBotManager.updateInstance`).
 
 ---
@@ -76,14 +78,14 @@ Exemplo de ponta a ponta ao salvar uma configuração de módulo no painel:
 
 ## 5. Receitas Comuns
 
-### Adicionar configuração de módulo
+### Adicionar ou modificar configuração de módulo
 1. Adicione o campo HTML em `src/web/dashboard/tabs/<modulo>.js` e envie no JS correspondente em `src/web/dashboard/client/*.js` via `saveModule(...)`.
-2. Em `src/services/webPanelService.js`, atualize os **dois** ramos em `getModuleConfig` (~702), `updateModuleConfig` (~1064) e, se necessário, `getGuildOverview` (~222): ramo `isSecondaryBot` (`inst.config`) e ramo `PRIMARY` (repositório).
+2. Em `src/services/panelModules/`, adicione ou edite o handler modular correspondente (`<modulo>Module.js`), atualizando os **dois** ramos em `getConfig` e `updateConfig`: ramo `isSecondaryBot` (`cfg`) e ramo `PRIMARY` (repositório).
 3. Garanta o default na criação em `buildDefaultInstanceConfig` (`src/services/multiBotManager.js` ~17) se for instância.
 
 ### Adicionar comando de prefixo
-1. Registre o nome/aliases em `src/handlers/prefixCommandHandler.js` na lista `KNOWN_COMMANDS` e associe ao módulo em `COMMAND_TO_MODULE_MAP` (`src/services/guildModuleService.js`).
-2. Implemente o `case` dentro de `_executeCommand` (~432) sob a seção correta (`// ====`).
+1. Adicione a implementação do comando no módulo correspondente em `src/handlers/prefix/<categoria>Commands.js` (ou crie um novo handler e registre em `src/handlers/prefix/index.js`).
+2. Registre o nome/aliases no `Set` de comandos do handler e associe ao módulo em `COMMAND_TO_MODULE_MAP` (`src/services/guildModuleService.js`).
 
 ### Adicionar Slash Command (`/`)
 1. Crie o arquivo em `src/commands/<categoria>/<nome>.js` exportando `{ data: new SlashCommandBuilder()..., async execute(interaction, context) }`.
