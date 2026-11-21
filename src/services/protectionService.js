@@ -191,10 +191,11 @@ class ProtectionService {
 
   /**
    * Filters and bulk deletes messages in a channel.
+   * Supports chunked deletion up to 1000 messages (Discord bulkDelete limit is 100 per batch).
    *
    * @param {import('discord.js').TextChannel} channel
    * @param {object} options
-   * @param {number} options.limit - Max 100
+   * @param {number} [options.limit=50] - Max 1000
    * @param {'ALL' | 'BOTS' | 'USERS' | 'LINKS' | 'ATTACHMENTS'} [options.filter='ALL']
    * @param {string} [options.targetUserId]
    * @param {string} [options.actorId]
@@ -204,40 +205,65 @@ class ProtectionService {
       throw new ValidationError('Canal inválido para exclusão em massa.');
     }
 
-    const safeLimit = Math.min(100, Math.max(1, Number(limit) || 50));
-    const fetched = await channel.messages.fetch({ limit: safeLimit });
+    const safeLimit = Math.min(1000, Math.max(1, Number(limit) || 50));
+    let totalDeleted = 0;
+    let remaining = safeLimit;
+    let lastMessageId = null;
 
-    let toDelete = Array.from(fetched.values());
+    while (remaining > 0) {
+      const batchSize = Math.min(100, remaining);
+      const fetchOptions = { limit: batchSize };
+      if (lastMessageId) {
+        fetchOptions.before = lastMessageId;
+      }
 
-    // Apply filters
-    if (filter === 'BOTS') {
-      toDelete = toDelete.filter(m => m.author.bot);
-    } else if (filter === 'USERS' && targetUserId) {
-      toDelete = toDelete.filter(m => m.author.id === targetUserId);
-    } else if (filter === 'LINKS') {
-      toDelete = toDelete.filter(m => /https?:\/\/[^\s]+/i.test(m.content));
-    } else if (filter === 'ATTACHMENTS') {
-      toDelete = toDelete.filter(m => m.attachments.size > 0);
+      const fetched = await channel.messages.fetch(fetchOptions);
+      if (!fetched || fetched.size === 0) {
+        break;
+      }
+
+      const fetchedArray = Array.from(fetched.values());
+      const currentLastId = fetchedArray[fetchedArray.length - 1]?.id;
+
+      let toDelete = fetchedArray;
+      if (filter === 'BOTS') {
+        toDelete = toDelete.filter(m => m.author?.bot);
+      } else if (filter === 'USERS' && targetUserId) {
+        toDelete = toDelete.filter(m => m.author?.id === targetUserId);
+      } else if (filter === 'LINKS') {
+        toDelete = toDelete.filter(m => /https?:\/\/[^\s]+/i.test(m.content || ''));
+      } else if (filter === 'ATTACHMENTS') {
+        toDelete = toDelete.filter(m => m.attachments && m.attachments.size > 0);
+      }
+
+      if (toDelete.length > 0) {
+        const deleted = await channel.bulkDelete(toDelete, true); // true ignores msgs older than 14 days
+        const count = deleted?.size ?? toDelete.length;
+        totalDeleted += count;
+      }
+
+      remaining -= fetched.size;
+
+      // Stop if there are no more messages in channel, or if pagination isn't advancing
+      if (!currentLastId || currentLastId === lastMessageId || fetched.size < batchSize) {
+        break;
+      }
+      lastMessageId = currentLastId;
     }
 
-    if (toDelete.length === 0) {
-      return { totalDeleted: 0, filter };
-    }
-
-    const deleted = await channel.bulkDelete(toDelete, true); // true ignores msgs older than 14 days
-
-    if (this.auditService) {
+    if (this.auditService && totalDeleted > 0) {
       this.auditService.logAction({
-        guildId: channel.guild.id,
+        guildId: channel.guild?.id,
         actorId,
         action: 'MESSAGES_PURGED',
         targetId: channel.id,
-        details: { count: deleted.size, filter, targetUserId }
+        details: { count: totalDeleted, filter, targetUserId }
       });
     }
 
     return {
-      totalDeleted: deleted.size,
+      totalDeleted,
+      purgedCount: totalDeleted,
       filter,
       channelId: channel.id
     };

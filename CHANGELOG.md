@@ -5,6 +5,17 @@ Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [9.26.0] - 2026-11-21
+
+### Adicionado & Melhorado
+- **Expansão do Limite de Exclusão em Massa (Purge) para 1.000 Mensagens:**
+  - O serviço `ProtectionService.purgeMessages` foi aprimorado para suportar limites de até 1.000 mensagens de uma só vez (aumentando o teto anterior de 100 mensagens).
+  - Implementada paginação automática e segura em lotes de até 100 mensagens (`channel.messages.fetch({ limit: batchSize, before: lastMessageId })` e `channel.bulkDelete(toDelete, true)`), respeitando os limites da API REST do Discord e contornando mensagens com mais de 14 dias.
+  - Atualizado o comando slash `/limpar-mensagens` (`src/commands/moderation/purge.js`) para aceitar até 1.000 mensagens (`setMaxValue(1000)`).
+  - Atualizados os comandos tradicionais por prefixo `+clear`, `+limpar` e `+purge` (`src/handlers/prefix/moderationCommands.js`) para aceitar argumentos de 1 a 1.000.
+  - Atualizada a ferramenta de moderação de IA `purgar_mensagens_canal` (`src/ai/tools/moderationTools.js`) para suportar até 1.000 mensagens.
+  - Testes unitários dedicados adicionados em `tests/antiAbuse.test.js` e `tests/prefixCommands.test.js`, validando paginação em lotes de 100 e validações de limites.
+
 ## [9.25.0] - 2026-11-21
 
 ### Refatorado & Modularizado (Arquitetura Limpa & Desacoplada)

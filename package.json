@@ -1,7 +1,7 @@
 {
   "name": "jarvis-discord-bot",
-  "version": "9.25.0",
-  "description": "Unified Modular Discord Bot (Jarvis) - Production Release v9.25.0: Arquitetura Modular Desacoplada (Prefix Handlers & Panel Modules) e Correção de Warns/Snapshots",
+  "version": "9.26.0",
+  "description": "Unified Modular Discord Bot (Jarvis) - Production Release v9.26.0: Expansão do limite de purga/limpeza de mensagens para 1000 com paginação em lotes",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",

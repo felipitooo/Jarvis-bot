@@ -169,4 +169,49 @@ describe('Protection Service: Anti-Spam, Anti-Flood & Purge Filters', () => {
     assert.equal(resUser.totalDeleted, 2);
     assert.deepEqual(deletedIds, ['1', '3']);
   });
+
+  test('purgeMessages correctly batches and paginates for amounts up to 1000', async () => {
+    // Generate 250 simulated messages with ids 1000 down to 751
+    const allMsgs = Array.from({ length: 250 }, (_, i) => ({
+      id: String(1000 - i),
+      author: { id: `user_${i}`, bot: false },
+      content: `msg ${i}`,
+      attachments: new Map()
+    }));
+
+    const fetchCalls = [];
+    const deletedBatches = [];
+
+    const mockChannel = {
+      guild: mockGuild,
+      messages: {
+        fetch: async ({ limit, before }) => {
+          fetchCalls.push({ limit, before });
+          let filtered = allMsgs;
+          if (before) {
+            const beforeIndex = allMsgs.findIndex(m => m.id === before);
+            filtered = beforeIndex >= 0 ? allMsgs.slice(beforeIndex + 1) : [];
+          }
+          const sliced = filtered.slice(0, limit);
+          return new Map(sliced.map(m => [m.id, m]));
+        }
+      },
+      bulkDelete: async (toDel) => {
+        deletedBatches.push(toDel.map(m => m.id));
+        return { size: toDel.length };
+      }
+    };
+
+    const res = await protection.purgeMessages(mockChannel, { limit: 250 });
+    assert.equal(res.totalDeleted, 250);
+    assert.equal(res.purgedCount, 250);
+    assert.equal(fetchCalls.length, 3);
+    assert.equal(fetchCalls[0].limit, 100);
+    assert.equal(fetchCalls[1].limit, 100);
+    assert.equal(fetchCalls[2].limit, 50);
+    assert.equal(deletedBatches.length, 3);
+    assert.equal(deletedBatches[0].length, 100);
+    assert.equal(deletedBatches[1].length, 100);
+    assert.equal(deletedBatches[2].length, 50);
+  });
 });

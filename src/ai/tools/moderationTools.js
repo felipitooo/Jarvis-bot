@@ -155,7 +155,7 @@ const moderationTools = [
       type: 'OBJECT',
       properties: {
         canal_id: { type: 'STRING', description: 'ID do canal.' },
-        quantidade: { type: 'INTEGER', description: 'Quantidade de mensagens a analisar e apagar (máx 100).' },
+        quantidade: { type: 'INTEGER', description: 'Quantidade de mensagens a analisar e apagar (máx 1000).' },
         filtro: { type: 'STRING', description: '"ALL", "BOTS", "LINKS" ou "ATTACHMENTS".' }
       },
       required: ['canal_id', 'quantidade']

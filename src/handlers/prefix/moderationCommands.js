@@ -651,18 +651,19 @@ async function handle(cmdName, args, message, context, options = {}) {
         return true;
       }
       if (!args[0]) {
-        await message.reply('❌ Você precisa informar a quantidade de mensagens a apagar (entre 1 e 100). Exemplo: `+clear 20` ou `+limpar 50`');
+        await message.reply('❌ Você precisa informar a quantidade de mensagens a apagar (entre 1 e 1000). Exemplo: `+clear 20` ou `+limpar 50`');
         return true;
       }
       const amount = parseInt(args[0], 10);
-      if (isNaN(amount) || amount < 1 || amount > 100) {
-        await message.reply('❌ Informe um número válido entre 1 e 100. Exemplo: `+clear 25`');
+      if (isNaN(amount) || amount < 1 || amount > 1000) {
+        await message.reply('❌ Informe um número válido entre 1 e 1000. Exemplo: `+clear 25`');
         return true;
       }
       try {
         await message.delete().catch(() => {});
         const res = await protectionService.purgeMessages(message.channel, { limit: amount, filter: 'ALL' });
-        const feedback = await message.channel.send(`🧹 **${res.purgedCount} mensagens** foram excluídas.`);
+        const count = res?.totalDeleted ?? res?.purgedCount ?? 0;
+        const feedback = await message.channel.send(`🧹 **${count} mensagens** foram excluídas.`);
         setTimeout(() => feedback.delete().catch(() => {}), 4000);
       } catch (err) {
         await message.channel.send(`❌ Erro ao limpar mensagens: ${err.message}`);

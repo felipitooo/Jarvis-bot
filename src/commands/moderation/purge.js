@@ -9,10 +9,10 @@ module.exports = {
     .addIntegerOption(opt =>
       opt
         .setName('quantidade')
-        .setDescription('Quantidade de mensagens a analisar/excluir (1 a 100)')
+        .setDescription('Quantidade de mensagens a analisar/excluir (1 a 1000)')
         .setRequired(true)
         .setMinValue(1)
-        .setMaxValue(100)
+        .setMaxValue(1000)
     )
     .addStringOption(opt =>
       opt

@@ -597,6 +597,19 @@ describe('Traditional Prefix Commands (+work, +slut, +bank, +ban, +daily, etc.)'
     assert.equal(handled2, true);
     assert.equal(purged, true);
     assert.ok(sentMsg.includes('excluídas'));
+
+    // Test clear with > 1000
+    const msgOver = {
+      content: '+clear 1500',
+      guild: { id: 'g_prefix_1' },
+      channel: { id: 'c_text_1' },
+      author: { id: 'u_worker_1' },
+      member: { permissions: { has: () => true } },
+      reply: async (txt) => { replyText = txt; }
+    };
+    const handledOver = await prefixCommandHandler.handle(msgOver, ctx);
+    assert.equal(handledOver, true);
+    assert.ok(replyText.includes('entre 1 e 1000'));
   });
 
   test('normal message without prefix returns false', async () => {
