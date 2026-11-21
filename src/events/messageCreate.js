@@ -267,7 +267,21 @@ module.exports = {
     // If empty (e.g. user only mentioned @Jarvis or said "Jarvis"), reply with friendly greeting & guidance
     if (!cleanText && message.attachments.size === 0) {
       await message.reply({
-        content: `Às suas ordens, <@${message.author.id}>. Eu sou o **${aiName}**, assistente central com protocolos em plena prontidão.\n\nComo posso ser útil hoje, senhor? *Dica: Chame-me diretamente pelo meu nome ou digite \`/\` e \`+\` para acessar meus comandos.*`
+        content: `Às suas ordens, <@${message.author.id}>. Eu sou o **${aiName}**, assistente central com protocolos em plena prontidão.\n\nComo posso ser útil hoje, senhor? *Dica: Chame-me diretamente pelo meu nome ou digite \`/\`${(() => {
+          let pfx = '+';
+          try {
+            if (context.botInstanceId) {
+              const ic = context.multiBotManager?.getInstanceConfig?.(context.botInstanceId) || context.botInstanceConfig || {};
+              pfx = ic.prefix || ic.commands?.prefix || '+';
+            } else {
+              const { botConfig } = require('../config/botConfig');
+              const def = botConfig.getConfig()?.identity?.defaultPrefix || '+';
+              const ss = context.settingsService || context.identityService?.settingsService;
+              pfx = ss && message.guild ? ss.getSetting(message.guild.id, 'prefix', def) : def;
+            }
+          } catch {}
+          return ['none', 'sem', 'nenhum', ''].includes(pfx) ? '' : ` e \`${pfx}\``;
+        })()} para acessar meus comandos.*`
       }).catch(() => {});
       const elapsedMs = Date.now() - aiChatStartTime;
       msgLogger.logResponseTime({

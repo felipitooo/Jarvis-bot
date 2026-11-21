@@ -1,7 +1,7 @@
 {
   "name": "jarvis-discord-bot",
-  "version": "9.21.0",
-  "description": "Unified Modular Discord Bot (Jarvis) - Production Release v9.21.0: Silent Disabled Help Command",
+  "version": "9.22.0",
+  "description": "Unified Modular Discord Bot (Jarvis) - Production Release v9.22.0: Greeting Hint Synced With Current Prefix",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
