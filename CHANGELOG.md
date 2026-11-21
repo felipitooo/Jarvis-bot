@@ -5,6 +5,14 @@ Todas as alterações notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [9.23.0] - 2026-11-20
+
+### Corrigido (Sistema de Escalonamento de Advertencias)
+- Nas instancias Multi-Bot (ex: N.A.L.A) as regras de warn nao eram salvas: o painel gravava 'addRule' como lixo na config e nunca criava a regra. Agora criar/excluir regras grava na tabela real usada pelo motor de escalonamento e a lista e atualizada na hora.
+- Painel das instancias passou a listar as regras reais do servidor.
+- Motor de escalonamento agora avalia a regra mais severa primeiro (5 warns = expulsao nao e mais ofuscado por 3 warns = timeout).
+- Novo teste de ordenacao de regras.
+
 ## [9.22.0] - 2026-11-20
 
 ### Corrigido

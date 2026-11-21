@@ -1,7 +1,7 @@
 {
   "name": "jarvis-discord-bot",
-  "version": "9.22.0",
-  "description": "Unified Modular Discord Bot (Jarvis) - Production Release v9.22.0: Greeting Hint Synced With Current Prefix",
+  "version": "9.23.0",
+  "description": "Unified Modular Discord Bot (Jarvis) - Production Release v9.23.0: Warn Escalation Rules Fix for Multi-Bot Instances",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",

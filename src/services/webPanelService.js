@@ -289,7 +289,7 @@ class WebPanelService {
             },
             moderation: {
               logChannelId: cfg.moderation?.logChannelId || auditChan || '',
-              warnRules: cfg.moderation?.warnRules || [],
+              warnRules: (this.services.modRepo ? this.services.modRepo.getEscalationRules(guildId) : (cfg.moderation?.warnRules || [])),
               escalations: cfg.moderation?.escalations || [],
               antiSpamEnabled: cfg.moderation?.antiSpamEnabled ?? true,
               maxMessagesPerInterval: cfg.moderation?.maxMessagesPerInterval ?? 5,
@@ -722,7 +722,7 @@ class WebPanelService {
           case 'warns':
             return {
               logChannelId: cfg.moderation?.logChannelId || null,
-              warnRules: cfg.moderation?.warnRules || [],
+              warnRules: (this.services.modRepo ? this.services.modRepo.getEscalationRules(guildId) : (cfg.moderation?.warnRules || [])),
               escalations: cfg.moderation?.escalations || [],
               antiAbuse: {
                 antiSpamEnabled: cfg.moderation?.antiSpamEnabled ?? true,
@@ -1086,10 +1086,35 @@ class WebPanelService {
           }
           case 'moderation':
           case 'warns': {
-            cfg.moderation = { ...(cfg.moderation || {}), ...updates };
+            // Warn escalation rules live in the guild-level table (read by the real escalation engine)
+            const { modRepo: instModRepo } = this.services;
+            const { addRule, deleteRuleId, antiAbuse, antiBotScam, ...plainUpdates } = updates || {};
+            if (instModRepo) {
+              if (addRule) {
+                instModRepo.createEscalationRule({
+                  guildId,
+                  thresholdWarns: parseInt(addRule.thresholdWarns, 10) || 3,
+                  action: String(addRule.action || 'TIMEOUT').toUpperCase(),
+                  durationSeconds: addRule.durationMinutes ? parseInt(addRule.durationMinutes, 10) * 60 : (addRule.durationSeconds ? parseInt(addRule.durationSeconds, 10) : null),
+                  windowDays: parseInt(addRule.windowDays, 10) || 30,
+                  autoApply: addRule.autoApply !== false,
+                  priority: parseInt(addRule.priority, 10) || 0
+                });
+              }
+              if (deleteRuleId) instModRepo.deleteEscalationRule(deleteRuleId);
+            }
+            cfg.moderation = { ...(cfg.moderation || {}), ...plainUpdates };
+            if (antiAbuse && typeof antiAbuse === 'object') cfg.moderation = { ...cfg.moderation, ...antiAbuse };
+            if (antiBotScam && typeof antiBotScam === 'object') cfg.moderation.antiBotScam = { ...(cfg.moderation.antiBotScam || {}), ...antiBotScam };
+            delete cfg.moderation.addRule;
+            delete cfg.moderation.deleteRuleId;
             if (updates.logChannelId !== undefined) cfg.moderation.logChannelId = updates.logChannelId;
             mb.updateInstance(botId, { config: cfg });
-            return { module: 'moderation', config: cfg.moderation };
+            return {
+              module: 'moderation',
+              config: { ...cfg.moderation, warnRules: instModRepo ? instModRepo.getEscalationRules(guildId) : [] },
+              warnRules: instModRepo ? instModRepo.getEscalationRules(guildId) : []
+            };
           }
           case 'welcome': {
             cfg.social = { ...(cfg.social || {}) };

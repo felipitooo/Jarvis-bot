@@ -25,7 +25,8 @@ class WarnEscalationService {
    */
   async checkAndEscalate(botMember, targetMember) {
     const guildId = botMember.guild.id;
-    const rules = this.modRepo.getEscalationRules(guildId);
+    // Evaluate the most severe (highest threshold) rule first so e.g. 5 warns = KICK is not shadowed by 3 warns = TIMEOUT
+    const rules = [...this.modRepo.getEscalationRules(guildId)].sort((a, b) => (b.priority || 0) - (a.priority || 0) || b.threshold_warns - a.threshold_warns);
 
     if (rules.length === 0) {
       return { triggered: false };
